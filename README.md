@@ -150,11 +150,17 @@ Le projet suit une architecture modulaire avec séparation des responsabilités 
 
 ## 📚 Documentation détaillée
 
-- [Guide de développement](./docs/DEVELOPMENT.md)
-- [Architecture et patterns](./docs/ARCHITECTURE.md)
-- [Tests et couverture](./docs/TESTS.md)
-- [API et intégrations](./docs/API.md)
-- [Déploiement](./docs/DEPLOYMENT.md)
+La documentation complète est disponible dans le dossier [`docs/`](./docs/) :
+
+- 📖 [Guide de démarrage](./docs/GETTING_STARTED.md) - Démarrage rapide pour nouveaux utilisateurs
+- 🏗️ [Architecture du projet](./docs/ARCHITECTURE.md) - Structure, patterns et flux de données
+- 🧪 [Documentation des tests](./docs/TESTS.md) - Stratégie de tests et couverture
+- 💻 [Guide de développement](./docs/DEVELOPMENT.md) - Workflow et bonnes pratiques
+- 🔌 [API et intégrations](./docs/API.md) - OpenWeatherMap, Notion, Google Tasks
+- 🚀 [Guide de déploiement](./docs/DEPLOYMENT.md) - Vercel, Netlify, GitHub Pages
+- 🧩 [Documentation des widgets](./docs/WIDGETS.md) - Architecture et création de widgets
+- 📁 [Structure du projet](./docs/PROJECT_STRUCTURE.md) - Organisation détaillée
+- 🔄 [Workflow de développement](./docs/WORKFLOW.md) - Cycle de vie des features
 
 ## 🛠️ Scripts disponibles
 
