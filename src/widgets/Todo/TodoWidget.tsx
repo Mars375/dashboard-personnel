@@ -27,6 +27,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { motion } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
 import { useTodos, type TodoFilter } from "@/hooks/useTodos";
@@ -599,123 +600,135 @@ export function TodoWidget() {
 							</DropdownMenu>
 						)}
 					</div>
-					<div className='flex gap-1'>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-8 w-8'
-									onClick={exportTodos}
-									aria-label='Exporter les tâches'
-								>
-									<Download className='h-4 w-4' />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Exporter les tâches</p>
-							</TooltipContent>
-						</Tooltip>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-8 w-8'
-									onClick={importTodos}
-									aria-label='Importer les tâches'
-								>
-									<Upload className='h-4 w-4' />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Importer des tâches</p>
-							</TooltipContent>
-						</Tooltip>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-8 w-8'
-									onClick={undo}
-									disabled={!canUndo}
-									aria-label='Annuler'
-								>
-									<Undo2 className='h-4 w-4' />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Annuler (Ctrl+Z)</p>
-							</TooltipContent>
-						</Tooltip>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-8 w-8'
-									onClick={redo}
-									disabled={!canRedo}
-									aria-label='Refaire'
-								>
-									<Redo2 className='h-4 w-4' />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Refaire (Ctrl+Shift+Z)</p>
-							</TooltipContent>
-						</Tooltip>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-8 w-8'
-									onClick={
-										notificationPermission === "granted"
-											? toggleNotifications
-											: handleRequestNotificationPermission
-									}
-									aria-label='Notifications'
-								>
-									{notificationPermission === "granted" &&
-									notificationSettings.enabled ? (
-										<Bell className='h-4 w-4' />
-									) : (
-										<BellOff className='h-4 w-4' />
-									)}
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>
-									{notificationPermission === "granted"
-										? notificationSettings.enabled
-											? "Désactiver les notifications"
-											: "Activer les notifications"
-										: "Activer les notifications"}
-								</p>
-							</TooltipContent>
-						</Tooltip>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-8 w-8'
-									onClick={handleSync}
-									disabled={isSyncing}
-									aria-label='Synchroniser'
-								>
-									<RefreshCw
-										className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
-									/>
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Synchroniser avec les services externes</p>
-							</TooltipContent>
-						</Tooltip>
+					<ButtonGroup aria-label='Actions des tâches'>
+						{/* Export/Import */}
+						<ButtonGroup>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant='ghost'
+										size='icon'
+										className='h-8 w-8'
+										onClick={exportTodos}
+										aria-label='Exporter les tâches'
+									>
+										<Download className='h-4 w-4' />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Exporter les tâches</p>
+								</TooltipContent>
+							</Tooltip>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant='ghost'
+										size='icon'
+										className='h-8 w-8'
+										onClick={importTodos}
+										aria-label='Importer les tâches'
+									>
+										<Upload className='h-4 w-4' />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Importer des tâches</p>
+								</TooltipContent>
+							</Tooltip>
+						</ButtonGroup>
+
+						{/* Undo/Redo */}
+						<ButtonGroup>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant='ghost'
+										size='icon'
+										className='h-8 w-8'
+										onClick={undo}
+										disabled={!canUndo}
+										aria-label='Annuler'
+									>
+										<Undo2 className='h-4 w-4' />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Annuler (Ctrl+Z)</p>
+								</TooltipContent>
+							</Tooltip>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant='ghost'
+										size='icon'
+										className='h-8 w-8'
+										onClick={redo}
+										disabled={!canRedo}
+										aria-label='Refaire'
+									>
+										<Redo2 className='h-4 w-4' />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Refaire (Ctrl+Shift+Z)</p>
+								</TooltipContent>
+							</Tooltip>
+						</ButtonGroup>
+
+						{/* Notifications et Sync */}
+						<ButtonGroup>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant='ghost'
+										size='icon'
+										className='h-8 w-8'
+										onClick={
+											notificationPermission === "granted"
+												? toggleNotifications
+												: handleRequestNotificationPermission
+										}
+										aria-label='Notifications'
+									>
+										{notificationPermission === "granted" &&
+										notificationSettings.enabled ? (
+											<Bell className='h-4 w-4' />
+										) : (
+											<BellOff className='h-4 w-4' />
+										)}
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>
+										{notificationPermission === "granted"
+											? notificationSettings.enabled
+												? "Désactiver les notifications"
+												: "Activer les notifications"
+											: "Activer les notifications"}
+									</p>
+								</TooltipContent>
+							</Tooltip>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant='ghost'
+										size='icon'
+										className='h-8 w-8'
+										onClick={handleSync}
+										disabled={isSyncing}
+										aria-label='Synchroniser'
+									>
+										<RefreshCw
+											className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
+										/>
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Synchroniser avec les services externes</p>
+								</TooltipContent>
+							</Tooltip>
+						</ButtonGroup>
+
 						<input
 							ref={fileInputRef}
 							type='file'
@@ -723,7 +736,7 @@ export function TodoWidget() {
 							onChange={handleFileInputChange}
 							className='hidden'
 						/>
-					</div>
+					</ButtonGroup>
 				</div>
 
 				{/* Drag & drop overlay */}
