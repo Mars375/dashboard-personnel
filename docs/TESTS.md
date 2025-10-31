@@ -6,8 +6,8 @@ Le projet utilise **Vitest** et **Testing Library** pour une couverture de tests
 
 ## Statistiques
 
-- **29 fichiers de tests**
-- **85 tests** au total
+- **31 fichiers de tests**
+- **93 tests** au total
 - **100% des fonctionnalités critiques testées**
 
 ## Structure des tests
@@ -36,17 +36,20 @@ tests/
     │   ├── WeatherWidget.form-submit.test.tsx
     │   ├── WeatherWidget.suggestion-click.test.tsx
     │   └── WeatherWidget.autocomplete-error.test.tsx
-    └── Todo/
-        ├── TodoWidget.smoke.test.tsx
-        ├── TodoWidget.add.test.tsx
-        ├── TodoWidget.edit.test.tsx
-        ├── TodoWidget.filter.test.tsx
-        ├── TodoWidget.undo-redo.test.tsx
-        ├── TodoWidget.stats.test.tsx
-        ├── TodoWidget.notifications.test.tsx
-        ├── TodoWidget.multi-lists.test.tsx
-        ├── TodoWidget.drag-drop.test.tsx
-        └── TodoWidget.sync.test.tsx
+    ├── Todo/
+    │   ├── TodoWidget.smoke.test.tsx
+    │   ├── TodoWidget.add.test.tsx
+    │   ├── TodoWidget.edit.test.tsx
+    │   ├── TodoWidget.filter.test.tsx
+    │   ├── TodoWidget.undo-redo.test.tsx
+    │   ├── TodoWidget.stats.test.tsx
+    │   ├── TodoWidget.notifications.test.tsx
+    │   ├── TodoWidget.multi-lists.test.tsx
+    │   ├── TodoWidget.drag-drop.test.tsx
+    │   └── TodoWidget.sync.test.tsx
+    └── Calendar/
+        ├── CalendarWidget.smoke.test.tsx
+        └── CalendarWidget.events.test.tsx
 ```
 
 ## Types de tests
@@ -66,6 +69,7 @@ Tests des hooks et utilitaires isolés :
 - `useWeather` : Gestion des données météo
 - `useAutocompleteCity` : Autocomplétion
 - `useTodos` : Logique des todos
+- `useCalendar` : Gestion du calendrier
 - Storage functions : Persistance localStorage
 
 ### Integration Tests
@@ -77,6 +81,8 @@ Tests des interactions entre composants :
 - Multi-listes
 - Notifications
 - Synchronisation
+- Gestion d'événements calendrier (CRUD)
+- Dialog et interactions
 
 ### E2E-like Tests
 Tests d'interactions utilisateur complètes :

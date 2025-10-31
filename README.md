@@ -75,7 +75,8 @@ dashboard-personnel/
 │   ├── hooks/            # Hooks personnalisés
 │   │   ├── useWeather.ts
 │   │   ├── useAutocompleteCity.ts
-│   │   └── useTodos.ts
+│   │   ├── useTodos.ts
+│   │   └── useCalendar.ts
 │   ├── lib/              # Utilitaires et logique métier
 │   │   ├── notifications.ts
 │   │   ├── sync/         # Système de synchronisation
@@ -87,7 +88,8 @@ dashboard-personnel/
 │   │   └── weatherStorage.ts
 │   ├── widgets/          # Widgets du dashboard
 │   │   ├── Weather/
-│   │   └── Todo/
+│   │   ├── Todo/
+│   │   └── Calendar/
 │   └── App.tsx           # Point d'entrée de l'application
 ├── tests/                # Tests unitaires et d'intégration
 │   ├── lib/
@@ -118,11 +120,11 @@ pnpm test --ui
 
 ### Couverture de tests
 
-- **29 fichiers de tests**
-- **85 tests** couvrant :
-  - Hooks personnalisés (useWeather, useAutocompleteCity, useTodos)
-  - Widgets (Weather, Todo)
-  - Système de synchronisation (Notion, Google Tasks)
+- **31 fichiers de tests**
+- **93 tests** couvrant :
+  - Hooks personnalisés (useWeather, useAutocompleteCity, useTodos, useCalendar)
+  - Widgets (Weather, Todo, Calendar)
+  - Système de synchronisation (Notion, Google Tasks, Google Calendar, Outlook)
   - Gestion d'état (Zustand)
   - Persistance (localStorage)
 

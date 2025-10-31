@@ -241,13 +241,54 @@ Gérer tous les états :
 - Empty
 - Success/Data
 
+## Calendar Widget 📅
+
+### Fonctionnalités
+
+#### MVP
+- ✅ Affichage calendrier mensuel (shadcn/ui Calendar)
+- ✅ Navigation mois (précédent/suivant, aujourd'hui)
+- ✅ Gestion d'événements (ajouter, modifier, supprimer)
+- ✅ Affichage événements par date sélectionnée
+- ✅ Persistance localStorage
+
+#### Évolutif
+- ✅ Export/Import JSON et ICS
+- ✅ Notifications pour événements à venir
+- ✅ Synchronisation API (Google Calendar, Outlook)
+- ✅ Drag & drop pour déplacer événements
+- ✅ Intégration avec deadlines Todo
+- ⏳ Vue semaine/jour (en cours)
+- ⏳ Vue agenda détaillée
+
+### Hooks utilisés
+
+- `useCalendar` : Gestion des événements et navigation calendrier
+
+### Storage
+
+- `calendarStorage` : Persistance des événements en localStorage
+
+### API
+
+- Google Calendar API (synchronisation)
+- Outlook Calendar API (synchronisation)
+
+### Composants UI
+
+- `Card`, `Button`, `Calendar` (shadcn/ui)
+- `Dialog`, `Popover`, `Input`, `Label`
+- `DropdownMenu`, `ButtonGroup`
+- `Separator` (pour ButtonGroup)
+
+### Tests
+
+2 fichiers de tests couvrant :
+- Rendering de base (smoke tests)
+- Gestion des événements (CRUD)
+- Dialog et interactions
+
 ## Widgets futurs
-
-### Calendar Widget 📅
-
-- Vue mensuelle/semaine
-- Événements et rappels
-- Synchronisation calendrier
 
 ### Finance Widget 💰
 

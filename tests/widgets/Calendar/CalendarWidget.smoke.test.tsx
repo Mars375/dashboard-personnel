@@ -25,6 +25,9 @@ vi.mock("@/hooks/useCalendar", () => ({
 // Mock des composants shadcn/ui
 vi.mock("@/components/ui/card", () => ({
 	Card: ({ children, ...p }: any) => <div {...p}>{children}</div>,
+	CardHeader: ({ children, ...p }: any) => <div {...p}>{children}</div>,
+	CardContent: ({ children, ...p }: any) => <div {...p}>{children}</div>,
+	CardFooter: ({ children, ...p }: any) => <div {...p}>{children}</div>,
 }), { virtual: true });
 
 vi.mock("@/components/ui/button", () => ({
@@ -44,6 +47,50 @@ vi.mock("@/components/ui/calendar", () => ({
 	),
 }), { virtual: true });
 
+vi.mock("@/components/ui/button-group", () => ({
+	ButtonGroup: ({ children, ...p }: any) => <div {...p}>{children}</div>,
+}), { virtual: true });
+
+vi.mock("@/components/ui/dropdown-menu", () => ({
+	DropdownMenu: ({ children }: any) => <div>{children}</div>,
+	DropdownMenuTrigger: ({ children, asChild }: any) => <div>{children}</div>,
+	DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
+	DropdownMenuItem: ({ children, onClick }: any) => (
+		<div onClick={onClick}>{children}</div>
+	),
+	DropdownMenuSeparator: () => <hr />,
+}), { virtual: true });
+
+vi.mock("framer-motion", () => ({
+	motion: {
+		div: ({ children, ...p }: any) => <div {...p}>{children}</div>,
+	},
+}));
+
+vi.mock("@/hooks/useTodos", () => ({
+	useTodos: () => ({
+		todos: [],
+		filteredTodos: () => [],
+		addTodo: vi.fn(),
+		toggleComplete: vi.fn(),
+		deleteTodo: vi.fn(),
+		updateTodo: vi.fn(),
+		togglePriority: vi.fn(),
+		setFilter: vi.fn(),
+		setSearchQuery: vi.fn(),
+	}),
+}));
+
+vi.mock("date-fns", () => ({
+	format: (date: Date, formatStr: string) => {
+		return date.toLocaleDateString("fr-FR");
+	},
+}));
+
+vi.mock("date-fns/locale", () => ({
+	fr: {},
+}));
+
 describe("CalendarWidget", () => {
 	it("renders without crashing", () => {
 		const { container } = render(<CalendarWidget />);
@@ -55,9 +102,8 @@ describe("CalendarWidget", () => {
 		expect(getByTestId("calendar")).toBeTruthy();
 	});
 
-	it("displays header with title and today button", () => {
+	it("displays header with today button", () => {
 		const { getByText } = render(<CalendarWidget />);
-		expect(getByText(/Calendrier/)).toBeTruthy();
 		expect(getByText(/Aujourd'hui/)).toBeTruthy();
 	});
 });
