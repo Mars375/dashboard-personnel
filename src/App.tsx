@@ -1,10 +1,14 @@
-import { Button } from "@/components/ui/button";
+import { TodoWidget } from "@/widgets/Todo/TodoWidget";
+import { Toaster } from "@/components/ui/sonner";
 
 function App() {
 	return (
-		<div className='flex min-h-svh flex-col items-center justify-center'>
-			<Button>Click me</Button>
-		</div>
+		<>
+			<div className='min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4'>
+				<TodoWidget />
+			</div>
+			<Toaster />
+		</>
 	);
 }
 
