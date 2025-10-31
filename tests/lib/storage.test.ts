@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { saveLastCity, loadLastCity } from "./storage";
+import { saveLastCity, loadLastCity } from "@/lib/storage";
 
 describe("storage", () => {
   beforeEach(() => {

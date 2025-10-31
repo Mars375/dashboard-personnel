@@ -9,7 +9,7 @@ vi.mock("@/components/ui/skeleton", () => ({ Skeleton: (props: any) => <div {...
 vi.mock("@/components/ui/popover", () => ({
   Popover: ({ children }: any) => <div>{children}</div>,
   PopoverTrigger: ({ children }: any) => <div>{children}</div>,
-  PopoverContent: ({ children }: any) => <div>{children}</div>,
+  PopoverContent: ({ children, ...p }: any) => <div aria-label="popover" {...p}>{children}</div>,
 }), { virtual: true });
 vi.mock("@/components/ui/command", () => ({
   Command: ({ children }: any) => <div>{children}</div>,
@@ -17,15 +17,20 @@ vi.mock("@/components/ui/command", () => ({
   CommandItem: ({ children, onSelect, ...rest }: any) => (
     <div data-testid="cmd-item" onClick={onSelect} {...rest}>{children}</div>
   ),
-  CommandGroup: ({ children }: any) => <div>{children}</div>,
-  CommandEmpty: ({ children }: any) => <div>{children}</div>,
+  CommandGroup: ({ children, heading }: any) => (
+    <div>
+      {heading && <div data-testid="cmd-group-heading">{heading}</div>}
+      {children}
+    </div>
+  ),
+  CommandEmpty: ({ children }: any) => <div>CommandEmpty</div>,
 }), { virtual: true });
 
 vi.mock("@/lib/useWeather", () => ({
   useWeather: () => ({
-    city: "Par",
+    city: "Paris",
     setCity: () => {},
-    data: undefined,
+    data: { city: "Paris", country: "FR", description: "ensoleillé", icon: "01d", temperatureC: 20, timestamp: Date.now() },
     loading: false,
     error: undefined,
     iconUrl: undefined,
@@ -39,31 +44,33 @@ vi.mock("@/lib/useAutocompleteCity", () => ({
   useAutocompleteCity: () => ({
     query: "Par",
     setQuery: () => {},
-    suggestions: [],
+    suggestions: [{ name: "Paris", country: "FR", state: undefined, lat: 1, lon: 2 }],
     loading: false,
-    error: "Erreur de connexion",
+    error: undefined,
     open: true,
     setOpen: () => {},
-    activeIndex: -1,
+    activeIndex: 0,
     setActiveIndex: () => {},
     moveActive: () => {},
     reset: () => {},
   }),
 }), { virtual: true });
 
-vi.mock("@/lib/storage", () => ({
-  loadLastCity: () => undefined,
-  saveLastCity: () => {},
-}), { virtual: true });
+import { WeatherWidget } from "@/widgets/Weather/WeatherWidget";
 
-import { WeatherWidget } from "./WeatherWidget";
-
-describe("WeatherWidget (autocomplete error)", () => {
-  it("displays error message in popover when autocomplete fails", () => {
+describe("WeatherWidget (popover)", () => {
+  it("shows suggestions popover when open", () => {
     render(<WeatherWidget />);
-    
-    // Vérifie que le message d'erreur est affiché
-    expect(screen.getByText(/Erreur: Erreur de connexion/)).toBeTruthy();
+    // Vérifie que le popover est présent
+    expect(screen.getByLabelText("popover")).toBeTruthy();
+    // Vérifie que le heading "Suggestions" est présent
+    const heading = screen.getByTestId("cmd-group-heading");
+    expect(heading.textContent).toBe("Suggestions");
+    // Vérifie que la suggestion "Paris" est présente dans le popover (via cmd-item)
+    const suggestionItem = screen.getByTestId("cmd-item");
+    expect(suggestionItem.textContent).toContain("Paris");
   });
 });
+
+
 

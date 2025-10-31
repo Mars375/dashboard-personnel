@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest";
 vi.mock("@/components/ui/card", () => ({ Card: ({ children, ...p }: any) => <div {...p}>{children}</div> }), { virtual: true });
 vi.mock("@/components/ui/button", () => ({ Button: ({ children, ...p }: any) => <button {...p}>{children}</button> }), { virtual: true });
 vi.mock("@/components/ui/input", () => ({ Input: (props: any) => <input {...props} /> }), { virtual: true });
-vi.mock("@/components/ui/skeleton", () => ({ Skeleton: (props: any) => <div {...props} /> }), { virtual: true });
+vi.mock("@/components/ui/skeleton", () => ({ Skeleton: (props: any) => <div role="status" {...props} /> }), { virtual: true });
 vi.mock("@/components/ui/popover", () => ({
   Popover: ({ children }: any) => <div>{children}</div>,
   PopoverTrigger: ({ children }: any) => <div>{children}</div>,
@@ -26,8 +26,8 @@ vi.mock("@/lib/useWeather", () => ({
     city: "Paris",
     setCity: () => {},
     data: undefined,
-    loading: false,
-    error: "Ville introuvable",
+    loading: true,
+    error: undefined,
     iconUrl: undefined,
     forecast: [],
     refresh: () => {},
@@ -51,16 +51,17 @@ vi.mock("@/lib/useAutocompleteCity", () => ({
   }),
 }), { virtual: true });
 
-import { WeatherWidget } from "./WeatherWidget";
+import { WeatherWidget } from "@/widgets/Weather/WeatherWidget";
 
-describe("WeatherWidget (error)", () => {
-  it("renders error message", () => {
+describe("WeatherWidget (loading)", () => {
+  it("renders skeleton loader", () => {
     render(<WeatherWidget />);
-    expect(screen.getByText(/Ville introuvable/)).toBeTruthy();
+    const statusElements = screen.getAllByRole("status");
+    expect(statusElements.length).toBeGreaterThan(0);
+    // Vérifie qu'au moins un skeleton est présent
+    expect(statusElements[0].className).toContain("grid");
   });
 });
-
-
 
 
 

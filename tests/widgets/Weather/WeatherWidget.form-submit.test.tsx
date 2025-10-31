@@ -23,14 +23,11 @@ vi.mock("@/components/ui/command", () => ({
 }), { virtual: true });
 
 const mockFetchWeather = vi.fn();
-const mockSetCity = vi.fn();
-const mockMoveActive = vi.fn();
-const mockReset = vi.fn();
 
 vi.mock("@/lib/useWeather", () => ({
   useWeather: () => ({
-    city: "Par",
-    setCity: mockSetCity,
+    city: "Lyon",
+    setCity: () => {},
     data: undefined,
     loading: false,
     error: undefined,
@@ -43,20 +40,17 @@ vi.mock("@/lib/useWeather", () => ({
 
 vi.mock("@/lib/useAutocompleteCity", () => ({
   useAutocompleteCity: () => ({
-    query: "Par",
+    query: "",
     setQuery: () => {},
-    suggestions: [
-      { name: "Paris", country: "FR", state: undefined, lat: 1, lon: 2 },
-      { name: "Parme", country: "IT", state: undefined, lat: 3, lon: 4 },
-    ],
+    suggestions: [],
     loading: false,
     error: undefined,
-    open: true,
+    open: false,
     setOpen: () => {},
-    activeIndex: 0,
+    activeIndex: -1,
     setActiveIndex: () => {},
-    moveActive: mockMoveActive,
-    reset: mockReset,
+    moveActive: () => {},
+    reset: () => {},
   }),
 }), { virtual: true });
 
@@ -65,32 +59,21 @@ vi.mock("@/lib/storage", () => ({
   saveLastCity: () => {},
 }), { virtual: true });
 
-import { WeatherWidget } from "./WeatherWidget";
+import { WeatherWidget } from "@/widgets/Weather/WeatherWidget";
 
-describe("WeatherWidget (keyboard navigation)", () => {
-  it("navigates suggestions with arrow keys and selects with Enter", async () => {
+describe("WeatherWidget (form submit)", () => {
+  it("calls fetchWeather when form is submitted", async () => {
     const user = userEvent.setup();
     render(<WeatherWidget />);
     
-    const input = screen.getByPlaceholderText("Rechercher une ville...");
-    expect(input).toBeTruthy();
+    const submitButton = screen.getByText("Chercher");
+    expect(submitButton).toBeTruthy();
     
-    // Test ArrowDown
-    await user.type(input, "{ArrowDown}");
-    expect(mockMoveActive).toHaveBeenCalledWith(1);
+    await user.click(submitButton);
     
-    // Test ArrowUp
-    await user.type(input, "{ArrowUp}");
-    expect(mockMoveActive).toHaveBeenCalledWith(-1);
-    
-    // Test Enter avec suggestion active (activeIndex >= 0)
-    mockMoveActive.mockClear();
-    await user.type(input, "{Enter}");
-    
-    // Vérifie que setCity et fetchWeather sont appelés avec la première suggestion
-    expect(mockSetCity).toHaveBeenCalledWith("Paris");
-    expect(mockFetchWeather).toHaveBeenCalledWith("Paris");
-    expect(mockReset).toHaveBeenCalledTimes(1);
+    // Vérifie que fetchWeather est appelé avec la ville actuelle
+    expect(mockFetchWeather).toHaveBeenCalledWith("Lyon");
+    expect(mockFetchWeather).toHaveBeenCalledTimes(1);
   });
 });
 

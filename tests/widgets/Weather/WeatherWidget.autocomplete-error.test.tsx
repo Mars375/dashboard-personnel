@@ -1,7 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
-import userEvent from "@testing-library/user-event";
+import { describe, it, expect } from "vitest";
 
 vi.mock("@/components/ui/card", () => ({ Card: ({ children, ...p }: any) => <div {...p}>{children}</div> }), { virtual: true });
 vi.mock("@/components/ui/button", () => ({ Button: ({ children, ...p }: any) => <button {...p}>{children}</button> }), { virtual: true });
@@ -22,21 +21,17 @@ vi.mock("@/components/ui/command", () => ({
   CommandEmpty: ({ children }: any) => <div>{children}</div>,
 }), { virtual: true });
 
-const mockFetchWeather = vi.fn();
-const mockSetCity = vi.fn();
-const mockReset = vi.fn();
-
 vi.mock("@/lib/useWeather", () => ({
   useWeather: () => ({
     city: "Par",
-    setCity: mockSetCity,
+    setCity: () => {},
     data: undefined,
     loading: false,
     error: undefined,
     iconUrl: undefined,
     forecast: [],
     refresh: () => {},
-    fetchWeather: mockFetchWeather,
+    fetchWeather: () => {},
   }),
 }), { virtual: true });
 
@@ -44,15 +39,15 @@ vi.mock("@/lib/useAutocompleteCity", () => ({
   useAutocompleteCity: () => ({
     query: "Par",
     setQuery: () => {},
-    suggestions: [{ name: "Paris", country: "FR", state: undefined, lat: 1, lon: 2 }],
+    suggestions: [],
     loading: false,
-    error: undefined,
+    error: "Erreur de connexion",
     open: true,
     setOpen: () => {},
     activeIndex: -1,
     setActiveIndex: () => {},
     moveActive: () => {},
-    reset: mockReset,
+    reset: () => {},
   }),
 }), { virtual: true });
 
@@ -61,24 +56,14 @@ vi.mock("@/lib/storage", () => ({
   saveLastCity: () => {},
 }), { virtual: true });
 
-import { WeatherWidget } from "./WeatherWidget";
+import { WeatherWidget } from "@/widgets/Weather/WeatherWidget";
 
-describe("WeatherWidget (suggestion click)", () => {
-  it("calls fetchWeather and resets autocomplete when suggestion is clicked", async () => {
-    const user = userEvent.setup();
+describe("WeatherWidget (autocomplete error)", () => {
+  it("displays error message in popover when autocomplete fails", () => {
     render(<WeatherWidget />);
     
-    const suggestionItem = screen.getByTestId("cmd-item");
-    expect(suggestionItem).toBeTruthy();
-    
-    await user.click(suggestionItem);
-    
-    // Vérifie que setCity est appelé avec "Paris"
-    expect(mockSetCity).toHaveBeenCalledWith("Paris");
-    // Vérifie que fetchWeather est appelé avec "Paris"
-    expect(mockFetchWeather).toHaveBeenCalledWith("Paris");
-    // Vérifie que reset est appelé pour fermer l'autocomplete
-    expect(mockReset).toHaveBeenCalledTimes(1);
+    // Vérifie que le message d'erreur est affiché
+    expect(screen.getByText(/Erreur: Erreur de connexion/)).toBeTruthy();
   });
 });
 

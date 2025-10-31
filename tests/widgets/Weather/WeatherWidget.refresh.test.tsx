@@ -1,8 +1,8 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 
-// Virtual mocks for UI deps to avoid resolving real files
 vi.mock("@/components/ui/card", () => ({ Card: ({ children, ...p }: any) => <div {...p}>{children}</div> }), { virtual: true });
 vi.mock("@/components/ui/button", () => ({ Button: ({ children, ...p }: any) => <button {...p}>{children}</button> }), { virtual: true });
 vi.mock("@/components/ui/input", () => ({ Input: (props: any) => <input {...props} /> }), { virtual: true });
@@ -22,7 +22,8 @@ vi.mock("@/components/ui/command", () => ({
   CommandEmpty: ({ children }: any) => <div>{children}</div>,
 }), { virtual: true });
 
-// Mock hooks
+const mockRefresh = vi.fn();
+
 vi.mock("@/lib/useWeather", () => ({
   useWeather: () => ({
     city: "Paris",
@@ -32,7 +33,7 @@ vi.mock("@/lib/useWeather", () => ({
     error: undefined,
     iconUrl: undefined,
     forecast: [],
-    refresh: () => {},
+    refresh: mockRefresh,
     fetchWeather: () => {},
   }),
 }), { virtual: true });
@@ -53,14 +54,23 @@ vi.mock("@/lib/useAutocompleteCity", () => ({
   }),
 }), { virtual: true });
 
-import { WeatherWidget } from "./WeatherWidget";
+vi.mock("@/lib/storage", () => ({
+  loadLastCity: () => undefined,
+  saveLastCity: () => {},
+}), { virtual: true });
 
-describe("WeatherWidget (smoke)", () => {
-  it("renders city and temperature without crashing", () => {
+import { WeatherWidget } from "@/widgets/Weather/WeatherWidget";
+
+describe("WeatherWidget (refresh)", () => {
+  it("calls refresh when refresh button is clicked", async () => {
+    const user = userEvent.setup();
     render(<WeatherWidget />);
-    expect(screen.getByText(/Paris/)).toBeTruthy();
-    expect(screen.getByText(/20°C/)).toBeTruthy();
+    
+    const refreshButton = screen.getByText("Rafraîchir");
+    expect(refreshButton).toBeTruthy();
+    
+    await user.click(refreshButton);
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
   });
 });
-
 

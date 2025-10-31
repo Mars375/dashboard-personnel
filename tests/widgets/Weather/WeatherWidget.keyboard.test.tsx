@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 
 vi.mock("@/components/ui/card", () => ({ Card: ({ children, ...p }: any) => <div {...p}>{children}</div> }), { virtual: true });
 vi.mock("@/components/ui/button", () => ({ Button: ({ children, ...p }: any) => <button {...p}>{children}</button> }), { virtual: true });
@@ -21,39 +22,41 @@ vi.mock("@/components/ui/command", () => ({
   CommandEmpty: ({ children }: any) => <div>{children}</div>,
 }), { virtual: true });
 
+const mockFetchWeather = vi.fn();
+const mockSetCity = vi.fn();
+const mockMoveActive = vi.fn();
+const mockReset = vi.fn();
+
 vi.mock("@/lib/useWeather", () => ({
   useWeather: () => ({
-    city: "Paris",
-    setCity: () => {},
-    data: { city: "Paris", country: "FR", description: "ensoleillé", icon: "01d", temperatureC: 20, timestamp: Date.now() },
+    city: "Par",
+    setCity: mockSetCity,
+    data: undefined,
     loading: false,
     error: undefined,
     iconUrl: undefined,
-    forecast: [
-      { dateISO: "2024-01-01", icon: "01d", description: "sunny", tempMaxC: 25, tempMinC: 15 },
-      { dateISO: "2024-01-02", icon: "02d", description: "cloudy", tempMaxC: 22, tempMinC: 12 },
-      { dateISO: "2024-01-03", icon: "03d", description: "partly cloudy", tempMaxC: 20, tempMinC: 10 },
-      { dateISO: "2024-01-04", icon: "04d", description: "overcast", tempMaxC: 18, tempMinC: 8 },
-      { dateISO: "2024-01-05", icon: "09d", description: "rain", tempMaxC: 16, tempMinC: 6 },
-    ],
+    forecast: [],
     refresh: () => {},
-    fetchWeather: () => {},
+    fetchWeather: mockFetchWeather,
   }),
 }), { virtual: true });
 
 vi.mock("@/lib/useAutocompleteCity", () => ({
   useAutocompleteCity: () => ({
-    query: "",
+    query: "Par",
     setQuery: () => {},
-    suggestions: [],
+    suggestions: [
+      { name: "Paris", country: "FR", state: undefined, lat: 1, lon: 2 },
+      { name: "Parme", country: "IT", state: undefined, lat: 3, lon: 4 },
+    ],
     loading: false,
     error: undefined,
-    open: false,
+    open: true,
     setOpen: () => {},
-    activeIndex: -1,
+    activeIndex: 0,
     setActiveIndex: () => {},
-    moveActive: () => {},
-    reset: () => {},
+    moveActive: mockMoveActive,
+    reset: mockReset,
   }),
 }), { virtual: true });
 
@@ -62,19 +65,32 @@ vi.mock("@/lib/storage", () => ({
   saveLastCity: () => {},
 }), { virtual: true });
 
-import { WeatherWidget } from "./WeatherWidget";
+import { WeatherWidget } from "@/widgets/Weather/WeatherWidget";
 
-describe("WeatherWidget (forecast)", () => {
-  it("displays 5-day forecast when available", () => {
+describe("WeatherWidget (keyboard navigation)", () => {
+  it("navigates suggestions with arrow keys and selects with Enter", async () => {
+    const user = userEvent.setup();
     render(<WeatherWidget />);
     
-    // Vérifie que la section prévisions est présente
-    const forecastSection = screen.getByLabelText("Prévisions sur 5 jours");
-    expect(forecastSection).toBeTruthy();
+    const input = screen.getByPlaceholderText("Rechercher une ville...");
+    expect(input).toBeTruthy();
     
-    // Vérifie qu'il y a bien 5 prévisions (vérifie les températures affichées)
-    const forecastItems = screen.getAllByText(/\d+° \/ \d+°/);
-    expect(forecastItems.length).toBe(5);
+    // Test ArrowDown
+    await user.type(input, "{ArrowDown}");
+    expect(mockMoveActive).toHaveBeenCalledWith(1);
+    
+    // Test ArrowUp
+    await user.type(input, "{ArrowUp}");
+    expect(mockMoveActive).toHaveBeenCalledWith(-1);
+    
+    // Test Enter avec suggestion active (activeIndex >= 0)
+    mockMoveActive.mockClear();
+    await user.type(input, "{Enter}");
+    
+    // Vérifie que setCity et fetchWeather sont appelés avec la première suggestion
+    expect(mockSetCity).toHaveBeenCalledWith("Paris");
+    expect(mockFetchWeather).toHaveBeenCalledWith("Paris");
+    expect(mockReset).toHaveBeenCalledTimes(1);
   });
 });
 

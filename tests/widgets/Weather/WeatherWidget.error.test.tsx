@@ -1,7 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
-import userEvent from "@testing-library/user-event";
+import { describe, it, expect } from "vitest";
 
 vi.mock("@/components/ui/card", () => ({ Card: ({ children, ...p }: any) => <div {...p}>{children}</div> }), { virtual: true });
 vi.mock("@/components/ui/button", () => ({ Button: ({ children, ...p }: any) => <button {...p}>{children}</button> }), { virtual: true });
@@ -22,19 +21,17 @@ vi.mock("@/components/ui/command", () => ({
   CommandEmpty: ({ children }: any) => <div>{children}</div>,
 }), { virtual: true });
 
-const mockFetchWeather = vi.fn();
-
 vi.mock("@/lib/useWeather", () => ({
   useWeather: () => ({
-    city: "Lyon",
+    city: "Paris",
     setCity: () => {},
     data: undefined,
     loading: false,
-    error: undefined,
+    error: "Ville introuvable",
     iconUrl: undefined,
     forecast: [],
     refresh: () => {},
-    fetchWeather: mockFetchWeather,
+    fetchWeather: () => {},
   }),
 }), { virtual: true });
 
@@ -54,26 +51,16 @@ vi.mock("@/lib/useAutocompleteCity", () => ({
   }),
 }), { virtual: true });
 
-vi.mock("@/lib/storage", () => ({
-  loadLastCity: () => undefined,
-  saveLastCity: () => {},
-}), { virtual: true });
+import { WeatherWidget } from "@/widgets/Weather/WeatherWidget";
 
-import { WeatherWidget } from "./WeatherWidget";
-
-describe("WeatherWidget (form submit)", () => {
-  it("calls fetchWeather when form is submitted", async () => {
-    const user = userEvent.setup();
+describe("WeatherWidget (error)", () => {
+  it("renders error message", () => {
     render(<WeatherWidget />);
-    
-    const submitButton = screen.getByText("Chercher");
-    expect(submitButton).toBeTruthy();
-    
-    await user.click(submitButton);
-    
-    // Vérifie que fetchWeather est appelé avec la ville actuelle
-    expect(mockFetchWeather).toHaveBeenCalledWith("Lyon");
-    expect(mockFetchWeather).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Ville introuvable/)).toBeTruthy();
   });
 });
+
+
+
+
 
