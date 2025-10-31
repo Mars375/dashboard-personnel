@@ -46,7 +46,15 @@ import {
 	List,
 	RefreshCw,
 } from "lucide-react";
-import { format } from "date-fns";
+import {
+	format,
+	startOfWeek,
+	endOfWeek,
+	eachDayOfInterval,
+	isSameDay,
+	addDays,
+	subDays,
+} from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -65,6 +73,14 @@ import {
 	type CalendarNotificationSettings,
 } from "@/lib/calendarNotifications";
 import { calendarSyncManager } from "@/lib/sync/calendarSyncManager";
+
+// Fonction utilitaire pour formater une date en YYYY-MM-DD en local (évite les problèmes de timezone)
+function formatDateLocal(date: Date): string {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
 
 export function CalendarWidget() {
 	const {
@@ -92,6 +108,19 @@ export function CalendarWidget() {
 	const [newEventTitle, setNewEventTitle] = useState("");
 	const [newEventTime, setNewEventTime] = useState("");
 	const [newEventDescription, setNewEventDescription] = useState("");
+	const [newEventColor, setNewEventColor] = useState<string>("");
+
+	// Palette de couleurs prédéfinie pour les événements
+	const eventColors = [
+		{ name: "Par défaut", value: "", class: "bg-primary" },
+		{ name: "Bleu", value: "#3b82f6", class: "bg-blue-500" },
+		{ name: "Vert", value: "#10b981", class: "bg-green-500" },
+		{ name: "Rouge", value: "#ef4444", class: "bg-red-500" },
+		{ name: "Orange", value: "#f59e0b", class: "bg-orange-500" },
+		{ name: "Violet", value: "#8b5cf6", class: "bg-violet-500" },
+		{ name: "Rose", value: "#ec4899", class: "bg-pink-500" },
+		{ name: "Cyan", value: "#06b6d4", class: "bg-cyan-500" },
+	];
 	const [notificationSettings, setNotificationSettings] =
 		useState<CalendarNotificationSettings>(loadNotificationSettings);
 	const [notificationPermission, setNotificationPermission] =
@@ -111,7 +140,11 @@ export function CalendarWidget() {
 	);
 
 	// Obtenir les dates qui ont des événements pour les marquer visuellement
-	const datesWithEvents = events.map((event) => new Date(event.date));
+	// Convertir "YYYY-MM-DD" en Date locale (évite les problèmes de timezone)
+	const datesWithEvents = events.map((event) => {
+		const [year, month, day] = event.date.split("-").map(Number);
+		return new Date(year, month - 1, day);
+	});
 
 	// Ajouter les deadlines des todos
 	const datesWithDeadlines = todosWithDeadlines
@@ -151,17 +184,19 @@ export function CalendarWidget() {
 		if (editingEvent) {
 			updateEvent(editingEvent.id, {
 				title: newEventTitle.trim(),
-				date: newEventDate.toISOString().split("T")[0],
+				date: formatDateLocal(newEventDate),
 				time: newEventTime || undefined,
 				description: newEventDescription || undefined,
+				color: newEventColor || undefined,
 			});
 			toast.success("Événement modifié");
 		} else {
 			addEvent({
 				title: newEventTitle.trim(),
-				date: newEventDate.toISOString().split("T")[0],
+				date: formatDateLocal(newEventDate),
 				time: newEventTime || undefined,
 				description: newEventDescription || undefined,
+				color: newEventColor || undefined,
 			});
 			toast.success("Événement créé");
 		}
@@ -174,6 +209,7 @@ export function CalendarWidget() {
 		setNewEventTitle(event.title);
 		setNewEventTime(event.time || "");
 		setNewEventDescription(event.description || "");
+		setNewEventColor(event.color || "");
 		setNewEventDate(new Date(event.date));
 		setIsDialogOpen(true);
 	};
@@ -191,6 +227,7 @@ export function CalendarWidget() {
 			setNewEventTitle("");
 			setNewEventTime("");
 			setNewEventDescription("");
+			setNewEventColor("");
 			setNewEventDate(selectedDate);
 		}
 	};
@@ -484,7 +521,7 @@ export function CalendarWidget() {
 												(event) => event.id === draggedEventId
 											);
 											if (draggedEvent) {
-												const newDate = day.date.toISOString().split("T")[0];
+												const newDate = formatDateLocal(day.date);
 												updateEvent(draggedEventId, { date: newDate });
 												toast.success("Événement déplacé");
 												setSelectedDate(day.date);
@@ -527,17 +564,27 @@ export function CalendarWidget() {
 						/>
 					)}
 					{view === "week" && (
-						<div className='w-full p-4 border rounded-md'>
-							<p className='text-sm text-muted-foreground text-center'>
-								Vue semaine (à implémenter)
-							</p>
+						<div className='w-full'>
+							<WeekView
+								currentDate={currentDate}
+								selectedDate={selectedDate}
+								onSelect={handleSelect}
+								getEventsForDate={getEventsForDate}
+								onEventClick={(event: CalendarEvent) => handleEditEvent(event)}
+								setCurrentDate={setCurrentDate}
+							/>
 						</div>
 					)}
 					{view === "day" && (
-						<div className='w-full p-4 border rounded-md'>
-							<p className='text-sm text-muted-foreground text-center'>
-								Vue jour (à implémenter)
-							</p>
+						<div className='w-full'>
+							<DayView
+								currentDate={currentDate}
+								selectedDate={selectedDate}
+								onSelect={handleSelect}
+								getEventsForDate={getEventsForDate}
+								onEventClick={(event: CalendarEvent) => handleEditEvent(event)}
+								setCurrentDate={setCurrentDate}
+							/>
 						</div>
 					)}
 				</motion.div>
@@ -641,6 +688,29 @@ export function CalendarWidget() {
 										/>
 									</div>
 
+									{/* Couleur */}
+									<div className='flex flex-col gap-2'>
+										<Label>Couleur (optionnel)</Label>
+										<div className='flex flex-wrap gap-2'>
+											{eventColors.map((color) => (
+												<button
+													key={color.value}
+													type='button'
+													onClick={() => setNewEventColor(color.value)}
+													className={cn(
+														"h-8 w-8 rounded-full border-2 transition-all",
+														color.class,
+														newEventColor === color.value
+															? "border-primary ring-2 ring-primary ring-offset-2 scale-110"
+															: "border-border hover:scale-105"
+													)}
+													title={color.name}
+													aria-label={`Sélectionner la couleur ${color.name}`}
+												/>
+											))}
+										</div>
+									</div>
+
 									{/* Boutons */}
 									<div className='flex justify-end gap-2 mt-2'>
 										<Button
@@ -728,62 +798,359 @@ function CalendarEventItem({
 	onDragEnd: () => void;
 	isDragging: boolean;
 }) {
-	const formatEventTime = (time?: string) => {
-		if (!time) return "";
-		const [hours, minutes] = time.split(":");
-		return `${hours}:${minutes}`;
+	const eventColor = event.color || "";
+
+	// Formater l'heure de l'événement
+	const formatEventTime = () => {
+		if (!event.time) return null;
+		// Retourner l'heure telle quelle (format HH:mm)
+		return event.time;
 	};
 
+	const formattedTime = formatEventTime();
+
+	// Déterminer la couleur de la barre via after pseudo-element
+	const afterBgColor = eventColor ? `${eventColor}70` : undefined;
+
 	return (
-		<motion.div
+		<div
 			draggable
 			onDragStart={onDragStart}
 			onDragEnd={onDragEnd}
-			className={`bg-muted after:bg-primary/70 relative rounded-md p-2 pl-6 text-sm after:absolute after:inset-y-2 after:left-2 after:w-1 after:rounded-full cursor-move group ${
-				isDragging ? "opacity-50" : ""
-			}`}
-			initial={{ opacity: 0, scale: 0.95 }}
-			animate={{ opacity: isDragging ? 0.5 : 1, scale: 1 }}
-			exit={{ opacity: 0, scale: 0.95 }}
-			transition={{ duration: 0.15 }}
+			className={cn(
+				"bg-muted relative rounded-md p-2 pl-6 text-sm cursor-move group",
+				"after:absolute after:inset-y-2 after:left-2 after:w-1 after:rounded-full",
+				afterBgColor ? "" : "after:bg-primary/70",
+				isDragging && "opacity-50"
+			)}
+			style={
+				afterBgColor
+					? ({
+							"--after-bg": afterBgColor,
+					  } as React.CSSProperties & { "--after-bg": string })
+					: undefined
+			}
 		>
+			{/* Barre colorée via after pseudo-element avec couleur custom */}
+			{afterBgColor && (
+				<style
+					dangerouslySetInnerHTML={{
+						__html: `.group[style*="--after-bg"]::after { background-color: var(--after-bg) !important; }`,
+					}}
+				/>
+			)}
 			<div className='flex items-start justify-between gap-2'>
 				<div className='flex-1'>
 					<div className='font-medium'>{event.title}</div>
-					{event.time && (
-						<div className='text-muted-foreground text-xs'>
-							{formatEventTime(event.time)}
-						</div>
-					)}
-					{event.description && (
-						<div className='text-muted-foreground text-xs mt-1'>
-							{event.description}
-						</div>
+					{formattedTime && (
+						<div className='text-muted-foreground text-xs'>{formattedTime}</div>
 					)}
 				</div>
-				<div className='opacity-0 group-hover:opacity-100 transition-opacity'>
-					<ButtonGroup aria-label="Actions de l'événement">
-						<Button
-							variant='ghost'
-							size='icon'
-							className='h-6 w-6'
-							onClick={onEdit}
-							aria-label="Modifier l'événement"
-						>
-							<Edit2 className='h-3 w-3' />
-						</Button>
-						<Button
-							variant='ghost'
-							size='icon'
-							className='h-6 w-6'
-							onClick={onDelete}
-							aria-label="Supprimer l'événement"
-						>
-							×
-						</Button>
-					</ButtonGroup>
+				<div className='opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1'>
+					<Button
+						variant='ghost'
+						size='icon'
+						className='h-6 w-6'
+						onClick={(e) => {
+							e.stopPropagation();
+							onEdit();
+						}}
+						aria-label="Modifier l'événement"
+					>
+						<Edit2 className='h-3 w-3' />
+					</Button>
+					<Button
+						variant='ghost'
+						size='icon'
+						className='h-6 w-6'
+						onClick={(e) => {
+							e.stopPropagation();
+							onDelete();
+						}}
+						aria-label="Supprimer l'événement"
+					>
+						×
+					</Button>
 				</div>
 			</div>
-		</motion.div>
+		</div>
+	);
+}
+
+// Composant pour la vue semaine
+function WeekView({
+	currentDate,
+	selectedDate,
+	onSelect,
+	getEventsForDate,
+	onEventClick,
+	setCurrentDate,
+}: {
+	currentDate: Date;
+	selectedDate: Date | undefined;
+	onSelect: (date: Date | undefined) => void;
+	getEventsForDate: (date: Date) => CalendarEvent[];
+	onEventClick: (event: CalendarEvent) => void;
+	setCurrentDate: (date: Date) => void;
+}) {
+	const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Lundi
+	const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
+	const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+	const handlePreviousWeek = () => {
+		setCurrentDate(subDays(currentDate, 7));
+	};
+
+	const handleNextWeek = () => {
+		setCurrentDate(addDays(currentDate, 7));
+	};
+
+	const weekDaysNames = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+	return (
+		<div className='space-y-2'>
+			{/* Header avec navigation */}
+			<div className='flex items-center justify-between mb-4'>
+				<Button
+					variant='outline'
+					size='icon'
+					onClick={handlePreviousWeek}
+					aria-label='Semaine précédente'
+				>
+					<CalendarIcon className='h-4 w-4 rotate-180' />
+				</Button>
+				<div className='text-sm font-medium'>
+					{format(weekStart, "d MMM", { locale: fr })} -{" "}
+					{format(weekEnd, "d MMM yyyy", { locale: fr })}
+				</div>
+				<Button
+					variant='outline'
+					size='icon'
+					onClick={handleNextWeek}
+					aria-label='Semaine suivante'
+				>
+					<CalendarIcon className='h-4 w-4' />
+				</Button>
+			</div>
+
+			{/* Grille de la semaine */}
+			<div className='grid grid-cols-7 gap-1'>
+				{weekDays.map((day, index) => {
+					const dayEvents = getEventsForDate(day);
+					const isSelected = selectedDate && isSameDay(day, selectedDate);
+
+					return (
+						<div
+							key={day.toISOString()}
+							className={cn(
+								"border rounded-md p-2 min-h-[120px] transition-colors",
+								isSelected && "bg-primary/10 border-primary"
+							)}
+						>
+							<button
+								type='button'
+								onClick={() => onSelect(day)}
+								className={cn(
+									"text-sm font-medium mb-1 w-full text-left",
+									isSameDay(day, new Date()) && "text-primary font-bold"
+								)}
+							>
+								{weekDaysNames[index]}
+								<br />
+								<span
+									className={cn(
+										"text-lg",
+										isSameDay(day, new Date()) && "text-primary"
+									)}
+								>
+									{day.getDate()}
+								</span>
+							</button>
+							<div className='space-y-1 mt-1'>
+								{dayEvents.slice(0, 3).map((event) => (
+									<motion.div
+										key={event.id}
+										onClick={(e: React.MouseEvent) => {
+											e.stopPropagation();
+											onEventClick(event);
+										}}
+										className={cn(
+											"text-xs p-1 rounded cursor-pointer truncate",
+											"hover:opacity-80 transition-opacity"
+										)}
+										style={{
+											backgroundColor: event.color
+												? `${event.color}20`
+												: "hsl(var(--primary) / 0.2)",
+											borderLeft: `3px solid ${
+												event.color || "hsl(var(--primary))"
+											}`,
+										}}
+										whileHover={{ scale: 1.02 }}
+										whileTap={{ scale: 0.98 }}
+									>
+										{event.time && (
+											<span className='font-medium'>{event.time} </span>
+										)}
+										{event.title}
+									</motion.div>
+								))}
+								{dayEvents.length > 3 && (
+									<div className='text-xs text-muted-foreground'>
+										+{dayEvents.length - 3} autre(s)
+									</div>
+								)}
+							</div>
+						</div>
+					);
+				})}
+			</div>
+		</div>
+	);
+}
+
+// Composant pour la vue jour
+function DayView({
+	currentDate,
+	selectedDate,
+	onSelect,
+	getEventsForDate,
+	onEventClick,
+	setCurrentDate,
+}: {
+	currentDate: Date;
+	selectedDate: Date | undefined;
+	onSelect: (date: Date | undefined) => void;
+	getEventsForDate: (date: Date) => CalendarEvent[];
+	onEventClick: (event: CalendarEvent) => void;
+	setCurrentDate: (date: Date) => void;
+}) {
+	const displayDate = selectedDate || currentDate;
+	const dayEvents = getEventsForDate(displayDate).sort((a, b) => {
+		if (!a.time && !b.time) return 0;
+		if (!a.time) return 1;
+		if (!b.time) return -1;
+		return a.time.localeCompare(b.time);
+	});
+
+	const handlePreviousDay = () => {
+		setCurrentDate(subDays(displayDate, 1));
+		onSelect(subDays(displayDate, 1));
+	};
+
+	const handleNextDay = () => {
+		setCurrentDate(addDays(displayDate, 1));
+		onSelect(addDays(displayDate, 1));
+	};
+
+	const hours = Array.from({ length: 24 }, (_, i) => i);
+
+	return (
+		<div className='space-y-4'>
+			{/* Header avec navigation */}
+			<div className='flex items-center justify-between'>
+				<Button
+					variant='outline'
+					size='icon'
+					onClick={handlePreviousDay}
+					aria-label='Jour précédent'
+				>
+					<CalendarIcon className='h-4 w-4 rotate-180' />
+				</Button>
+				<div className='text-lg font-medium'>
+					{format(displayDate, "EEEE d MMMM yyyy", { locale: fr })}
+				</div>
+				<Button
+					variant='outline'
+					size='icon'
+					onClick={handleNextDay}
+					aria-label='Jour suivant'
+				>
+					<CalendarIcon className='h-4 w-4' />
+				</Button>
+			</div>
+
+			{/* Agenda horaire */}
+			<div className='border rounded-md overflow-hidden'>
+				<div className='grid grid-cols-[80px_1fr]'>
+					{/* Colonne des heures */}
+					<div className='border-r'>
+						{hours.map((hour) => (
+							<div
+								key={hour}
+								className='border-b h-16 p-2 text-xs text-muted-foreground'
+							>
+								{hour.toString().padStart(2, "0")}:00
+							</div>
+						))}
+					</div>
+
+					{/* Colonne des événements */}
+					<div className='relative'>
+						{hours.map((hour) => (
+							<div key={hour} className='border-b h-16 p-1 relative' />
+						))}
+						{dayEvents.map((event) => {
+							if (!event.time) return null;
+							const [hours, minutes] = event.time.split(":").map(Number);
+							const top = (hours * 60 + minutes) * (64 / 60); // 64px = h-16
+
+							return (
+								<motion.div
+									key={event.id}
+									onClick={() => onEventClick(event)}
+									className={cn(
+										"absolute left-1 right-1 p-2 rounded-md cursor-pointer",
+										"hover:opacity-90 transition-opacity shadow-sm"
+									)}
+									style={{
+										top: `${top}px`,
+										backgroundColor: event.color
+											? `${event.color}20`
+											: "hsl(var(--primary) / 0.2)",
+										borderLeft: `4px solid ${
+											event.color || "hsl(var(--primary))"
+										}`,
+									}}
+									whileHover={{ scale: 1.02 }}
+									whileTap={{ scale: 0.98 }}
+									initial={{ opacity: 0, y: -10 }}
+									animate={{ opacity: 1, y: 0 }}
+								>
+									<div className='font-medium text-sm'>{event.title}</div>
+									{event.time && (
+										<div className='text-xs text-muted-foreground'>
+											{event.time}
+										</div>
+									)}
+								</motion.div>
+							);
+						})}
+					</div>
+				</div>
+			</div>
+
+			{/* Liste des événements sans heure */}
+			{dayEvents.filter((e) => !e.time).length > 0 && (
+				<div className='space-y-2'>
+					<div className='text-sm font-medium text-muted-foreground'>
+						Événements sans heure
+					</div>
+					{dayEvents
+						.filter((e) => !e.time)
+						.map((event) => (
+							<CalendarEventItem
+								key={event.id}
+								event={event}
+								onEdit={() => onEventClick(event)}
+								onDelete={() => {}}
+								onDragStart={() => {}}
+								onDragEnd={() => {}}
+								isDragging={false}
+							/>
+						))}
+				</div>
+			)}
+		</div>
 	);
 }
