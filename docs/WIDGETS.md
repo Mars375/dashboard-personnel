@@ -67,6 +67,11 @@ Un widget typique contient :
 - 🔍 Recherche instantanée
 - 📊 Statistiques visuelles
 
+#### Style
+- 🎨 Style épuré avec bordure légère
+- ⭐ Distinction visuelle pour les tâches prioritaires (bordure jaune)
+- 🖱️ Actions au hover (édition, suppression, priorité)
+
 #### Filtres
 - Toutes les tâches
 - Actives uniquement
@@ -102,9 +107,9 @@ todos:list-projets
 
 ### Composants UI
 
-- `Card`, `Input`, `Button`, `Checkbox`, `Badge`
+- `Card`, `Input`, `Button`, `Checkbox`
 - `Progress`, `Dialog`, `Tooltip`, `DropdownMenu`
-- `Chart` (Recharts), `Select`
+- `Chart` (Recharts), `Select`, `ButtonGroup`
 - `Sonner` (Toasts)
 
 ### Tests
@@ -245,21 +250,26 @@ Gérer tous les états :
 
 ### Fonctionnalités
 
-#### MVP
+#### Fonctionnalités de base
 - ✅ Affichage calendrier mensuel (shadcn/ui Calendar)
 - ✅ Navigation mois (précédent/suivant, aujourd'hui)
 - ✅ Gestion d'événements (ajouter, modifier, supprimer)
+- ✅ Sélection de couleur personnalisée (8 couleurs)
 - ✅ Affichage événements par date sélectionnée
 - ✅ Persistance localStorage
 
-#### Évolutif
+#### Vues multiples
+- ✅ Vue mensuelle (calendrier traditionnel)
+- ✅ Vue hebdomadaire (grille 7 jours avec événements)
+- ✅ Vue journalière (timeline horaire 24h)
+
+#### Fonctionnalités avancées
 - ✅ Export/Import JSON et ICS
 - ✅ Notifications pour événements à venir
 - ✅ Synchronisation API (Google Calendar, Outlook)
 - ✅ Drag & drop pour déplacer événements
 - ✅ Intégration avec deadlines Todo
-- ⏳ Vue semaine/jour (en cours)
-- ⏳ Vue agenda détaillée
+- ✅ Style moderne inspiré de Calendar31
 
 ### Hooks utilisés
 
@@ -278,8 +288,15 @@ Gérer tous les états :
 
 - `Card`, `Button`, `Calendar` (shadcn/ui)
 - `Dialog`, `Popover`, `Input`, `Label`
-- `DropdownMenu`, `ButtonGroup`
-- `Separator` (pour ButtonGroup)
+- `DropdownMenu`, `ButtonGroup`, `Separator`
+- `motion` (Framer Motion pour animations)
+
+### Style
+
+- **Style Calendar31** : Barre colorée à gauche pour les événements
+- **Couleurs personnalisées** : 8 couleurs prédéfinies (bleu, vert, rouge, orange, violet, rose, cyan)
+- **Affichage épuré** : Structure cohérente avec `bg-muted`, `pl-6`
+- **Actions au hover** : Édition et suppression visibles au survol
 
 ### Tests
 

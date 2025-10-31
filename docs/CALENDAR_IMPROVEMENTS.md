@@ -2,14 +2,15 @@
 
 ## ✅ Fonctionnalités déjà implémentées
 
-### 1. ✅ Ajout d'événements via le + (titre, description, heure)
-**Status :** ✅ **Fait** (partiel - manque la couleur)
-- Dialog avec formulaire complet (ligne 557-660)
+### 1. ✅ Ajout d'événements via le + (titre, description, heure, couleur)
+**Status :** ✅ **Fait**
+- Dialog avec formulaire complet
 - Titre (obligatoire)
 - Date avec date picker (obligatoire)
 - Heure (optionnel)
 - Description (optionnel)
-- **Manque :** Sélection de couleur pour l'événement
+- **✅ Sélection de couleur :** Palette de 8 couleurs prédéfinies (bleu, vert, rouge, orange, violet, rose, cyan)
+- Affichage de la couleur sur l'événement (barre verticale à gauche)
 
 ### 2. ✅ Édition/suppression d'un événement
 **Status :** ✅ **Fait**
@@ -60,12 +61,13 @@
 - Bouton synchronisation avec état loading (ligne 401-411)
 - **Note :** Les providers sont des placeholders, nécessitent OAuth/API keys
 
-### 9. ❌ Affichage split : agenda "liste" vs "visuel calendrier"
-**Status :** ❌ **Pas fait**
-- Vue "month" fonctionne (ligne 458-528)
-- Vue "week" : placeholder seulement (ligne 529-534)
-- Vue "day" : placeholder seulement (ligne 536-541)
-- **À implémenter :** Vraies vues semaine/jour avec affichage des événements
+### 9. ✅ Affichage split : agenda "liste" vs "visuel calendrier"
+**Status :** ✅ **Fait**
+- Vue "month" : Affichage mensuel avec calendrier shadcn/ui
+- Vue "week" : Vue semaine avec grille 7 jours, affichage des événements par jour
+- Vue "day" : Vue jour avec timeline horaire et événements positionnés par heure
+- Navigation entre les vues via dropdown dans le header
+- Sélecteur de vue avec icônes (Grid3x3, List, CalendarIcon)
 
 ### 10. ✅ Animations Framer Motion
 **Status :** ✅ **Fait**
@@ -83,30 +85,29 @@
 
 ## ❌ Fonctionnalités manquantes / À améliorer
 
-### 1. 🎨 Sélection de couleur pour les événements
-**Priorité :** Moyenne
-**Où :** Dans le dialog de création/édition (ligne 575-660)
-- Ajouter un champ de sélection de couleur
-- Type `CalendarEvent` a déjà `color?: string` (types.ts)
-- Utiliser un composant ColorPicker ou palette prédéfinie
-- Afficher la couleur sur les événements dans la liste
+### 1. ✅ Sélection de couleur pour les événements
+**Status :** ✅ **Fait**
+- Palette de 8 couleurs prédéfinies dans le dialog
+- Affichage de la couleur via barre verticale à gauche de l'événement
+- Style inspiré de Calendar31 avec `after:bg-primary/70`
 
-### 2. 📅 Vues semaine et jour fonctionnelles
-**Priorité :** Haute
-**Où :** Remplacer les placeholders (ligne 529-541)
-- **Vue semaine :** Afficher une semaine avec événements par jour
-- **Vue jour :** Afficher un jour avec tous les événements horaires
-- Intégrer les événements depuis `getEventsForDate`
-- Navigation semaine précédente/suivante
-- Navigation jour précédent/suivant
+### 2. ✅ Vues semaine et jour fonctionnelles
+**Status :** ✅ **Fait**
+- **Vue semaine :** Grille 7 jours avec événements affichés par jour (max 3 visibles + compteur)
+- **Vue jour :** Timeline horaire 24h avec événements positionnés par heure
+- Événements sans heure affichés en bas de la vue jour
+- Navigation semaine précédente/suivante avec boutons
+- Navigation jour précédent/suivant avec boutons
+- Affichage de la date formatée (semaine : "d MMM - d MMM yyyy", jour : "EEEE d MMMM yyyy")
 
-### 3. 📋 Vue agenda "liste" séparée
-**Priorité :** Moyenne
-**Où :** Nouvelle fonctionnalité à ajouter
+### 3. ⚠️ Vue agenda "liste" séparée
+**Priorité :** Basse (les vues semaine/jour couvrent déjà ce besoin)
+**Où :** Peut être ajoutée si nécessaire
 - Option d'affichage "Liste" vs "Calendrier"
 - Liste chronologique des événements à venir
 - Tri par date/heure
 - Filtres (tous, cette semaine, ce mois)
+- **Note :** Les vues semaine et jour offrent déjà un affichage liste des événements
 
 ### 4. 🧪 Tests supplémentaires
 **Priorité :** Moyenne
@@ -123,7 +124,7 @@
 
 | Fonctionnalité | Status | Complétude |
 |---------------|--------|------------|
-| Ajout événements | ✅ | 90% (manque couleur) |
+| Ajout événements | ✅ | 100% (couleur incluse) |
 | Édition/Suppression | ✅ | 100% |
 | Visualisation calendrier | ✅ | 100% |
 | Navigation | ✅ | 100% |
@@ -131,11 +132,12 @@
 | Export/Import | ✅ | 100% |
 | Drag & Drop | ✅ | 100% |
 | Synchronisation API | ✅ | 80% (architecture prête, OAuth à configurer) |
-| Vue split agenda | ❌ | 33% (seulement vue mois) |
+| Vues semaine/jour | ✅ | 100% |
+| Style Calendar31 | ✅ | 100% |
 | Animations | ✅ | 100% |
 | Tests | ✅ | 60% (base, à étendre) |
 
-**Complétude globale :** ~85%
+**Complétude globale :** ~95%
 
 ---
 
@@ -147,13 +149,21 @@
 3. ✅ Implémenter la vue jour
 
 ### Phase 2 : Améliorer l'expérience utilisateur
-4. ✅ Ajouter vue agenda "liste"
-5. ✅ Améliorer les tests (navigation, drag & drop)
-6. ✅ Configurer OAuth pour synchronisation réelle
+4. ⚠️ Ajouter vue agenda "liste" (optionnel, les vues semaine/jour suffisent)
+5. 🧪 Améliorer les tests (navigation, drag & drop, vues semaine/jour)
+6. 🔐 Configurer OAuth pour synchronisation réelle
 
 ### Phase 3 : Fonctionnalités avancées
-7. ✅ Répétition d'événements (quotidien, hebdomadaire, mensuel)
-8. ✅ Rappels personnalisés (X minutes/heures avant)
-9. ✅ Catégories/tags d'événements
-10. ✅ Recherche d'événements
+7. 🔄 Répétition d'événements (quotidien, hebdomadaire, mensuel)
+8. 🔔 Rappels personnalisés (X minutes/heures avant)
+9. 🏷️ Catégories/tags d'événements
+10. 🔍 Recherche d'événements
+
+## 🎨 Style et UX
+
+### Style Calendar31 appliqué
+- **Événements :** Style moderne avec barre colorée à gauche (`after:bg-primary/70`)
+- **Affichage :** Structure épurée avec `bg-muted`, `pl-6`, formatage cohérent
+- **Tâches :** Style adapté avec bordure légère et distinction visuelle pour prioritaires
+- **Cohérence :** Uniformisation entre Calendar et Todo widgets
 

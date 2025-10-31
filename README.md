@@ -30,6 +30,21 @@ Un dashboard personnel moderne et modulaire construit avec React 19, TypeScript,
 - Synchronisation API (Notion, Google Tasks)
 - Undo/Redo avec Zustand
 - Animations fluides avec Framer Motion
+- Style épuré avec bordure légère et distinction visuelle pour les prioritaires
+
+### 📅 Calendar Widget
+
+- Affichage mensuel avec calendrier shadcn/ui
+- Vues semaine et jour
+- Création, édition et suppression d'événements
+- Sélection de couleur personnalisée
+- Drag & drop pour déplacer les événements
+- Export/Import JSON et .ics
+- Synchronisation API (Google Calendar, Outlook)
+- Notifications pour les événements à venir
+- Intégration avec les deadlines des tâches
+- Persistance locale (localStorage)
+- Style moderne inspiré de Calendar31
 
 ## 🚀 Démarrage rapide
 
