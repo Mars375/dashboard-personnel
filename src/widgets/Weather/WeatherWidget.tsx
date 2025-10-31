@@ -6,9 +6,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
 import type React from "react";
 import { useEffect, useRef } from "react";
-import { useWeather } from "@/lib/useWeather";
-import { loadLastCity, saveLastCity } from "@/lib/storage";
-import { useAutocompleteCity } from "@/lib/useAutocompleteCity";
+import { useWeather } from "@/hooks/useWeather";
+import { loadLastCity, saveLastCity } from "@/store/weatherStorage";
+import { useAutocompleteCity } from "@/hooks/useAutocompleteCity";
 import {
 	Popover,
 	PopoverContent,

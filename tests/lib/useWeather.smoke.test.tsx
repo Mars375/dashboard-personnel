@@ -1,8 +1,8 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import * as WeatherModule from "@/lib/useWeather";
-import { useWeather } from "@/lib/useWeather";
+import * as WeatherModule from "@/hooks/useWeather";
+import { useWeather } from "@/hooks/useWeather";
 
 function Probe() {
   const s = useWeather("Paris");

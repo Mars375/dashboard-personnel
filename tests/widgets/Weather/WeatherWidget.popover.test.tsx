@@ -26,7 +26,7 @@ vi.mock("@/components/ui/command", () => ({
   CommandEmpty: ({ children }: any) => <div>CommandEmpty</div>,
 }), { virtual: true });
 
-vi.mock("@/lib/useWeather", () => ({
+vi.mock("@/hooks/useWeather", () => ({
   useWeather: () => ({
     city: "Paris",
     setCity: () => {},
@@ -40,7 +40,7 @@ vi.mock("@/lib/useWeather", () => ({
   }),
 }), { virtual: true });
 
-vi.mock("@/lib/useAutocompleteCity", () => ({
+vi.mock("@/hooks/useAutocompleteCity", () => ({
   useAutocompleteCity: () => ({
     query: "Par",
     setQuery: () => {},

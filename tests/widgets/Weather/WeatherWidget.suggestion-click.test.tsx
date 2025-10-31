@@ -26,7 +26,7 @@ const mockFetchWeather = vi.fn();
 const mockSetCity = vi.fn();
 const mockReset = vi.fn();
 
-vi.mock("@/lib/useWeather", () => ({
+vi.mock("@/hooks/useWeather", () => ({
   useWeather: () => ({
     city: "Par",
     setCity: mockSetCity,
@@ -40,7 +40,7 @@ vi.mock("@/lib/useWeather", () => ({
   }),
 }), { virtual: true });
 
-vi.mock("@/lib/useAutocompleteCity", () => ({
+vi.mock("@/hooks/useAutocompleteCity", () => ({
   useAutocompleteCity: () => ({
     query: "Par",
     setQuery: () => {},
@@ -56,7 +56,7 @@ vi.mock("@/lib/useAutocompleteCity", () => ({
   }),
 }), { virtual: true });
 
-vi.mock("@/lib/storage", () => ({
+vi.mock("@/store/weatherStorage", () => ({
   loadLastCity: () => undefined,
   saveLastCity: () => {},
 }), { virtual: true });

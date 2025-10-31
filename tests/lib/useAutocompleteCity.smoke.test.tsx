@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { useAutocompleteCity } from "@/lib/useAutocompleteCity";
+import { useAutocompleteCity } from "@/hooks/useAutocompleteCity";
 
 function Probe() {
   const ac = useAutocompleteCity("Par", 0, 3, 3); // debounce 0, minChars 3

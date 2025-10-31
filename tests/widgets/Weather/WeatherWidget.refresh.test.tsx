@@ -24,7 +24,7 @@ vi.mock("@/components/ui/command", () => ({
 
 const mockRefresh = vi.fn();
 
-vi.mock("@/lib/useWeather", () => ({
+vi.mock("@/hooks/useWeather", () => ({
   useWeather: () => ({
     city: "Paris",
     setCity: () => {},
@@ -38,7 +38,7 @@ vi.mock("@/lib/useWeather", () => ({
   }),
 }), { virtual: true });
 
-vi.mock("@/lib/useAutocompleteCity", () => ({
+vi.mock("@/hooks/useAutocompleteCity", () => ({
   useAutocompleteCity: () => ({
     query: "",
     setQuery: () => {},
@@ -54,7 +54,7 @@ vi.mock("@/lib/useAutocompleteCity", () => ({
   }),
 }), { virtual: true });
 
-vi.mock("@/lib/storage", () => ({
+vi.mock("@/store/weatherStorage", () => ({
   loadLastCity: () => undefined,
   saveLastCity: () => {},
 }), { virtual: true });
