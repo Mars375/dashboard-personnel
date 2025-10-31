@@ -256,7 +256,9 @@ export function WeatherWidget() {
 					)}
 				</motion.div>
 			) : (
-				<div className='text-sm text-muted-foreground'>Weather unavailable</div>
+				<div className='text-sm text-muted-foreground text-center py-4'>
+					Recherchez une ville ci-dessus pour connaître la météo
+				</div>
 			)}
 		</Card>
 	);
