@@ -1,9 +1,9 @@
-import { Button } from "@/components/ui/button";
+import { WeatherWidget } from "@/widgets/Weather/WeatherWidget";
 
 function App() {
 	return (
-		<div className='flex min-h-svh flex-col items-center justify-center'>
-			<Button>Click me</Button>
+		<div className='min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950'>
+			<WeatherWidget />
 		</div>
 	);
 }

@@ -1,0 +1,69 @@
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import { describe, it, expect } from "vitest";
+
+vi.mock("@/components/ui/card", () => ({ Card: ({ children, ...p }: any) => <div {...p}>{children}</div> }), { virtual: true });
+vi.mock("@/components/ui/button", () => ({ Button: ({ children, ...p }: any) => <button {...p}>{children}</button> }), { virtual: true });
+vi.mock("@/components/ui/input", () => ({ Input: (props: any) => <input {...props} /> }), { virtual: true });
+vi.mock("@/components/ui/skeleton", () => ({ Skeleton: (props: any) => <div {...props} /> }), { virtual: true });
+vi.mock("@/components/ui/popover", () => ({
+  Popover: ({ children }: any) => <div>{children}</div>,
+  PopoverTrigger: ({ children }: any) => <div>{children}</div>,
+  PopoverContent: ({ children }: any) => <div>{children}</div>,
+}), { virtual: true });
+vi.mock("@/components/ui/command", () => ({
+  Command: ({ children }: any) => <div>{children}</div>,
+  CommandList: ({ children }: any) => <div>{children}</div>,
+  CommandItem: ({ children, onSelect, ...rest }: any) => (
+    <div data-testid="cmd-item" onClick={onSelect} {...rest}>{children}</div>
+  ),
+  CommandGroup: ({ children }: any) => <div>{children}</div>,
+  CommandEmpty: ({ children }: any) => <div>{children}</div>,
+}), { virtual: true });
+
+vi.mock("@/lib/useWeather", () => ({
+  useWeather: () => ({
+    city: "Par",
+    setCity: () => {},
+    data: undefined,
+    loading: false,
+    error: undefined,
+    iconUrl: undefined,
+    forecast: [],
+    refresh: () => {},
+    fetchWeather: () => {},
+  }),
+}), { virtual: true });
+
+vi.mock("@/lib/useAutocompleteCity", () => ({
+  useAutocompleteCity: () => ({
+    query: "Par",
+    setQuery: () => {},
+    suggestions: [],
+    loading: false,
+    error: "Erreur de connexion",
+    open: true,
+    setOpen: () => {},
+    activeIndex: -1,
+    setActiveIndex: () => {},
+    moveActive: () => {},
+    reset: () => {},
+  }),
+}), { virtual: true });
+
+vi.mock("@/lib/storage", () => ({
+  loadLastCity: () => undefined,
+  saveLastCity: () => {},
+}), { virtual: true });
+
+import { WeatherWidget } from "./WeatherWidget";
+
+describe("WeatherWidget (autocomplete error)", () => {
+  it("displays error message in popover when autocomplete fails", () => {
+    render(<WeatherWidget />);
+    
+    // Vérifie que le message d'erreur est affiché
+    expect(screen.getByText(/Erreur: Erreur de connexion/)).toBeTruthy();
+  });
+});
+
