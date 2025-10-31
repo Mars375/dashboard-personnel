@@ -1,5 +1,7 @@
 # 📊 État des fonctionnalités du Calendar Widget
 
+> **Note :** Pour les intégrations API/OAuth, voir `docs/API_INTEGRATIONS.md`
+
 ## ✅ 1. Gestion multi-événements sur une même journée
 
 **Status : ✅ COMPLET**
