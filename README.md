@@ -10,6 +10,7 @@ Un dashboard personnel moderne et modulaire construit avec React 19, TypeScript,
 ## ✨ Fonctionnalités
 
 ### 🌤️ Weather Widget
+
 - Affichage de la météo en temps réel via OpenWeatherMap API
 - Recherche de ville avec autocomplétion intelligente
 - Prévisions sur 5 jours
@@ -17,6 +18,7 @@ Un dashboard personnel moderne et modulaire construit avec React 19, TypeScript,
 - Persistance de la dernière ville recherchée
 
 ### ✅ Todo Widget
+
 - Gestion complète de tâches (CRUD)
 - Multi-listes (Pro, Perso, Projets, etc.)
 - Priorisation et deadlines
@@ -32,6 +34,7 @@ Un dashboard personnel moderne et modulaire construit avec React 19, TypeScript,
 ## 🚀 Démarrage rapide
 
 ### Prérequis
+
 - Node.js 18+ ou 20+
 - pnpm 8+
 
@@ -175,6 +178,7 @@ pnpm lint      # Vérifier le code avec ESLint
 ## 🤝 Contribution
 
 Les contributions sont les bienvenues ! N'hésitez pas à :
+
 1. Fork le projet
 2. Créer une branche (`git checkout -b feat/ma-feature`)
 3. Commit vos changements (`git commit -m 'feat: ajout ma feature'`)
