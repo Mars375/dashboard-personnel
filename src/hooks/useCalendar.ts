@@ -6,6 +6,7 @@ import {
 	loadCalendarEvents,
 	saveCalendarEvents,
 } from "@/store/calendarStorage";
+import { isDateInRecurrence } from "@/lib/calendarRecurrence";
 
 export function useCalendar() {
 	const [currentDate, setCurrentDate] = useState(new Date());
@@ -91,7 +92,17 @@ export function useCalendar() {
 	const getEventsForDate = useCallback(
 		(date: Date) => {
 			const dateStr = formatDateLocal(date);
-			return events.filter((event) => event.date === dateStr);
+			return events.filter((event) => {
+				// Événement direct
+				if (event.date === dateStr) return true;
+				
+				// Événement récurrent
+				if (event.recurrence && event.recurrence.type !== "none") {
+					return isDateInRecurrence(date, event);
+				}
+				
+				return false;
+			});
 		},
 		[events]
 	);

@@ -67,22 +67,32 @@ export function checkAndSendNotifications(
 	}
 
 	const now = new Date();
-	const checkTime = new Date(now.getTime() + settings.minutesBefore * 60 * 1000);
 
 	events.forEach((event) => {
-		if (notifiedEvents.has(event.id)) return;
-
 		// Vérifier si l'événement a une heure
 		if (!event.time) return;
+
+		// Utiliser reminderMinutes de l'événement s'il existe, sinon utiliser settings.minutesBefore
+		const reminderMinutes = event.reminderMinutes ?? settings.minutesBefore;
+		const notificationId = `${event.id}-${reminderMinutes}`;
+		
+		if (notifiedEvents.has(notificationId)) return;
 
 		const eventDate = new Date(event.date);
 		const [hours, minutes] = event.time.split(":");
 		eventDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-		// Vérifier si l'événement est dans la fenêtre de notification
-		if (eventDate >= now && eventDate <= checkTime) {
-			sendNotification(event);
-			notifiedEvents.add(event.id);
+		// Vérifier si nous sommes dans la fenêtre de notification (5 minutes de marge)
+		const timeDiff = eventDate.getTime() - now.getTime();
+		const minutesUntilEvent = timeDiff / (1000 * 60);
+		
+		if (
+			minutesUntilEvent >= reminderMinutes - 2.5 &&
+			minutesUntilEvent <= reminderMinutes + 2.5 &&
+			eventDate >= now
+		) {
+			sendNotification(event, reminderMinutes);
+			notifiedEvents.add(notificationId);
 		}
 	});
 }
@@ -90,19 +100,22 @@ export function checkAndSendNotifications(
 /**
  * Envoie une notification pour un événement
  */
-function sendNotification(event: CalendarEvent): void {
+function sendNotification(event: CalendarEvent, minutesBefore: number): void {
 	if (Notification.permission !== "granted") return;
 
+	const timeText = minutesBefore === 0 ? "maintenant" : `dans ${minutesBefore} minute${minutesBefore > 1 ? "s" : ""}`;
 	const title = event.time
 		? `🔔 ${event.title} - ${event.time}`
 		: `🔔 ${event.title}`;
 
-	const body = event.description || `Événement prévu le ${event.date}`;
+	const body = event.description 
+		? `${event.description} (${timeText})`
+		: `Événement prévu ${timeText}`;
 
 	new Notification(title, {
 		body,
 		icon: "/favicon.ico",
-		tag: event.id,
+		tag: `${event.id}-${minutesBefore}`,
 	});
 }
 
