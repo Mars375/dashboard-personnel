@@ -112,7 +112,7 @@ Prendre des screenshots de :
 ## Exemples de screenshots à prendre
 
 ### Vue d'ensemble
-- Dashboard complet avec les deux widgets
+- Dashboard complet avec les trois widgets (Weather, Todo, Calendar)
 - Vue desktop et mobile
 
 ### Weather Widget
@@ -131,6 +131,15 @@ Prendre des screenshots de :
 - Multi-listes (dropdown)
 - Dialog de suppression
 - Import/Export
+
+### Calendar Widget
+- État vide ("Aucun événement")
+- Calendrier avec événements
+- Dialog création/édition événement
+- Export/Import (JSON/ICS)
+- Notifications
+- Synchronisation
+- Drag & drop événements
 
 ### Fonctionnalités
 - Notifications (permission)

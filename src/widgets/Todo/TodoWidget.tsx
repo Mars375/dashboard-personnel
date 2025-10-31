@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import {
 	Tooltip,
 	TooltipContent,
@@ -27,6 +26,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { motion } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
 import { useTodos, type TodoFilter } from "@/hooks/useTodos";
@@ -40,6 +40,7 @@ import {
 	type NotificationSettings,
 } from "@/lib/notifications";
 import { syncManager } from "@/lib/sync/syncManager";
+import { cn } from "@/lib/utils";
 import {
 	Star,
 	Trash2,
@@ -599,123 +600,135 @@ export function TodoWidget() {
 							</DropdownMenu>
 						)}
 					</div>
-					<div className='flex gap-1'>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-8 w-8'
-									onClick={exportTodos}
-									aria-label='Exporter les tâches'
-								>
-									<Download className='h-4 w-4' />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Exporter les tâches</p>
-							</TooltipContent>
-						</Tooltip>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-8 w-8'
-									onClick={importTodos}
-									aria-label='Importer les tâches'
-								>
-									<Upload className='h-4 w-4' />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Importer des tâches</p>
-							</TooltipContent>
-						</Tooltip>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-8 w-8'
-									onClick={undo}
-									disabled={!canUndo}
-									aria-label='Annuler'
-								>
-									<Undo2 className='h-4 w-4' />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Annuler (Ctrl+Z)</p>
-							</TooltipContent>
-						</Tooltip>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-8 w-8'
-									onClick={redo}
-									disabled={!canRedo}
-									aria-label='Refaire'
-								>
-									<Redo2 className='h-4 w-4' />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Refaire (Ctrl+Shift+Z)</p>
-							</TooltipContent>
-						</Tooltip>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-8 w-8'
-									onClick={
-										notificationPermission === "granted"
-											? toggleNotifications
-											: handleRequestNotificationPermission
-									}
-									aria-label='Notifications'
-								>
-									{notificationPermission === "granted" &&
-									notificationSettings.enabled ? (
-										<Bell className='h-4 w-4' />
-									) : (
-										<BellOff className='h-4 w-4' />
-									)}
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>
-									{notificationPermission === "granted"
-										? notificationSettings.enabled
-											? "Désactiver les notifications"
-											: "Activer les notifications"
-										: "Activer les notifications"}
-								</p>
-							</TooltipContent>
-						</Tooltip>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-8 w-8'
-									onClick={handleSync}
-									disabled={isSyncing}
-									aria-label='Synchroniser'
-								>
-									<RefreshCw
-										className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
-									/>
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>Synchroniser avec les services externes</p>
-							</TooltipContent>
-						</Tooltip>
+					<ButtonGroup aria-label='Actions des tâches'>
+						{/* Export/Import */}
+						<ButtonGroup>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant='ghost'
+										size='icon'
+										className='h-8 w-8'
+										onClick={exportTodos}
+										aria-label='Exporter les tâches'
+									>
+										<Download className='h-4 w-4' />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Exporter les tâches</p>
+								</TooltipContent>
+							</Tooltip>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant='ghost'
+										size='icon'
+										className='h-8 w-8'
+										onClick={importTodos}
+										aria-label='Importer les tâches'
+									>
+										<Upload className='h-4 w-4' />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Importer des tâches</p>
+								</TooltipContent>
+							</Tooltip>
+						</ButtonGroup>
+
+						{/* Undo/Redo */}
+						<ButtonGroup>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant='ghost'
+										size='icon'
+										className='h-8 w-8'
+										onClick={undo}
+										disabled={!canUndo}
+										aria-label='Annuler'
+									>
+										<Undo2 className='h-4 w-4' />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Annuler (Ctrl+Z)</p>
+								</TooltipContent>
+							</Tooltip>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant='ghost'
+										size='icon'
+										className='h-8 w-8'
+										onClick={redo}
+										disabled={!canRedo}
+										aria-label='Refaire'
+									>
+										<Redo2 className='h-4 w-4' />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Refaire (Ctrl+Shift+Z)</p>
+								</TooltipContent>
+							</Tooltip>
+						</ButtonGroup>
+
+						{/* Notifications et Sync */}
+						<ButtonGroup>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant='ghost'
+										size='icon'
+										className='h-8 w-8'
+										onClick={
+											notificationPermission === "granted"
+												? toggleNotifications
+												: handleRequestNotificationPermission
+										}
+										aria-label='Notifications'
+									>
+										{notificationPermission === "granted" &&
+										notificationSettings.enabled ? (
+											<Bell className='h-4 w-4' />
+										) : (
+											<BellOff className='h-4 w-4' />
+										)}
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>
+										{notificationPermission === "granted"
+											? notificationSettings.enabled
+												? "Désactiver les notifications"
+												: "Activer les notifications"
+											: "Activer les notifications"}
+									</p>
+								</TooltipContent>
+							</Tooltip>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant='ghost'
+										size='icon'
+										className='h-8 w-8'
+										onClick={handleSync}
+										disabled={isSyncing}
+										aria-label='Synchroniser'
+									>
+										<RefreshCw
+											className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
+										/>
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Synchroniser avec les services externes</p>
+								</TooltipContent>
+							</Tooltip>
+						</ButtonGroup>
+
 						<input
 							ref={fileInputRef}
 							type='file'
@@ -723,7 +736,7 @@ export function TodoWidget() {
 							onChange={handleFileInputChange}
 							className='hidden'
 						/>
-					</div>
+					</ButtonGroup>
 				</div>
 
 				{/* Drag & drop overlay */}
@@ -958,6 +971,7 @@ export function TodoWidget() {
 					) : (
 						filtered.map((todo) => {
 							const deadlineStatus = getDeadlineStatus(todo.deadline);
+
 							return (
 								<motion.div
 									key={todo.id}
@@ -965,150 +979,157 @@ export function TodoWidget() {
 									animate={{ opacity: 1, y: 0 }}
 									exit={{ opacity: 0, x: -20 }}
 									layout
-									className={`flex items-start gap-2 p-2 rounded-md border ${
-										todo.priority
-											? "border-yellow-400 bg-yellow-50 dark:bg-yellow-950/20"
-											: ""
-									} ${todo.completed ? "opacity-60" : ""}`}
 								>
-									{/* Checkbox */}
-									<Checkbox
-										checked={todo.completed}
-										onCheckedChange={() => toggleTodo(todo.id)}
-										aria-label={
-											todo.completed
-												? "Marquer comme non terminé"
-												: "Marquer comme terminé"
-										}
-									/>
-
-									{/* Todo content */}
-									<div className='flex-1 min-w-0'>
-										{editingId === todo.id ? (
-											<div className='flex flex-col gap-2'>
-												<Input
-													ref={editInputRef}
-													value={editingValue}
-													onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-														setEditingValue(e.target.value)
+									<div
+										className={cn(
+											"rounded-md p-2 border text-sm group",
+											todo.priority
+												? "border-yellow-400/50 bg-yellow-50/30 dark:bg-yellow-950/10"
+												: "border-border",
+											todo.completed && "opacity-60"
+										)}
+									>
+										<div className='flex items-start justify-between gap-2'>
+											<div className='flex items-start gap-2 flex-1 min-w-0'>
+												{/* Checkbox */}
+												<Checkbox
+													checked={todo.completed}
+													onCheckedChange={() => toggleTodo(todo.id)}
+													aria-label={
+														todo.completed
+															? "Marquer comme non terminé"
+															: "Marquer comme terminé"
 													}
-													onBlur={() => saveEdit(todo.id)}
-													onKeyDown={(
-														e: React.KeyboardEvent<HTMLInputElement>
-													) => {
-														if (e.key === "Enter") {
-															saveEdit(todo.id);
-														} else if (e.key === "Escape") {
-															cancelEdit();
-														}
-													}}
-													className='flex-1 h-8'
+													className='mt-0.5'
 												/>
-												<div className='flex gap-2 items-center'>
-													<Calendar className='h-4 w-4 text-muted-foreground' />
-													<Input
-														type='date'
-														value={editingDeadline}
-														onChange={(e) => setEditingDeadline(e.target.value)}
-														className='flex-1'
-													/>
+
+												{/* Todo content */}
+												<div className='flex-1 min-w-0'>
+													{editingId === todo.id ? (
+														<div className='flex flex-col gap-2'>
+															<Input
+																ref={editInputRef}
+																value={editingValue}
+																onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+																	setEditingValue(e.target.value)
+																}
+																onBlur={() => saveEdit(todo.id)}
+																onKeyDown={(
+																	e: React.KeyboardEvent<HTMLInputElement>
+																) => {
+																	if (e.key === "Enter") {
+																		saveEdit(todo.id);
+																	} else if (e.key === "Escape") {
+																		cancelEdit();
+																	}
+																}}
+																className='flex-1 h-8'
+															/>
+															<div className='flex gap-2 items-center'>
+																<Calendar className='h-4 w-4 text-muted-foreground' />
+																<Input
+																	type='date'
+																	value={editingDeadline}
+																	onChange={(e) =>
+																		setEditingDeadline(e.target.value)
+																	}
+																	className='flex-1'
+																/>
+															</div>
+														</div>
+													) : (
+														<>
+															<div
+																className={cn(
+																	"font-medium",
+																	todo.completed &&
+																		"line-through text-muted-foreground"
+																)}
+																onDoubleClick={() => startEdit(todo)}
+															>
+																{todo.title}
+															</div>
+															{deadlineStatus && !todo.completed && (
+																<div className='text-muted-foreground text-xs mt-1 flex items-center gap-1'>
+																	<Calendar className='h-3 w-3' />
+																	<span>{deadlineStatus.text}</span>
+																	{deadlineStatus.status === "overdue" && (
+																		<AlertCircle className='h-3 w-3 text-destructive' />
+																	)}
+																</div>
+															)}
+														</>
+													)}
 												</div>
 											</div>
-										) : (
-											<>
-												<span
-													className={`flex-1 block ${
-														todo.completed
-															? "line-through text-muted-foreground"
-															: ""
-													}`}
-													onDoubleClick={() => startEdit(todo)}
-												>
-													{todo.title}
-												</span>
-												{deadlineStatus && !todo.completed && (
-													<Badge
-														variant={deadlineStatus.variant}
-														className='mt-1 flex items-center gap-1'
-													>
-														{deadlineStatus.status === "overdue" && (
-															<AlertCircle className='h-3 w-3' />
-														)}
-														{deadlineStatus.text}
-													</Badge>
-												)}
-											</>
-										)}
-									</div>
-									{!editingId && (
-										<div className='flex gap-1'>
-											{/* Priority button */}
-											<Tooltip>
-												<TooltipTrigger asChild>
+
+											{!editingId && (
+												<div className='opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1'>
+													{/* Priority button */}
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<Button
+																variant='ghost'
+																size='icon'
+																className='h-6 w-6'
+																onClick={(e) => {
+																	e.stopPropagation();
+																	togglePriority(todo.id);
+																}}
+																aria-label={
+																	todo.priority
+																		? "Retirer la priorité"
+																		: "Marquer comme prioritaire"
+																}
+															>
+																<Star
+																	className={cn(
+																		"h-3 w-3",
+																		todo.priority
+																			? "fill-yellow-400 text-yellow-400"
+																			: "text-muted-foreground"
+																	)}
+																/>
+															</Button>
+														</TooltipTrigger>
+														<TooltipContent>
+															<p>
+																{todo.priority
+																	? "Retirer la priorité"
+																	: "Marquer comme prioritaire"}
+															</p>
+														</TooltipContent>
+													</Tooltip>
+													{/* Edit button */}
 													<Button
 														variant='ghost'
 														size='icon'
-														className='h-7 w-7'
-														onClick={() => togglePriority(todo.id)}
-														aria-label={
-															todo.priority
-																? "Retirer la priorité"
-																: "Marquer comme prioritaire"
-														}
-													>
-														<Star
-															className={`h-4 w-4 ${
-																todo.priority
-																	? "fill-yellow-400 text-yellow-400"
-																	: "text-muted-foreground"
-															}`}
-														/>
-													</Button>
-												</TooltipTrigger>
-												<TooltipContent>
-													<p>
-														{todo.priority
-															? "Retirer la priorité"
-															: "Marquer comme prioritaire"}
-													</p>
-												</TooltipContent>
-											</Tooltip>
-											{/* Edit button */}
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<Button
-														variant='ghost'
-														size='icon'
-														className='h-7 w-7'
-														onClick={() => startEdit(todo)}
+														className='h-6 w-6'
+														onClick={(e) => {
+															e.stopPropagation();
+															startEdit(todo);
+														}}
 														aria-label='Modifier la tâche'
 													>
-														<Edit2 className='h-4 w-4 text-muted-foreground' />
+														<Edit2 className='h-3 w-3' />
 													</Button>
-												</TooltipTrigger>
-												<TooltipContent>
-													<p>Modifier la tâche</p>
-												</TooltipContent>
-											</Tooltip>
-											{/* Delete button */}
-											<Tooltip>
-												<TooltipTrigger asChild>
+													{/* Delete button */}
 													<Button
 														variant='ghost'
 														size='icon'
-														className='h-7 w-7 text-red-600 hover:text-red-700'
-														onClick={() => handleDeleteClick(todo.id)}
+														className='h-6 w-6'
+														onClick={(e) => {
+															e.stopPropagation();
+															handleDeleteClick(todo.id);
+														}}
 														aria-label='Supprimer la tâche'
 													>
-														<Trash2 className='h-4 w-4' />
+														×
 													</Button>
-												</TooltipTrigger>
-												<TooltipContent>
-													<p>Supprimer la tâche</p>
-												</TooltipContent>
-											</Tooltip>
+												</div>
+											)}
 										</div>
-									)}
+									</div>
 								</motion.div>
 							);
 						})

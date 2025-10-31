@@ -31,6 +31,8 @@ Composants UI réutilisables basés sur **shadcn/ui** :
 components/ui/
 ├── badge.tsx               # Badge component
 ├── button.tsx               # Button component
+├── button-group.tsx         # ButtonGroup component
+├── calendar.tsx             # Calendar component (shadcn/ui)
 ├── card.tsx                 # Card component
 ├── chart.tsx                # Chart component (Recharts wrapper)
 ├── checkbox.tsx             # Checkbox component
@@ -38,9 +40,11 @@ components/ui/
 ├── dialog.tsx               # Dialog component
 ├── dropdown-menu.tsx        # DropdownMenu component
 ├── input.tsx                # Input component
+├── label.tsx                # Label component
 ├── popover.tsx              # Popover component
 ├── progress.tsx             # Progress component
 ├── select.tsx               # Select component
+├── separator.tsx            # Separator component
 ├── skeleton.tsx             # Skeleton loader
 ├── sonner.tsx               # Toast component
 └── tooltip.tsx              # Tooltip component
@@ -53,7 +57,8 @@ Hooks personnalisés React :
 hooks/
 ├── useWeather.ts            # Hook pour les données météo
 ├── useAutocompleteCity.ts   # Hook pour l'autocomplétion de villes
-└── useTodos.ts              # Hook pour la gestion des todos
+├── useTodos.ts              # Hook pour la gestion des todos
+└── useCalendar.ts           # Hook pour la gestion du calendrier
 ```
 
 #### `/src/lib`
@@ -63,11 +68,17 @@ Utilitaires et logique métier :
 lib/
 ├── utils.ts                 # Utilitaires généraux (cn, etc.)
 ├── notifications.ts         # Web Notifications API
+├── calendarExport.ts        # Export/Import calendrier (JSON/ICS)
+├── calendarNotifications.ts # Notifications calendrier
 └── sync/                    # Système de synchronisation
     ├── apiSync.ts           # Interfaces communes
     ├── syncManager.ts       # Orchestrateur de sync
     ├── notionSync.ts        # Provider Notion
-    └── googleTasksSync.ts  # Provider Google Tasks
+    ├── googleTasksSync.ts  # Provider Google Tasks
+    ├── calendarSync.ts      # Interfaces sync calendrier
+    ├── calendarSyncManager.ts # Manager sync calendrier
+    ├── googleCalendarSync.ts # Provider Google Calendar
+    └── outlookSync.ts       # Provider Outlook Calendar
 ```
 
 #### `/src/store`
@@ -78,7 +89,8 @@ store/
 ├── todoStore.ts            # Store Zustand principal (todos)
 ├── todoStorage.ts           # Persistance localStorage (todos)
 ├── todoLists.ts            # Gestion des listes de todos
-└── weatherStorage.ts        # Persistance météo (dernière ville)
+├── weatherStorage.ts        # Persistance météo (dernière ville)
+└── calendarStorage.ts      # Persistance calendrier (événements)
 ```
 
 #### `/src/widgets`
@@ -90,7 +102,9 @@ widgets/
 │   └── WeatherWidget.tsx   # Widget météo complet
 ├── Todo/
 │   └── TodoWidget.tsx      # Widget todo complet
-├── Calendar/               # À venir
+├── Calendar/
+│   ├── CalendarWidget.tsx  # Widget calendrier complet
+│   └── types.ts            # Types TypeScript
 └── Finance/                # À venir
 ```
 
@@ -146,17 +160,20 @@ tests/
     │   ├── WeatherWidget.form-submit.test.tsx
     │   ├── WeatherWidget.suggestion-click.test.tsx
     │   └── WeatherWidget.autocomplete-error.test.tsx
-    └── Todo/                # Tests Todo Widget
-        ├── TodoWidget.smoke.test.tsx
-        ├── TodoWidget.add.test.tsx
-        ├── TodoWidget.edit.test.tsx
-        ├── TodoWidget.filter.test.tsx
-        ├── TodoWidget.undo-redo.test.tsx
-        ├── TodoWidget.stats.test.tsx
-        ├── TodoWidget.notifications.test.tsx
-        ├── TodoWidget.multi-lists.test.tsx
-        ├── TodoWidget.drag-drop.test.tsx
-        └── TodoWidget.sync.test.tsx
+    ├── Todo/                # Tests Todo Widget
+    │   ├── TodoWidget.smoke.test.tsx
+    │   ├── TodoWidget.add.test.tsx
+    │   ├── TodoWidget.edit.test.tsx
+    │   ├── TodoWidget.filter.test.tsx
+    │   ├── TodoWidget.undo-redo.test.tsx
+    │   ├── TodoWidget.stats.test.tsx
+    │   ├── TodoWidget.notifications.test.tsx
+    │   ├── TodoWidget.multi-lists.test.tsx
+    │   ├── TodoWidget.drag-drop.test.tsx
+    │   └── TodoWidget.sync.test.tsx
+    └── Calendar/            # Tests Calendar Widget
+        ├── CalendarWidget.smoke.test.tsx
+        └── CalendarWidget.events.test.tsx
 ```
 
 ### `/docs` - Documentation

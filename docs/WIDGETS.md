@@ -67,6 +67,11 @@ Un widget typique contient :
 - 🔍 Recherche instantanée
 - 📊 Statistiques visuelles
 
+#### Style
+- 🎨 Style épuré avec bordure légère
+- ⭐ Distinction visuelle pour les tâches prioritaires (bordure jaune)
+- 🖱️ Actions au hover (édition, suppression, priorité)
+
 #### Filtres
 - Toutes les tâches
 - Actives uniquement
@@ -102,9 +107,9 @@ todos:list-projets
 
 ### Composants UI
 
-- `Card`, `Input`, `Button`, `Checkbox`, `Badge`
+- `Card`, `Input`, `Button`, `Checkbox`
 - `Progress`, `Dialog`, `Tooltip`, `DropdownMenu`
-- `Chart` (Recharts), `Select`
+- `Chart` (Recharts), `Select`, `ButtonGroup`
 - `Sonner` (Toasts)
 
 ### Tests
@@ -241,13 +246,66 @@ Gérer tous les états :
 - Empty
 - Success/Data
 
+## Calendar Widget 📅
+
+### Fonctionnalités
+
+#### Fonctionnalités de base
+- ✅ Affichage calendrier mensuel (shadcn/ui Calendar)
+- ✅ Navigation mois (précédent/suivant, aujourd'hui)
+- ✅ Gestion d'événements (ajouter, modifier, supprimer)
+- ✅ Sélection de couleur personnalisée (8 couleurs)
+- ✅ Affichage événements par date sélectionnée
+- ✅ Persistance localStorage
+
+#### Vues multiples
+- ✅ Vue mensuelle (calendrier traditionnel)
+- ✅ Vue hebdomadaire (grille 7 jours avec événements)
+- ✅ Vue journalière (timeline horaire 24h)
+
+#### Fonctionnalités avancées
+- ✅ Export/Import JSON et ICS
+- ✅ Notifications pour événements à venir
+- ✅ Synchronisation API (Google Calendar, Outlook)
+- ✅ Drag & drop pour déplacer événements
+- ✅ Intégration avec deadlines Todo
+- ✅ Style moderne inspiré de Calendar31
+
+### Hooks utilisés
+
+- `useCalendar` : Gestion des événements et navigation calendrier
+
+### Storage
+
+- `calendarStorage` : Persistance des événements en localStorage
+
+### API
+
+- Google Calendar API (synchronisation)
+- Outlook Calendar API (synchronisation)
+
+### Composants UI
+
+- `Card`, `Button`, `Calendar` (shadcn/ui)
+- `Dialog`, `Popover`, `Input`, `Label`
+- `DropdownMenu`, `ButtonGroup`, `Separator`
+- `motion` (Framer Motion pour animations)
+
+### Style
+
+- **Style Calendar31** : Barre colorée à gauche pour les événements
+- **Couleurs personnalisées** : 8 couleurs prédéfinies (bleu, vert, rouge, orange, violet, rose, cyan)
+- **Affichage épuré** : Structure cohérente avec `bg-muted`, `pl-6`
+- **Actions au hover** : Édition et suppression visibles au survol
+
+### Tests
+
+2 fichiers de tests couvrant :
+- Rendering de base (smoke tests)
+- Gestion des événements (CRUD)
+- Dialog et interactions
+
 ## Widgets futurs
-
-### Calendar Widget 📅
-
-- Vue mensuelle/semaine
-- Événements et rappels
-- Synchronisation calendrier
 
 ### Finance Widget 💰
 

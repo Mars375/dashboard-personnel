@@ -10,6 +10,7 @@ Un dashboard personnel moderne et modulaire construit avec React 19, TypeScript,
 ## ✨ Fonctionnalités
 
 ### 🌤️ Weather Widget
+
 - Affichage de la météo en temps réel via OpenWeatherMap API
 - Recherche de ville avec autocomplétion intelligente
 - Prévisions sur 5 jours
@@ -17,6 +18,7 @@ Un dashboard personnel moderne et modulaire construit avec React 19, TypeScript,
 - Persistance de la dernière ville recherchée
 
 ### ✅ Todo Widget
+
 - Gestion complète de tâches (CRUD)
 - Multi-listes (Pro, Perso, Projets, etc.)
 - Priorisation et deadlines
@@ -28,10 +30,26 @@ Un dashboard personnel moderne et modulaire construit avec React 19, TypeScript,
 - Synchronisation API (Notion, Google Tasks)
 - Undo/Redo avec Zustand
 - Animations fluides avec Framer Motion
+- Style épuré avec bordure légère et distinction visuelle pour les prioritaires
+
+### 📅 Calendar Widget
+
+- Affichage mensuel avec calendrier shadcn/ui
+- Vues semaine et jour
+- Création, édition et suppression d'événements
+- Sélection de couleur personnalisée
+- Drag & drop pour déplacer les événements
+- Export/Import JSON et .ics
+- Synchronisation API (Google Calendar, Outlook)
+- Notifications pour les événements à venir
+- Intégration avec les deadlines des tâches
+- Persistance locale (localStorage)
+- Style moderne inspiré de Calendar31
 
 ## 🚀 Démarrage rapide
 
 ### Prérequis
+
 - Node.js 18+ ou 20+
 - pnpm 8+
 
@@ -72,7 +90,8 @@ dashboard-personnel/
 │   ├── hooks/            # Hooks personnalisés
 │   │   ├── useWeather.ts
 │   │   ├── useAutocompleteCity.ts
-│   │   └── useTodos.ts
+│   │   ├── useTodos.ts
+│   │   └── useCalendar.ts
 │   ├── lib/              # Utilitaires et logique métier
 │   │   ├── notifications.ts
 │   │   ├── sync/         # Système de synchronisation
@@ -84,7 +103,8 @@ dashboard-personnel/
 │   │   └── weatherStorage.ts
 │   ├── widgets/          # Widgets du dashboard
 │   │   ├── Weather/
-│   │   └── Todo/
+│   │   ├── Todo/
+│   │   └── Calendar/
 │   └── App.tsx           # Point d'entrée de l'application
 ├── tests/                # Tests unitaires et d'intégration
 │   ├── lib/
@@ -115,11 +135,11 @@ pnpm test --ui
 
 ### Couverture de tests
 
-- **29 fichiers de tests**
-- **85 tests** couvrant :
-  - Hooks personnalisés (useWeather, useAutocompleteCity, useTodos)
-  - Widgets (Weather, Todo)
-  - Système de synchronisation (Notion, Google Tasks)
+- **31 fichiers de tests**
+- **93 tests** couvrant :
+  - Hooks personnalisés (useWeather, useAutocompleteCity, useTodos, useCalendar)
+  - Widgets (Weather, Todo, Calendar)
+  - Système de synchronisation (Notion, Google Tasks, Google Calendar, Outlook)
   - Gestion d'état (Zustand)
   - Persistance (localStorage)
 
@@ -175,6 +195,7 @@ pnpm lint      # Vérifier le code avec ESLint
 ## 🤝 Contribution
 
 Les contributions sont les bienvenues ! N'hésitez pas à :
+
 1. Fork le projet
 2. Créer une branche (`git checkout -b feat/ma-feature`)
 3. Commit vos changements (`git commit -m 'feat: ajout ma feature'`)

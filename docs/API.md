@@ -6,18 +6,21 @@
 
 Le Weather Widget utilise l'API OpenWeatherMap pour récupérer les données météo.
 
-**Plan gratuit** : 
+**Plan gratuit** :
+
 - 60 appels/min
 - 1 million d'appels/mois
 
 ### Endpoints utilisés
 
 1. **Geocoding API** : Recherche de villes
+
    ```
    GET https://api.openweathermap.org/geo/1.0/direct?q={city}&limit=5&appid={API_KEY}
    ```
 
 2. **Current Weather API** : Météo actuelle
+
    ```
    GET https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units=metric&lang=fr&appid={API_KEY}
    ```
@@ -50,6 +53,7 @@ Pour synchroniser les todos avec Notion :
 ### Structure attendue
 
 La base de données Notion doit avoir ces propriétés :
+
 - `Title` (texte) : Titre de la tâche
 - `Done` (checkbox) : État de complétion
 - `Priority` (select) : Priorité
@@ -75,6 +79,7 @@ Pour synchroniser avec Google Tasks :
 ### Permissions
 
 Le Todo Widget demande la permission de notifications pour :
+
 - Rappels de deadlines
 - Notifications personnalisables
 
@@ -100,6 +105,7 @@ todos:notification-settings   # Paramètres de notifications
 ### Gestion des erreurs
 
 Toutes les opérations localStorage sont wrappées dans des try/catch pour gérer :
+
 - QuotaExceededError
 - SecurityError (mode privé)
 - Absence de localStorage (SSR)
@@ -110,17 +116,18 @@ Toutes les opérations localStorage sont wrappées dans des try/catch pour gére
 
 ```typescript
 interface SyncProvider {
-  name: string;
-  enabled: boolean;
-  sync(): Promise<SyncResult>;
-  pushTodos(todos: Todo[], listId: string): Promise<void>;
-  pullTodos(listId: string): Promise<Todo[]>;
+	name: string;
+	enabled: boolean;
+	sync(): Promise<SyncResult>;
+	pushTodos(todos: Todo[], listId: string): Promise<void>;
+	pullTodos(listId: string): Promise<Todo[]>;
 }
 ```
 
 ### SyncManager
 
 Le `SyncManager` orchestre plusieurs providers :
+
 - Détection automatique des providers activés
 - Synchronisation parallèle
 - Gestion d'erreurs par provider
@@ -173,4 +180,3 @@ Les APIs externes doivent supporter CORS pour fonctionner depuis le navigateur.
 - [ ] Service Worker pour offline
 - [ ] Synchronisation cloud (Firebase, Supabase)
 - [ ] Rate limiting intelligent
-
