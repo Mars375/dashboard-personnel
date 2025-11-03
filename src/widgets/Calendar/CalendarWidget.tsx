@@ -1116,11 +1116,11 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 									return (
 										<Button
 											key={i}
-											variant={isSelected ? "default" : "ghost"}
+											variant={isSelected ? "default" : isToday ? "outline" : "ghost"}
 											size='sm'
 											className={`h-5 w-5 p-0 text-[9px] font-normal relative ${
 												!isCurrentMonth ? "text-muted-foreground/30" : ""
-											} ${isToday && !isSelected ? "ring-1 ring-primary" : ""}`}
+											} ${isToday && !isSelected ? "border-primary border" : ""}`}
 											onClick={() => dayDate && handleSelect(dayDate)}
 											onMouseDown={(e: React.MouseEvent) => {
 												e.stopPropagation();
@@ -1403,6 +1403,39 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 										captionLayout='dropdown'
 										required
 										components={{
+											Chevron: ({ orientation, ...props }) => {
+												if (orientation === "left") {
+													return (
+														<ChevronLeft
+															className='h-4 w-4'
+															onMouseDown={(e: React.MouseEvent) => {
+																e.stopPropagation();
+															}}
+															onDragStart={(e: React.DragEvent) => {
+																e.preventDefault();
+																e.stopPropagation();
+															}}
+															{...props}
+														/>
+													);
+												}
+												if (orientation === "right") {
+													return (
+														<ChevronRight
+															className='h-4 w-4'
+															onMouseDown={(e: React.MouseEvent) => {
+																e.stopPropagation();
+															}}
+															onDragStart={(e: React.DragEvent) => {
+																e.preventDefault();
+																e.stopPropagation();
+															}}
+															{...props}
+														/>
+													);
+												}
+												return null;
+											},
 											DayButton: ({ day, modifiers, className, ...props }) => {
 												const handleDragOver = (e: React.DragEvent) => {
 													if (draggedEventId) {
