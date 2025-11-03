@@ -3,7 +3,15 @@
  */
 
 import { useState, useCallback, useMemo } from "react";
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addDays, subDays } from "date-fns";
+import {
+	format,
+	startOfWeek,
+	endOfWeek,
+	eachDayOfInterval,
+	isSameDay,
+	addDays,
+	subDays,
+} from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -399,10 +407,9 @@ export function Calendar({
 						);
 						const newHours = Math.floor(totalMinutes / 60);
 						const newMins = totalMinutes % 60;
-						const newTime = `${String(newHours).padStart(
-							2,
-							"0"
-						)}:${String(newMins).padStart(2, "0")}`;
+						const newTime = `${String(newHours).padStart(2, "0")}:${String(
+							newMins
+						).padStart(2, "0")}`;
 
 						handleEventDrop(displayDate, newTime);
 					} catch (error) {

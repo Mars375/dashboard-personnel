@@ -6,7 +6,8 @@ import {
 	CardHeader,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Calendar as CalendarFull } from "@/components/ui/calendar-full";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import {
 	Dialog,
 	DialogContent,
@@ -151,6 +152,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 	const notificationNotifiedRef = useRef<Set<string>>(new Set());
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isSyncing, setIsSyncing] = useState(false);
+	// Drag & drop uniquement pour CalendarEventItem dans les listes
 	const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
 
 	// Charger les todos pour afficher les deadlines
@@ -515,6 +517,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 		}
 	};
 
+	// Drag & drop pour CalendarEventItem (liste d'événements)
 	const handleEventDragStart = (eventId: string) => {
 		setDraggedEventId(eventId);
 	};
@@ -1032,7 +1035,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 												</Button>
 											</PopoverTrigger>
 											<PopoverContent className='w-auto p-0' align='start'>
-												<CalendarComponent
+												<CalendarPicker
 													selected={newEventDate}
 													onSelect={setNewEventDate}
 													initialFocus
@@ -1479,59 +1482,24 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 							transition={{ duration: 0.2 }}
 							className='flex justify-center w-full'
 						>
-							{/* Full : Toutes les vues */}
-							{view === "month" && (
-								<div className='w-full max-w-[350px]'>
-									<CalendarComponent
-										selected={selectedDate}
-										onSelect={handleSelect}
-										month={currentDate}
-										onMonthChange={setCurrentDate}
-										modifiers={modifiers}
-										modifiersClassNames={modifiersClassNames}
-										className='bg-transparent p-0 w-full'
-										captionLayout='dropdown-buttons'
-									/>
-								</div>
-							)}
-							{view === "week" && (
-								<div className='w-full'>
-									<WeekView
-										currentDate={currentDate}
-										selectedDate={selectedDate}
-										onSelect={handleSelect}
-										getEventsForDate={getEventsForDate}
-										onEventClick={(event: CalendarEvent) =>
-											handleEditEvent(event)
-										}
-										setCurrentDate={setCurrentDate}
-										events={events}
-										draggedEventId={draggedEventId}
-										onEventDragStart={handleEventDragStart}
-										onEventDragEnd={handleEventDragEnd}
-										updateEvent={updateEvent}
-									/>
-								</div>
-							)}
-							{view === "day" && (
-								<div className='w-full'>
-									<DayView
-										currentDate={currentDate}
-										selectedDate={selectedDate}
-										getEventsForDate={getEventsForDate}
-										onEventClick={(event: CalendarEvent) =>
-											handleEditEvent(event)
-										}
-										setCurrentDate={setCurrentDate}
-										onSelect={handleSelect}
-										events={events}
-										draggedEventId={draggedEventId}
-										onEventDragStart={handleEventDragStart}
-										onEventDragEnd={handleEventDragEnd}
-										updateEvent={updateEvent}
-									/>
-								</div>
-							)}
+							{/* Full : Utilisation du nouveau Calendar complet */}
+							<CalendarFull
+								currentDate={currentDate}
+								onDateChange={setCurrentDate}
+								selectedDate={selectedDate}
+								onSelectDate={handleSelect}
+								view={view}
+								onViewChange={setView}
+								events={events}
+								getEventsForDate={getEventsForDate}
+								onEventClick={(event: CalendarEvent) => handleEditEvent(event)}
+								onEventUpdate={updateEvent}
+								onSync={handleSync}
+								syncLoading={isSyncing}
+								className='w-full'
+								captionLayout='dropdown-buttons'
+								showOutsideDays={true}
+							/>
 						</motion.div>
 					</CardContent>
 				)
@@ -1653,7 +1621,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 															className='w-auto p-0'
 															align='start'
 														>
-															<CalendarComponent
+															<CalendarPicker
 																selected={newEventDate}
 																onSelect={setNewEventDate}
 																initialFocus
@@ -1944,8 +1912,9 @@ function CalendarEventItem({
 	);
 }
 
-// Composant pour la vue semaine
-function WeekView({
+// WeekView et DayView sont maintenant intégrés dans calendar-full
+// Composant pour la vue semaine (DÉSACTIVÉ)
+/* function WeekView({
 	currentDate,
 	selectedDate,
 	onSelect,
