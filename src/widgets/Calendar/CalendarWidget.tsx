@@ -762,7 +762,8 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 											provider='google'
 											service='google-calendar'
 											variant='outline'
-											size='icon'
+											size='sm'
+											iconOnly
 											onConnect={() => {
 												// Activer le provider après connexion
 												const config = {

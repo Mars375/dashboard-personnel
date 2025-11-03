@@ -27,6 +27,7 @@ interface OAuthButtonProps {
 	onDisconnect?: () => void;
 	variant?: "default" | "outline" | "ghost";
 	size?: "default" | "sm" | "lg" | "icon";
+	iconOnly?: boolean; // Afficher uniquement l'icône avec tooltip
 	children?: React.ReactNode;
 }
 
@@ -37,6 +38,7 @@ export function OAuthButton({
 	onDisconnect,
 	variant = "default",
 	size = "default",
+	iconOnly = false,
 	children,
 }: OAuthButtonProps) {
 	const [isConnecting, setIsConnecting] = useState(false);
@@ -106,8 +108,8 @@ export function OAuthButton({
 		}
 	};
 
-	// Si size="icon", afficher uniquement l'icône avec tooltip
-	if (size === "icon") {
+	// Si iconOnly ou size="icon", afficher uniquement l'icône avec tooltip
+	if (iconOnly || size === "icon") {
 		return (
 			<TooltipProvider>
 				<Tooltip>
