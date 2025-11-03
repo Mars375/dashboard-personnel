@@ -1490,7 +1490,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 										modifiers={modifiers}
 										modifiersClassNames={modifiersClassNames}
 										className='bg-transparent p-0 w-full'
-										captionLayout='dropdown'
+										captionLayout='dropdown-buttons'
 										required
 										components={{
 											DayButton: ({ day, modifiers, className, ...props }) => {
