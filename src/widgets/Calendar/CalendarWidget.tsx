@@ -1153,6 +1153,9 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 												dayNumber
 										  )
 										: null;
+									const today = new Date();
+									const isToday =
+										dayDate && dayDate.toDateString() === today.toDateString();
 									const isSelected =
 										dayDate &&
 										selectedDate &&
@@ -1173,10 +1176,12 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 									return (
 										<Button
 											key={i}
-											variant={isSelected ? "default" : "ghost"}
+											variant={isSelected ? "default" : isToday ? "default" : "ghost"}
 											size='sm'
 											className={`h-5 w-5 p-0 text-[9px] font-normal relative ${
 												!isCurrentMonth ? "text-muted-foreground/30" : ""
+											} ${
+												isToday && !isSelected ? "bg-primary/30 text-primary-foreground" : ""
 											}`}
 											onClick={() => dayDate && handleSelect(dayDate)}
 											onMouseDown={(e: React.MouseEvent) => {
@@ -1542,7 +1547,8 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 															size='icon'
 															className={cn(
 																className,
-																"data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground"
+																"data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground",
+																modifiers.today && !modifiers.selected && "bg-primary/30 text-primary-foreground"
 															)}
 															data-day={day.date.toLocaleDateString()}
 															data-selected-single={
