@@ -2055,14 +2055,6 @@ function WeekView({
 		const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
 		const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
-		const handlePreviousWeek = () => {
-			setCurrentDate(subDays(currentDate, 7));
-		};
-
-		const handleNextWeek = () => {
-			setCurrentDate(addDays(currentDate, 7));
-		};
-
 		const weekDaysNames = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
 		return (
@@ -2240,16 +2232,6 @@ function DayView({
 			if (!b.time) return -1;
 			return a.time.localeCompare(b.time);
 		});
-
-		const handlePreviousDay = () => {
-			setCurrentDate(subDays(displayDate, 1));
-			onSelect(subDays(displayDate, 1));
-		};
-
-		const handleNextDay = () => {
-			setCurrentDate(addDays(displayDate, 1));
-			onSelect(addDays(displayDate, 1));
-		};
 
 		const hours = Array.from({ length: 24 }, (_, i) => i);
 
