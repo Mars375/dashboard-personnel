@@ -19,7 +19,7 @@ app.use(express.json());
 // Endpoint pour échanger le code OAuth Google contre des tokens
 app.post("/api/oauth/exchange", async (req, res) => {
 	try {
-		const { code, provider } = req.body;
+		const { code, provider, redirect_uri } = req.body;
 
 		if (!code) {
 			return res.status(400).json({ error: "Code manquant" });
@@ -31,9 +31,9 @@ app.post("/api/oauth/exchange", async (req, res) => {
 
 		const clientId = process.env.VITE_GOOGLE_CLIENT_ID;
 		const clientSecret = process.env.GOOGLE_CLIENT_SECRET; // Doit être dans .env.local (sans VITE_)
-		// IMPORTANT: Le redirect_uri doit correspondre EXACTEMENT à celui utilisé dans l'URL OAuth
-		// et à celui configuré dans Google Cloud Console
-		const redirectUri = process.env.VITE_GOOGLE_REDIRECT_URI || "http://localhost:5173/oauth/google/callback";
+		// IMPORTANT: Utiliser le redirect_uri envoyé par le frontend (celui utilisé dans l'URL OAuth)
+		// ou celui depuis les variables d'environnement en fallback
+		const redirectUri = redirect_uri || process.env.VITE_GOOGLE_REDIRECT_URI || "http://localhost:5173/oauth/google/callback";
 		
 		// Normaliser l'URI (retirer les slash finaux si présents)
 		const normalizedRedirectUri = redirectUri.endsWith("/") && redirectUri !== "http://localhost:5173/" 

@@ -220,6 +220,9 @@ export class GoogleAuth {
 		// URL du proxy backend (développement local)
 		const proxyUrl = import.meta.env.VITE_OAUTH_PROXY_URL || "http://localhost:3001";
 		
+		// IMPORTANT: Utiliser le même redirect_uri que celui utilisé dans buildAuthUrl
+		const redirectUri = this.config.redirectUri;
+		
 		try {
 			const response = await fetch(`${proxyUrl}/api/oauth/exchange`, {
 				method: "POST",
@@ -228,7 +231,8 @@ export class GoogleAuth {
 				},
 				body: JSON.stringify({ 
 					code, 
-					provider: "google" 
+					provider: "google",
+					redirect_uri: redirectUri, // Envoyer le redirect_uri utilisé dans l'URL OAuth
 				}),
 			});
 
