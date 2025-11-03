@@ -19,15 +19,15 @@ export interface CalendarProps {
 	month?: Date;
 	onMonthChange?: (date: Date) => void;
 	modifiers?: {
-		[key: string]: (date: Date) => boolean;
+		[key: string]: ((date: Date) => boolean) | Date[];
 	};
 	modifiersClassNames?: {
 		[key: string]: string;
 	};
 	className?: string;
 	captionLayout?: "dropdown" | "dropdown-buttons" | "label";
-	mode?: "single" | "range" | "multiple";
 	showOutsideDays?: boolean;
+	initialFocus?: boolean;
 }
 
 const MONTHS = [
