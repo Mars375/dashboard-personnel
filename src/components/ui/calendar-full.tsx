@@ -53,12 +53,15 @@ export function Calendar({
 	selectedDate: controlledSelectedDate,
 	onSelectDate,
 	view: controlledView,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	onViewChange,
 	events = [],
 	getEventsForDate: externalGetEventsForDate,
 	onEventClick,
 	onEventUpdate,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	onSync,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	syncLoading = false,
 	className,
 	showOutsideDays = true,
