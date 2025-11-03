@@ -71,7 +71,7 @@ export function Calendar({
 	const [internalSelectedDate, setInternalSelectedDate] = useState<
 		Date | undefined
 	>(undefined);
-	const [internalView, setInternalView] = useState<CalendarView>("month");
+	const [_internalView, _setInternalView] = useState<CalendarView>("month");
 	const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
 
 	// Utiliser état contrôlé ou interne
