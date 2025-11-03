@@ -1467,48 +1467,43 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 										captionLayout='dropdown'
 										required
 										components={{
-											Chevron: ({ orientation, ...props }) => {
+											Chevron: ({ orientation, ...props }: { orientation?: "left" | "right" | "up" | "down" }) => {
+												const handleMouseDown = (e: React.MouseEvent) => {
+													e.stopPropagation();
+												};
+												const handleDragStart = (e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												};
+												
 												if (orientation === "left") {
 													return (
 														<ChevronLeft
 															className='h-4 w-4'
-															onMouseDown={(e: React.MouseEvent) => {
-																e.stopPropagation();
-															}}
-															onDragStart={(e: React.DragEvent) => {
-																e.preventDefault();
-																e.stopPropagation();
-															}}
+															onMouseDown={handleMouseDown}
+															onDragStart={handleDragStart}
 															{...props}
 														/>
 													);
 												}
+												
 												if (orientation === "right") {
 													return (
 														<ChevronRight
 															className='h-4 w-4'
-															onMouseDown={(e: React.MouseEvent) => {
-																e.stopPropagation();
-															}}
-															onDragStart={(e: React.DragEvent) => {
-																e.preventDefault();
-																e.stopPropagation();
-															}}
+															onMouseDown={handleMouseDown}
+															onDragStart={handleDragStart}
 															{...props}
 														/>
 													);
 												}
+												
 												// Fallback pour orientation "up" ou "down"
 												return (
 													<ChevronLeft
 														className='h-4 w-4'
-														onMouseDown={(e: React.MouseEvent) => {
-															e.stopPropagation();
-														}}
-														onDragStart={(e: React.DragEvent) => {
-															e.preventDefault();
-															e.stopPropagation();
-														}}
+														onMouseDown={handleMouseDown}
+														onDragStart={handleDragStart}
 														{...props}
 													/>
 												);
