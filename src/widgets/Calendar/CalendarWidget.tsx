@@ -6,8 +6,10 @@ import {
 	CardHeader,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarFull } from "@/components/ui/calendar-full";
-import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import {
+	Calendar as CalendarFull,
+	DatePicker,
+} from "@/components/ui/calendar-full";
 import {
 	Dialog,
 	DialogContent,
@@ -52,9 +54,7 @@ import {
 	ChevronRight,
 	Trash2,
 } from "lucide-react";
-import {
-	format,
-} from "date-fns";
+import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -1004,10 +1004,9 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 												</Button>
 											</PopoverTrigger>
 											<PopoverContent className='w-auto p-0' align='start'>
-												<CalendarPicker
+												<DatePicker
 													selected={newEventDate}
 													onSelect={setNewEventDate}
-													initialFocus
 													captionLayout='dropdown'
 												/>
 											</PopoverContent>
@@ -1590,10 +1589,9 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 															className='w-auto p-0'
 															align='start'
 														>
-															<CalendarPicker
+															<DatePicker
 																selected={newEventDate}
 																onSelect={setNewEventDate}
-																initialFocus
 																captionLayout='dropdown'
 															/>
 														</PopoverContent>
