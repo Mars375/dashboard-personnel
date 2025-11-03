@@ -455,12 +455,12 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 					.getAllProviders()
 					.find((p) => p.name === "Google Calendar");
 				let pulledEventsCount = 0;
-				
+
 				if (googleProvider && googleProvider.enabled) {
 					const pulledEvents = await googleProvider.pullEvents();
 					pulledEventsCount = pulledEvents.length;
 				}
-				
+
 				// Une seule notification combinée
 				if (pulledEventsCount > 0) {
 					toast.success(
@@ -707,7 +707,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 												</Button>
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align='end'>
-												<DropdownMenuItem 
+												<DropdownMenuItem
 													onClick={() => setView("month")}
 													onMouseDown={(e: React.MouseEvent) => {
 														e.stopPropagation();
@@ -720,7 +720,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 													<Grid3x3 className='mr-2 h-4 w-4' />
 													Mois
 												</DropdownMenuItem>
-												<DropdownMenuItem 
+												<DropdownMenuItem
 													onClick={() => setView("week")}
 													onMouseDown={(e: React.MouseEvent) => {
 														e.stopPropagation();
@@ -733,7 +733,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 													<List className='mr-2 h-4 w-4' />
 													Semaine
 												</DropdownMenuItem>
-												<DropdownMenuItem 
+												<DropdownMenuItem
 													onClick={() => setView("day")}
 													onMouseDown={(e: React.MouseEvent) => {
 														e.stopPropagation();
@@ -770,7 +770,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 											</Button>
 										</DropdownMenuTrigger>
 										<DropdownMenuContent align='end'>
-											<DropdownMenuItem 
+											<DropdownMenuItem
 												onClick={handleExportJSON}
 												onMouseDown={(e: React.MouseEvent) => {
 													e.stopPropagation();
@@ -783,7 +783,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 												<Download className='mr-2 h-4 w-4' />
 												Exporter JSON
 											</DropdownMenuItem>
-											<DropdownMenuItem 
+											<DropdownMenuItem
 												onClick={handleExportICS}
 												onMouseDown={(e: React.MouseEvent) => {
 													e.stopPropagation();
@@ -797,7 +797,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 												Exporter .ics
 											</DropdownMenuItem>
 											<DropdownMenuSeparator />
-											<DropdownMenuItem 
+											<DropdownMenuItem
 												onClick={handleImport}
 												onMouseDown={(e: React.MouseEvent) => {
 													e.stopPropagation();
@@ -1467,7 +1467,12 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 										captionLayout='dropdown'
 										required
 										components={{
-											Chevron: ({ orientation, ...props }: { orientation?: "left" | "right" | "up" | "down" }) => {
+											Chevron: ({
+												orientation,
+												...props
+											}: {
+												orientation?: "left" | "right" | "up" | "down";
+											}) => {
 												const handleMouseDown = (e: React.MouseEvent) => {
 													e.stopPropagation();
 												};
@@ -1475,7 +1480,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 													e.preventDefault();
 													e.stopPropagation();
 												};
-												
+
 												if (orientation === "left") {
 													return (
 														<ChevronLeft
@@ -1486,7 +1491,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 														/>
 													);
 												}
-												
+
 												if (orientation === "right") {
 													return (
 														<ChevronRight
@@ -1497,7 +1502,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 														/>
 													);
 												}
-												
+
 												// Fallback pour orientation "up" ou "down"
 												return (
 													<ChevronLeft
@@ -1544,7 +1549,8 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 															size='icon'
 															className={cn(
 																className,
-																"data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground"
+																"data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground",
+																modifiers.today && !modifiers.selected && "bg-accent/50"
 															)}
 															data-day={day.date.toLocaleDateString()}
 															data-selected-single={
