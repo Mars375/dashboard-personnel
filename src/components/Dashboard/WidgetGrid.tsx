@@ -2,11 +2,13 @@ import { useMemo } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import type { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
-import { X } from "lucide-react";
+import { X, GripVertical } from "lucide-react";
 import { WidgetItem } from "./WidgetItem";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { getWidgetDefinition } from "@/lib/widgetRegistry";
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
+import React from "react";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -21,13 +23,32 @@ import {
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-export function WidgetGrid() {
+interface WidgetGridProps {
+	searchQuery?: string;
+}
+
+export function WidgetGrid({ searchQuery = "" }: WidgetGridProps) {
 	const widgets = useDashboardStore((state) => state.widgets);
 	const updateLayout = useDashboardStore((state) => state.updateLayout);
 
+	// Filtrer les widgets selon la recherche
+	const filteredWidgets = useMemo(() => {
+		if (!searchQuery) return widgets;
+		return widgets.filter((widget) => {
+			const def = getWidgetDefinition(widget.type);
+			if (!def) return false;
+			const query = searchQuery.toLowerCase();
+			return (
+				def.name.toLowerCase().includes(query) ||
+				def.description?.toLowerCase().includes(query) ||
+				widget.type.toLowerCase().includes(query)
+			);
+		});
+	}, [widgets, searchQuery]);
+
 	// Convertir widgets en layout pour react-grid-layout
 	const layouts = useMemo(() => {
-		return widgets.map((widget) => {
+		return filteredWidgets.map((widget) => {
 			const widgetDef = getWidgetDefinition(widget.type);
 			return {
 				i: widget.id,
@@ -41,7 +62,7 @@ export function WidgetGrid() {
 				maxH: widget.maxH ?? widgetDef?.maxSize?.h,
 			};
 		});
-	}, [widgets]);
+	}, [filteredWidgets]);
 
 	const handleLayoutChange = (
 		_layout: Layout[],
@@ -97,59 +118,88 @@ export function WidgetGrid() {
 				compactType='vertical'
 				preventCollision={false}
 			>
-				{widgets.map((widget) => {
+				{filteredWidgets.map((widget, index) => {
 					const layout = layouts.find((l) => l.i === widget.id);
 					if (!layout) return null;
 
 					const widgetDef = getWidgetDefinition(widget.type);
 
 					return (
-						<div key={widget.id} className='widget-drag-handle relative group'>
-							{/* Bouton supprimer - en dehors du cadre */}
-							<div
-								className='absolute -top-2 -right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity'
-								onMouseDown={(e) => e.stopPropagation()}
-								onTouchStart={(e) => e.stopPropagation()}
-							>
-								<AlertDialog>
-									<AlertDialogTrigger asChild>
-										<Button
-											variant='destructive'
-											size='icon'
-											className='h-7 w-7 rounded-full shadow-lg pointer-events-auto border-2 border-background'
-											aria-label={`Supprimer le widget ${
-												widgetDef?.name || ""
-											}`}
-										>
-											<X className='h-4 w-4' />
-										</Button>
-									</AlertDialogTrigger>
-									<AlertDialogContent>
-										<AlertDialogHeader>
-											<AlertDialogTitle>Supprimer le widget</AlertDialogTitle>
-											<AlertDialogDescription>
-												Êtes-vous sûr de vouloir supprimer le widget "
-												{widgetDef?.name || ""}" ? Cette action est
-												irréversible.
-											</AlertDialogDescription>
-										</AlertDialogHeader>
-										<AlertDialogFooter>
-											<AlertDialogCancel>Annuler</AlertDialogCancel>
-											<AlertDialogAction
-												onClick={() => {
-													const removeWidget =
-														useDashboardStore.getState().removeWidget;
-													removeWidget(widget.id);
+						<div key={widget.id} className='widget-drag-handle relative group flex flex-col h-full'>
+							{/* Barre d'outils discrète en haut - zone réservée permanente */}
+							<div className='absolute top-0 left-0 right-0 h-8 z-10 flex items-center justify-between px-2 pointer-events-none'>
+								{/* Indicateur de drag */}
+								<div className='opacity-0 group-hover:opacity-100 transition-opacity'>
+									<div className='flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 backdrop-blur-sm'>
+										<GripVertical className='h-3 w-3 text-primary/70' />
+										<span className='text-[10px] font-medium text-primary/70'>
+											Déplacer
+										</span>
+									</div>
+								</div>
+
+								{/* Bouton supprimer */}
+								<div className='opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto'>
+									<AlertDialog>
+										<AlertDialogTrigger asChild>
+											<Button
+												variant='ghost'
+												size='icon'
+												className='h-6 w-6 rounded-full bg-destructive/10 hover:bg-destructive/20 text-destructive/70 hover:text-destructive border border-destructive/20 hover:border-destructive/40 transition-all shadow-sm hover:shadow-md'
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
 												}}
-												className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+												aria-label={`Supprimer le widget ${
+													widgetDef?.name || ""
+												}`}
 											>
-												Supprimer
-											</AlertDialogAction>
-										</AlertDialogFooter>
-									</AlertDialogContent>
-								</AlertDialog>
+												<X className='h-3 w-3' />
+											</Button>
+										</AlertDialogTrigger>
+										<AlertDialogContent>
+											<AlertDialogHeader>
+												<AlertDialogTitle>Supprimer le widget</AlertDialogTitle>
+												<AlertDialogDescription>
+													Êtes-vous sûr de vouloir supprimer le widget "
+													{widgetDef?.name || ""}" ? Cette action est
+													irréversible.
+												</AlertDialogDescription>
+											</AlertDialogHeader>
+											<AlertDialogFooter>
+												<AlertDialogCancel>Annuler</AlertDialogCancel>
+												<AlertDialogAction
+													onClick={() => {
+														const removeWidget =
+															useDashboardStore.getState().removeWidget;
+														removeWidget(widget.id);
+													}}
+													className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+												>
+													Supprimer
+												</AlertDialogAction>
+											</AlertDialogFooter>
+										</AlertDialogContent>
+									</AlertDialog>
+								</div>
 							</div>
-							<WidgetItem layout={layout} />
+
+							{/* Contenu du widget avec padding-top pour laisser l'espace à la barre d'outils */}
+							<motion.div
+								initial={{ opacity: 0, scale: 0.95, y: 4 }}
+								animate={{ opacity: 1, scale: 1, y: 0 }}
+								transition={{
+									duration: 0.3,
+									delay: index * 0.05,
+									ease: "easeOut",
+								}}
+								className='h-full w-full pt-8'
+							>
+								<WidgetItem layout={layout} />
+							</motion.div>
 						</div>
 					);
 				})}
