@@ -2,14 +2,8 @@
  * Composant Calendar complet avec gestion des vues, événements et synchronisation API
  */
 
-import React, { useState, useCallback, useMemo } from "react";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getYear, getMonth, addDays, subDays } from "date-fns";
-import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Calendar as CalendarBase } from "@/components/ui/calendar";
+import { useState, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 import { toast } from "sonner";
 import type { CalendarEvent, CalendarView } from "@/widgets/Calendar/types";
 // Les composants de vue seront créés ensuite
