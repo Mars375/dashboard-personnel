@@ -80,6 +80,8 @@ import {
 import { calendarSyncManager } from "@/lib/sync/calendarSyncManager";
 import { isDateInRecurrence } from "@/lib/calendarRecurrence";
 import type { WidgetProps } from "@/lib/widgetSize";
+import { OAuthButton } from "@/components/ui/oauth-button";
+import { getOAuthManager } from "@/lib/auth/oauthManager";
 
 // Fonction utilitaire pour formater une date en YYYY-MM-DD en local (évite les problèmes de timezone)
 function formatDateLocal(date: Date): string {
@@ -426,6 +428,23 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 	const handleSync = async () => {
 		setIsSyncing(true);
 		try {
+			// Vérifier si Google Calendar est connecté
+			const oauthManager = getOAuthManager();
+			const isGoogleConnected = oauthManager.isConnected("google");
+
+			// Si connecté, activer le provider
+			if (isGoogleConnected) {
+				const config = {
+					providers: {
+						googleCalendar: {
+							enabled: true,
+							calendarId: "primary",
+						},
+					},
+				};
+				calendarSyncManager.updateConfig(config);
+			}
+
 			const results = await calendarSyncManager.syncAll();
 			const successCount = results.filter((r) => r.success).length;
 			const totalSynced = results.reduce((sum, r) => sum + r.synced, 0);
@@ -434,8 +453,22 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 				toast.success(
 					`Synchronisation réussie: ${totalSynced} événement(s) synchronisé(s)`
 				);
+				// Recharger les événements depuis Google Calendar
+				const googleProvider = calendarSyncManager
+					.getAllProviders()
+					.find((p) => p.name === "Google Calendar");
+				if (googleProvider && googleProvider.enabled) {
+					const pulledEvents = await googleProvider.pullEvents();
+					// Ajouter les événements récupérés aux événements existants
+					// (à implémenter selon votre logique de merge)
+					toast.info(`${pulledEvents.length} événement(s) récupéré(s) depuis Google Calendar`);
+				}
 			} else {
-				toast.info("Aucun provider activé pour la synchronisation");
+				if (!isGoogleConnected) {
+					toast.info("Connectez-vous à Google Calendar pour synchroniser");
+				} else {
+					toast.info("Aucun provider activé pour la synchronisation");
+				}
 			}
 		} catch (error) {
 			toast.error("Erreur lors de la synchronisation", {
@@ -721,6 +754,39 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 
 								{/* Synchronisation et Notifications */}
 								<ButtonGroup>
+									{/* Bouton OAuth Google Calendar */}
+									{isFull && (
+										<OAuthButton
+											provider="google"
+											service="google-calendar"
+											variant="outline"
+											size="sm"
+											onConnect={() => {
+												// Activer le provider après connexion
+												const config = {
+													providers: {
+														googleCalendar: {
+															enabled: true,
+															calendarId: "primary",
+														},
+													},
+												};
+												calendarSyncManager.updateConfig(config);
+												toast.success("Google Calendar connecté");
+											}}
+											onDisconnect={() => {
+												// Désactiver le provider après déconnexion
+												const config = {
+													providers: {
+														googleCalendar: {
+															enabled: false,
+														},
+													},
+												};
+												calendarSyncManager.updateConfig(config);
+											}}
+										/>
+									)}
 									<Button
 										variant='outline'
 										size='sm'
