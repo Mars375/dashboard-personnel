@@ -25,6 +25,11 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from "sonner";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { motion } from "framer-motion";
@@ -67,8 +72,9 @@ import {
 	ChartTooltipContent,
 } from "@/components/ui/chart";
 import { PieChart as RechartsPieChart, Pie, Cell } from "recharts";
+import type { WidgetProps } from "@/lib/widgetSize";
 
-export function TodoWidget() {
+export function TodoWidget({ size = "medium" }: WidgetProps) {
 	const {
 		todos,
 		currentListId,
@@ -364,6 +370,9 @@ export function TodoWidget() {
 	};
 
 	const currentList = lists.find((l) => l.id === currentListId);
+	const isCompact = size === "compact";
+	const isMedium = size === "medium";
+	const isFull = size === "full";
 
 	// Request notification permission on mount
 	useEffect(() => {
@@ -475,272 +484,646 @@ export function TodoWidget() {
 		};
 	};
 
+	const padding = isCompact ? "p-1.5" : isMedium ? "p-3" : "p-4";
+	const gap = isCompact ? "gap-1" : isMedium ? "gap-2" : "gap-3";
+
 	return (
 		<TooltipProvider>
 			<Card
 				ref={cardRef}
-				className={`w-full max-w-md p-4 flex flex-col gap-3 relative transition-colors ${
+				className={`w-full h-full max-w-none ${padding} flex flex-col ${gap} ${
+					isCompact ? "overflow-hidden" : "overflow-auto"
+				} min-h-0 relative transition-colors ${
 					isDragging ? "border-2 border-primary bg-primary/5" : ""
 				}`}
 			>
-				{/* List selector */}
-				<div className='flex items-center justify-between'>
-					<div className='flex items-center gap-2 flex-1'>
-						{showNewList ? (
-							<div className='flex items-center gap-2 flex-1'>
-								<Folder className='h-4 w-4 text-muted-foreground' />
-								<Input
-									ref={newListInputRef}
-									placeholder='Nom de la liste...'
-									value={newListName}
-									onChange={(e) => setNewListName(e.target.value)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") handleAddList();
-										if (e.key === "Escape") {
-											setShowNewList(false);
-											setNewListName("");
-										}
-									}}
-									className='h-8 flex-1'
-									autoFocus
-								/>
-								<Button size='sm' onClick={handleAddList}>
-									Ajouter
-								</Button>
-								<Button
-									size='sm'
-									variant='ghost'
-									onClick={() => {
-										setShowNewList(false);
-										setNewListName("");
-									}}
-								>
-									Annuler
-								</Button>
+				{/* COMPACT VERSION - Ultra compacte */}
+				{isCompact ? (
+					<>
+						{/* Header : Liste + stats */}
+						<div className='flex items-center justify-between text-sm'>
+							<span className='font-medium truncate'>
+								{currentList?.name || "Liste"}
+							</span>
+							<div className='flex gap-2 text-muted-foreground shrink-0 text-xs'>
+								<span>{activeCount} actives</span>
+								{priorityCount > 0 && <span>{priorityCount} ⭐</span>}
+							</div>
+						</div>
+
+						{/* Progress bar fine */}
+						{totalCount > 0 && (
+							<Progress value={progressPercentage} className='h-1' />
+						)}
+
+						{/* Liste des tâches (max 4-5 visibles) */}
+						<div className='flex-1 overflow-y-auto min-h-0'>
+							<div className='flex flex-col gap-1'>
+								{filtered.slice(0, 5).length === 0 ? (
+									<motion.div
+										key='empty'
+										initial={{ opacity: 0 }}
+										animate={{ opacity: 1 }}
+										className='text-center text-muted-foreground py-2 text-xs'
+									>
+										Aucune tâche
+									</motion.div>
+								) : (
+									filtered.slice(0, 5).map((todo) => {
+										const deadlineStatus = getDeadlineStatus(todo.deadline);
+										return (
+											<motion.div
+												key={todo.id}
+												initial={{ opacity: 0, y: -5 }}
+												animate={{ opacity: 1, y: 0 }}
+												layout
+												className={cn(
+													"rounded border p-2 text-xs group flex items-center gap-2",
+													todo.priority
+														? "border-yellow-400/50 bg-yellow-50/30 dark:bg-yellow-950/10"
+														: "border-border",
+													todo.completed && "opacity-60"
+												)}
+											>
+												<Checkbox
+													checked={todo.completed}
+													onCheckedChange={() => toggleTodo(todo.id)}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+													className='h-4 w-4 shrink-0'
+													aria-label={
+														todo.completed
+															? "Marquer comme non terminé"
+															: "Marquer comme terminé"
+													}
+												/>
+												<div className='flex-1 min-w-0'>
+													<div
+														className={cn(
+															"font-medium truncate text-sm",
+															todo.completed &&
+																"line-through text-muted-foreground"
+														)}
+													>
+														{todo.title}
+													</div>
+													{deadlineStatus && !todo.completed && (
+														<span
+															className={cn(
+																"text-xs",
+																deadlineStatus.status === "overdue" &&
+																	"text-destructive font-medium"
+															)}
+														>
+															{deadlineStatus.status === "overdue"
+																? "⚠"
+																: deadlineStatus.text}
+														</span>
+													)}
+												</div>
+												<Button
+													variant='ghost'
+													size='icon'
+													className='h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0'
+													onClick={(e) => {
+														e.stopPropagation();
+														handleDeleteClick(todo.id);
+													}}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+													aria-label='Supprimer'
+												>
+													×
+												</Button>
+											</motion.div>
+										);
+									})
+								)}
+								{filtered.length > 5 && (
+									<div className='text-center text-xs text-muted-foreground pt-1'>
+										+{filtered.length - 5} autres...
+									</div>
+								)}
+							</div>
+						</div>
+
+						{/* Input ajout compact */}
+						<form onSubmit={handleAddTodo} className='flex gap-1.5 mt-1.5'>
+							<Input
+								ref={inputRef}
+								placeholder='Nouvelle tâche...'
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+								className='flex-1 h-7 text-sm'
+								aria-label='Nouvelle tâche'
+							/>
+							<Button
+								type='submit'
+								size='sm'
+								className='h-7 px-2'
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+							>
+								+
+							</Button>
+						</form>
+					</>
+				) : (
+					<>
+						{/* List selector - medium et full */}
+						{isMedium ? (
+							<div className='flex items-center justify-between'>
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button
+											variant='outline'
+											size='sm'
+											className='flex items-center gap-1.5'
+											onMouseDown={(e: React.MouseEvent) => {
+												e.stopPropagation();
+											}}
+											onDragStart={(e: React.DragEvent) => {
+												e.preventDefault();
+												e.stopPropagation();
+											}}
+										>
+											<Folder className='h-3.5 w-3.5' />
+											<span className='text-xs'>
+												{currentList?.name || "Liste"}
+											</span>
+										</Button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align='start' className='w-48'>
+										<DropdownMenuLabel>Listes</DropdownMenuLabel>
+										<DropdownMenuSeparator />
+										{lists.map((list) => (
+											<DropdownMenuItem
+												key={list.id}
+												onClick={() => setCurrentList(list.id)}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+											>
+												{list.name}
+											</DropdownMenuItem>
+										))}
+									</DropdownMenuContent>
+								</DropdownMenu>
+								<ButtonGroup aria-label='Actions essentielles'>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Button
+												variant='ghost'
+												size='icon'
+												className='h-7 w-7'
+												onClick={exportTodos}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+												aria-label='Exporter'
+											>
+												<Download className='h-3.5 w-3.5' />
+											</Button>
+										</TooltipTrigger>
+										<TooltipContent>
+											<p>Exporter</p>
+										</TooltipContent>
+									</Tooltip>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Button
+												variant='ghost'
+												size='icon'
+												className='h-7 w-7'
+												onClick={undo}
+												disabled={!canUndo}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+												aria-label='Annuler'
+											>
+												<Undo2 className='h-3.5 w-3.5' />
+											</Button>
+										</TooltipTrigger>
+										<TooltipContent>
+											<p>Annuler</p>
+										</TooltipContent>
+									</Tooltip>
+									<input
+										ref={fileInputRef}
+										type='file'
+										accept='.json'
+										onChange={handleFileInputChange}
+										className='hidden'
+									/>
+								</ButtonGroup>
 							</div>
 						) : (
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button variant='outline' className='flex items-center gap-2'>
-										<Folder className='h-4 w-4' />
-										<span>{currentList?.name || "Liste"}</span>
-										<ChevronDown className='h-4 w-4' />
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align='start' className='w-56'>
-									<DropdownMenuLabel>Listes</DropdownMenuLabel>
-									<DropdownMenuSeparator />
-									{lists.map((list) => (
-										<div
-											key={list.id}
-											className='flex items-center justify-between group px-2 py-1.5 hover:bg-accent rounded-sm'
-										>
-											{editingListId === list.id ? (
-												<div className='flex items-center gap-2 flex-1'>
-													<Input
-														value={editingListName}
-														onChange={(e) => setEditingListName(e.target.value)}
-														onKeyDown={(e) => {
-															if (e.key === "Enter") handleRenameList(list.id);
-															if (e.key === "Escape") {
-																setEditingListId(null);
-																setEditingListName("");
-															}
-														}}
-														onBlur={() => handleRenameList(list.id)}
-														className='h-7 text-sm'
-														autoFocus
-													/>
-												</div>
-											) : (
-												<>
-													<button
-														onClick={() => setCurrentList(list.id)}
-														className={`flex-1 text-left text-sm ${
-															list.id === currentListId ? "font-semibold" : ""
-														}`}
+							<div className='flex items-center justify-between'>
+								<div className='flex items-center gap-2 flex-1'>
+									{showNewList ? (
+										<div className='flex items-center gap-2 flex-1'>
+											<Folder className='h-4 w-4 text-muted-foreground' />
+											<Input
+												ref={newListInputRef}
+												placeholder='Nom de la liste...'
+												value={newListName}
+												onChange={(e) => setNewListName(e.target.value)}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") handleAddList();
+													if (e.key === "Escape") {
+														setShowNewList(false);
+														setNewListName("");
+													}
+												}}
+												className='h-8 flex-1'
+												autoFocus
+											/>
+											<Button
+												size='sm'
+												onClick={handleAddList}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+											>
+												Ajouter
+											</Button>
+											<Button
+												size='sm'
+												variant='ghost'
+												onClick={() => {
+													setShowNewList(false);
+													setNewListName("");
+												}}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+											>
+												Annuler
+											</Button>
+										</div>
+									) : (
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<Button
+													variant='outline'
+													className='flex items-center gap-2'
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+												>
+													<Folder className='h-4 w-4' />
+													<span>{currentList?.name || "Liste"}</span>
+													<ChevronDown className='h-4 w-4' />
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align='start' className='w-56'>
+												<DropdownMenuLabel>Listes</DropdownMenuLabel>
+												<DropdownMenuSeparator />
+												{lists.map((list) => (
+													<div
+														key={list.id}
+														className='flex items-center justify-between group px-2 py-1.5 hover:bg-accent rounded-sm'
 													>
-														{list.name}
-													</button>
-													<div className='flex gap-1 opacity-0 group-hover:opacity-100'>
-														<Button
-															variant='ghost'
-															size='icon'
-															className='h-6 w-6'
-															onClick={() => {
-																setEditingListId(list.id);
-																setEditingListName(list.name);
-															}}
-														>
-															<Edit2 className='h-3 w-3' />
-														</Button>
-														{lists.length > 1 && (
-															<Button
-																variant='ghost'
-																size='icon'
-																className='h-6 w-6 text-destructive'
-																onClick={() =>
-																	handleDeleteList(list.id, list.name)
-																}
-															>
-																<Trash2 className='h-3 w-3' />
-															</Button>
+														{editingListId === list.id ? (
+															<div className='flex items-center gap-2 flex-1'>
+																<Input
+																	value={editingListName}
+																	onChange={(e) =>
+																		setEditingListName(e.target.value)
+																	}
+																	onKeyDown={(e) => {
+																		if (e.key === "Enter")
+																			handleRenameList(list.id);
+																		if (e.key === "Escape") {
+																			setEditingListId(null);
+																			setEditingListName("");
+																		}
+																	}}
+																	onBlur={() => handleRenameList(list.id)}
+																	onMouseDown={(e: React.MouseEvent) => {
+																		e.stopPropagation();
+																	}}
+																	onDragStart={(e: React.DragEvent) => {
+																		e.preventDefault();
+																		e.stopPropagation();
+																	}}
+																	className='h-7 text-sm'
+																	autoFocus
+																/>
+															</div>
+														) : (
+															<>
+																<button
+																	onClick={() => setCurrentList(list.id)}
+																	onMouseDown={(e: React.MouseEvent) => {
+																		e.stopPropagation();
+																	}}
+																	onDragStart={(e: React.DragEvent) => {
+																		e.preventDefault();
+																		e.stopPropagation();
+																	}}
+																	className={`flex-1 text-left text-sm ${
+																		list.id === currentListId
+																			? "font-semibold"
+																			: ""
+																	}`}
+																>
+																	{list.name}
+																</button>
+																<div className='flex gap-1 opacity-0 group-hover:opacity-100'>
+																	<Button
+																		variant='ghost'
+																		size='icon'
+																		className='h-6 w-6'
+																		onClick={() => {
+																			setEditingListId(list.id);
+																			setEditingListName(list.name);
+																		}}
+																		onMouseDown={(e: React.MouseEvent) => {
+																			e.stopPropagation();
+																		}}
+																		onDragStart={(e: React.DragEvent) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+																		}}
+																	>
+																		<Edit2 className='h-3 w-3' />
+																	</Button>
+																	{lists.length > 1 && (
+																		<Button
+																			variant='ghost'
+																			size='icon'
+																			className='h-6 w-6 text-destructive'
+																			onClick={() =>
+																				handleDeleteList(list.id, list.name)
+																			}
+																			onMouseDown={(e: React.MouseEvent) => {
+																				e.stopPropagation();
+																			}}
+																			onDragStart={(e: React.DragEvent) => {
+																				e.preventDefault();
+																				e.stopPropagation();
+																			}}
+																		>
+																			<Trash2 className='h-3 w-3' />
+																		</Button>
+																	)}
+																</div>
+															</>
 														)}
 													</div>
-												</>
-											)}
-										</div>
-									))}
-									<DropdownMenuSeparator />
-									<DropdownMenuItem onClick={() => setShowNewList(true)}>
-										<Plus className='h-4 w-4 mr-2' />
-										Nouvelle liste
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
+												))}
+												<DropdownMenuSeparator />
+												<DropdownMenuItem
+													onClick={() => setShowNewList(true)}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+												>
+													<Plus className='h-4 w-4 mr-2' />
+													Nouvelle liste
+												</DropdownMenuItem>
+											</DropdownMenuContent>
+										</DropdownMenu>
+									)}
+								</div>
+								<ButtonGroup aria-label='Actions des tâches'>
+									{/* Export/Import */}
+									<ButtonGroup>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													variant='ghost'
+													size='icon'
+													className='h-8 w-8'
+													onClick={exportTodos}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+													aria-label='Exporter les tâches'
+												>
+													<Download className='h-4 w-4' />
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>
+												<p>Exporter les tâches</p>
+											</TooltipContent>
+										</Tooltip>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													variant='ghost'
+													size='icon'
+													className='h-8 w-8'
+													onClick={importTodos}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+													aria-label='Importer les tâches'
+												>
+													<Upload className='h-4 w-4' />
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>
+												<p>Importer des tâches</p>
+											</TooltipContent>
+										</Tooltip>
+									</ButtonGroup>
+
+									{/* Undo/Redo */}
+									<ButtonGroup>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													variant='ghost'
+													size='icon'
+													className='h-8 w-8'
+													onClick={undo}
+													disabled={!canUndo}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+													aria-label='Annuler'
+												>
+													<Undo2 className='h-4 w-4' />
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>
+												<p>Annuler (Ctrl+Z)</p>
+											</TooltipContent>
+										</Tooltip>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													variant='ghost'
+													size='icon'
+													className='h-8 w-8'
+													onClick={redo}
+													disabled={!canRedo}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+													aria-label='Refaire'
+												>
+													<Redo2 className='h-4 w-4' />
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>
+												<p>Refaire (Ctrl+Shift+Z)</p>
+											</TooltipContent>
+										</Tooltip>
+									</ButtonGroup>
+
+									{/* Notifications et Sync */}
+									<ButtonGroup>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													variant='ghost'
+													size='icon'
+													className='h-8 w-8'
+													onClick={
+														notificationPermission === "granted"
+															? toggleNotifications
+															: handleRequestNotificationPermission
+													}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+													aria-label='Notifications'
+												>
+													{notificationPermission === "granted" &&
+													notificationSettings.enabled ? (
+														<Bell className='h-4 w-4' />
+													) : (
+														<BellOff className='h-4 w-4' />
+													)}
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>
+												<p>
+													{notificationPermission === "granted"
+														? notificationSettings.enabled
+															? "Désactiver les notifications"
+															: "Activer les notifications"
+														: "Activer les notifications"}
+												</p>
+											</TooltipContent>
+										</Tooltip>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													variant='ghost'
+													size='icon'
+													className='h-8 w-8'
+													onClick={handleSync}
+													disabled={isSyncing}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+													aria-label='Synchroniser'
+												>
+													<RefreshCw
+														className={`h-4 w-4 ${
+															isSyncing ? "animate-spin" : ""
+														}`}
+													/>
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>
+												<p>Synchroniser avec les services externes</p>
+											</TooltipContent>
+										</Tooltip>
+									</ButtonGroup>
+
+									<input
+										ref={fileInputRef}
+										type='file'
+										accept='.json'
+										onChange={handleFileInputChange}
+										className='hidden'
+									/>
+								</ButtonGroup>
+							</div>
 						)}
-					</div>
-					<ButtonGroup aria-label='Actions des tâches'>
-						{/* Export/Import */}
-						<ButtonGroup>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant='ghost'
-										size='icon'
-										className='h-8 w-8'
-										onClick={exportTodos}
-										aria-label='Exporter les tâches'
-									>
-										<Download className='h-4 w-4' />
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>Exporter les tâches</p>
-								</TooltipContent>
-							</Tooltip>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant='ghost'
-										size='icon'
-										className='h-8 w-8'
-										onClick={importTodos}
-										aria-label='Importer les tâches'
-									>
-										<Upload className='h-4 w-4' />
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>Importer des tâches</p>
-								</TooltipContent>
-							</Tooltip>
-						</ButtonGroup>
+					</>
+				)}
 
-						{/* Undo/Redo */}
-						<ButtonGroup>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant='ghost'
-										size='icon'
-										className='h-8 w-8'
-										onClick={undo}
-										disabled={!canUndo}
-										aria-label='Annuler'
-									>
-										<Undo2 className='h-4 w-4' />
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>Annuler (Ctrl+Z)</p>
-								</TooltipContent>
-							</Tooltip>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant='ghost'
-										size='icon'
-										className='h-8 w-8'
-										onClick={redo}
-										disabled={!canRedo}
-										aria-label='Refaire'
-									>
-										<Redo2 className='h-4 w-4' />
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>Refaire (Ctrl+Shift+Z)</p>
-								</TooltipContent>
-							</Tooltip>
-						</ButtonGroup>
-
-						{/* Notifications et Sync */}
-						<ButtonGroup>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant='ghost'
-										size='icon'
-										className='h-8 w-8'
-										onClick={
-											notificationPermission === "granted"
-												? toggleNotifications
-												: handleRequestNotificationPermission
-										}
-										aria-label='Notifications'
-									>
-										{notificationPermission === "granted" &&
-										notificationSettings.enabled ? (
-											<Bell className='h-4 w-4' />
-										) : (
-											<BellOff className='h-4 w-4' />
-										)}
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>
-										{notificationPermission === "granted"
-											? notificationSettings.enabled
-												? "Désactiver les notifications"
-												: "Activer les notifications"
-											: "Activer les notifications"}
-									</p>
-								</TooltipContent>
-							</Tooltip>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant='ghost'
-										size='icon'
-										className='h-8 w-8'
-										onClick={handleSync}
-										disabled={isSyncing}
-										aria-label='Synchroniser'
-									>
-										<RefreshCw
-											className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
-										/>
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>Synchroniser avec les services externes</p>
-								</TooltipContent>
-							</Tooltip>
-						</ButtonGroup>
-
-						<input
-							ref={fileInputRef}
-							type='file'
-							accept='.json'
-							onChange={handleFileInputChange}
-							className='hidden'
-						/>
-					</ButtonGroup>
-				</div>
-
-				{/* Drag & drop overlay */}
-				{isDragging && (
+				{/* Drag & drop overlay - affiché seulement si pas compact */}
+				{!isCompact && isDragging && (
 					<div className='absolute inset-0 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center z-50'>
 						<div className='text-center'>
 							<Upload className='h-8 w-8 mx-auto mb-2 text-primary' />
@@ -749,332 +1132,757 @@ export function TodoWidget() {
 					</div>
 				)}
 
-				{/* Stats */}
-				{totalCount > 0 && (
-					<div className='space-y-3'>
-						<div className='flex items-center justify-between'>
-							<div className='flex items-center justify-between text-sm flex-1'>
-								<span className='text-muted-foreground'>Progression</span>
-								<span className='font-medium'>{progressPercentage}%</span>
+				{/* MEDIUM VERSION */}
+				{isMedium && (
+					<>
+						{/* Stats compactes */}
+						{totalCount > 0 && (
+							<div className='space-y-2'>
+								<div className='flex items-center justify-between text-xs'>
+									<span className='text-muted-foreground'>Progression</span>
+									<span className='font-medium'>{progressPercentage}%</span>
+								</div>
+								<Progress value={progressPercentage} className='h-1.5' />
+								<div className='flex gap-3 text-xs text-muted-foreground'>
+									<span>{activeCount} actives</span>
+									<span>{completedCount} terminées</span>
+									{priorityCount > 0 && <span>{priorityCount} ⭐</span>}
+									{overdueCount > 0 && (
+										<span className='text-red-600 font-medium'>
+											{overdueCount} en retard
+										</span>
+									)}
+								</div>
 							</div>
+						)}
+
+						{/* Recherche (icône) */}
+						<div className='flex justify-end'>
+							<Popover>
+								<PopoverTrigger asChild>
+									<Button
+										variant='outline'
+										size='icon'
+										className='h-7 w-7'
+										onMouseDown={(e: React.MouseEvent) => {
+											e.stopPropagation();
+										}}
+										onDragStart={(e: React.DragEvent) => {
+											e.preventDefault();
+											e.stopPropagation();
+										}}
+									>
+										<Search className='h-3.5 w-3.5' />
+										<span className='sr-only'>Rechercher</span>
+									</Button>
+								</PopoverTrigger>
+								<PopoverContent className='w-64 p-2'>
+									<div className='relative'>
+										<Search className='absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+										<Input
+											type='text'
+											placeholder='Rechercher...'
+											value={searchQuery}
+											onChange={(e) => setSearchQuery(e.target.value)}
+											onMouseDown={(e: React.MouseEvent) => {
+												e.stopPropagation();
+											}}
+											onDragStart={(e: React.DragEvent) => {
+												e.preventDefault();
+												e.stopPropagation();
+											}}
+											className='pl-8'
+											aria-label='Rechercher dans les tâches'
+										/>
+									</div>
+								</PopoverContent>
+							</Popover>
+						</div>
+
+						{/* Input ajout */}
+						<form onSubmit={handleAddTodo} className='flex flex-col gap-1.5'>
+							<div className='flex gap-1.5'>
+								<Input
+									ref={inputRef}
+									placeholder='Ajouter une tâche...'
+									onMouseDown={(e: React.MouseEvent) => {
+										e.stopPropagation();
+									}}
+									onDragStart={(e: React.DragEvent) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+									className='flex-1 h-9 text-sm'
+									aria-label='Nouvelle tâche'
+								/>
+								<Button
+									type='submit'
+									size='sm'
+									className='h-9'
+									onMouseDown={(e: React.MouseEvent) => {
+										e.stopPropagation();
+									}}
+									onDragStart={(e: React.DragEvent) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+								>
+									Ajouter
+								</Button>
+							</div>
+						</form>
+
+						{/* Filtres compacts */}
+						<div className='flex gap-1.5'>
 							<Button
-								variant='ghost'
+								variant={filter === "all" ? "default" : "outline"}
 								size='sm'
-								onClick={() => setShowStats(!showStats)}
-								className='h-8'
-								aria-label='Afficher les statistiques'
+								onClick={() => setFilter("all")}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+								className='h-8 text-sm'
 							>
-								{showStats ? (
-									<BarChart3 className='h-4 w-4' />
-								) : (
-									<PieChart className='h-4 w-4' />
-								)}
+								Toutes
+							</Button>
+							<Button
+								variant={filter === "active" ? "default" : "outline"}
+								size='sm'
+								onClick={() => setFilter("active")}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+								className='h-8 text-sm'
+							>
+								Actives
+							</Button>
+							<Button
+								variant={filter === "completed" ? "default" : "outline"}
+								size='sm'
+								onClick={() => setFilter("completed")}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+								className='h-8 text-sm'
+							>
+								Terminées
 							</Button>
 						</div>
-						<Progress value={progressPercentage} className='w-full' />
-						<div className='flex gap-4 text-xs text-muted-foreground'>
-							<span>
-								{activeCount} active{activeCount !== 1 ? "s" : ""}
-							</span>
-							<span>
-								{completedCount} terminée{completedCount !== 1 ? "s" : ""}
-							</span>
-							{priorityCount > 0 && (
-								<span>
-									{priorityCount} prioritaire{priorityCount !== 1 ? "s" : ""}
-								</span>
-							)}
-							{overdueCount > 0 && (
-								<span className='text-red-600 font-medium'>
-									{overdueCount} en retard
-								</span>
-							)}
-						</div>
 
-						{/* Visual Statistics Charts */}
-						{showStats && (
-							<div className='grid grid-cols-2 gap-4 pt-2'>
-								{/* Status Pie Chart */}
-								<div className='space-y-2'>
-									<h4 className='text-xs font-medium text-muted-foreground'>
-										Par statut
-									</h4>
-									<ChartContainer config={chartConfig} className='h-[120px]'>
-										<RechartsPieChart>
-											<ChartTooltip
-												content={<ChartTooltipContent hideLabel />}
-											/>
-											<Pie
-												data={statusChartData}
-												dataKey='value'
-												nameKey='name'
-												cx='50%'
-												cy='50%'
-												outerRadius={50}
+						{/* Liste des tâches */}
+						<div className='flex-1 overflow-y-auto min-h-0'>
+							<div className='flex flex-col gap-1.5'>
+								{filtered.length === 0 ? (
+									<motion.div
+										key='empty'
+										initial={{ opacity: 0 }}
+										animate={{ opacity: 1 }}
+										className='text-center text-muted-foreground py-4 text-xs'
+									>
+										{searchQuery
+											? "Aucune tâche ne correspond à votre recherche"
+											: filter === "all"
+											? "Aucune tâche. Ajoutez-en une !"
+											: filter === "active"
+											? "Aucune tâche active"
+											: filter === "completed"
+											? "Aucune tâche terminée"
+											: "Aucune tâche prioritaire"}
+									</motion.div>
+								) : (
+									filtered.map((todo) => {
+										const deadlineStatus = getDeadlineStatus(todo.deadline);
+										return (
+											<motion.div
+												key={todo.id}
+												initial={{ opacity: 0, y: -10 }}
+												animate={{ opacity: 1, y: 0 }}
+												exit={{ opacity: 0, x: -20 }}
+												layout
 											>
-												{statusChartData.map((entry, index) => (
-													<Cell key={`cell-${index}`} fill={entry.fill} />
-												))}
-											</Pie>
-										</RechartsPieChart>
-									</ChartContainer>
+												<div
+													className={cn(
+														"rounded-md border p-2 text-xs group",
+														todo.priority
+															? "border-yellow-400/50 bg-yellow-50/30 dark:bg-yellow-950/10"
+															: "border-border",
+														todo.completed && "opacity-60"
+													)}
+												>
+													<div className='flex items-start justify-between gap-2'>
+														<div className='flex items-start gap-1.5 flex-1 min-w-0'>
+															<Checkbox
+																checked={todo.completed}
+																onCheckedChange={() => toggleTodo(todo.id)}
+																onMouseDown={(e: React.MouseEvent) => {
+																	e.stopPropagation();
+																}}
+																onDragStart={(e: React.DragEvent) => {
+																	e.preventDefault();
+																	e.stopPropagation();
+																}}
+																className='mt-0.5 h-3.5 w-3.5'
+																aria-label={
+																	todo.completed
+																		? "Marquer comme non terminé"
+																		: "Marquer comme terminé"
+																}
+															/>
+															<div className='flex-1 min-w-0'>
+																{editingId === todo.id ? (
+																	<div className='flex flex-col gap-1.5'>
+																		<Input
+																			ref={editInputRef}
+																			value={editingValue}
+																			onChange={(
+																				e: React.ChangeEvent<HTMLInputElement>
+																			) => setEditingValue(e.target.value)}
+																			onBlur={() => saveEdit(todo.id)}
+																			onKeyDown={(
+																				e: React.KeyboardEvent<HTMLInputElement>
+																			) => {
+																				if (e.key === "Enter") {
+																					saveEdit(todo.id);
+																				} else if (e.key === "Escape") {
+																					cancelEdit();
+																				}
+																			}}
+																			onMouseDown={(e: React.MouseEvent) => {
+																				e.stopPropagation();
+																			}}
+																			onDragStart={(e: React.DragEvent) => {
+																				e.preventDefault();
+																				e.stopPropagation();
+																			}}
+																			className='flex-1 h-7 text-xs'
+																		/>
+																	</div>
+																) : (
+																	<>
+																		<div
+																			className={cn(
+																				"font-medium",
+																				todo.completed &&
+																					"line-through text-muted-foreground"
+																			)}
+																			onDoubleClick={() => startEdit(todo)}
+																		>
+																			{todo.title}
+																		</div>
+																		{deadlineStatus && !todo.completed && (
+																			<div className='text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1'>
+																				<Calendar className='h-2.5 w-2.5' />
+																				<span>{deadlineStatus.text}</span>
+																				{deadlineStatus.status ===
+																					"overdue" && (
+																					<AlertCircle className='h-2.5 w-2.5 text-destructive' />
+																				)}
+																			</div>
+																		)}
+																	</>
+																)}
+															</div>
+														</div>
+														{!editingId && (
+															<div className='opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5'>
+																<Button
+																	variant='ghost'
+																	size='icon'
+																	className='h-5 w-5'
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		togglePriority(todo.id);
+																	}}
+																	onMouseDown={(e: React.MouseEvent) => {
+																		e.stopPropagation();
+																	}}
+																	onDragStart={(e: React.DragEvent) => {
+																		e.preventDefault();
+																		e.stopPropagation();
+																	}}
+																	aria-label={
+																		todo.priority
+																			? "Retirer la priorité"
+																			: "Marquer comme prioritaire"
+																	}
+																>
+																	<Star
+																		className={cn(
+																			"h-2.5 w-2.5",
+																			todo.priority
+																				? "fill-yellow-400 text-yellow-400"
+																				: "text-muted-foreground"
+																		)}
+																	/>
+																</Button>
+																<Button
+																	variant='ghost'
+																	size='icon'
+																	className='h-5 w-5'
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		handleDeleteClick(todo.id);
+																	}}
+																	onMouseDown={(e: React.MouseEvent) => {
+																		e.stopPropagation();
+																	}}
+																	onDragStart={(e: React.DragEvent) => {
+																		e.preventDefault();
+																		e.stopPropagation();
+																	}}
+																	aria-label='Supprimer la tâche'
+																>
+																	×
+																</Button>
+															</div>
+														)}
+													</div>
+												</div>
+											</motion.div>
+										);
+									})
+								)}
+							</div>
+						</div>
+					</>
+				)}
+
+				{/* FULL VERSION */}
+				{isFull && (
+					<>
+						{/* Stats */}
+						{totalCount > 0 && (
+							<div className='space-y-3'>
+								<div className='flex items-center justify-between'>
+									<div className='flex items-center justify-between text-sm flex-1'>
+										<span className='text-muted-foreground'>Progression</span>
+										<span className='font-medium'>{progressPercentage}%</span>
+									</div>
+									<Button
+										variant='ghost'
+										size='sm'
+										onClick={() => setShowStats(!showStats)}
+										onMouseDown={(e: React.MouseEvent) => {
+											e.stopPropagation();
+										}}
+										onDragStart={(e: React.DragEvent) => {
+											e.preventDefault();
+											e.stopPropagation();
+										}}
+										className='h-8'
+										aria-label='Afficher les statistiques'
+									>
+										{showStats ? (
+											<BarChart3 className='h-4 w-4' />
+										) : (
+											<PieChart className='h-4 w-4' />
+										)}
+									</Button>
+								</div>
+								<Progress value={progressPercentage} className='w-full' />
+								<div className='flex gap-4 text-xs text-muted-foreground'>
+									<span>
+										{activeCount} active{activeCount !== 1 ? "s" : ""}
+									</span>
+									<span>
+										{completedCount} terminée{completedCount !== 1 ? "s" : ""}
+									</span>
+									{priorityCount > 0 && (
+										<span>
+											{priorityCount} prioritaire
+											{priorityCount !== 1 ? "s" : ""}
+										</span>
+									)}
+									{overdueCount > 0 && (
+										<span className='text-red-600 font-medium'>
+											{overdueCount} en retard
+										</span>
+									)}
 								</div>
 
-								{/* Priority Pie Chart */}
-								{priorityCount > 0 && (
-									<div className='space-y-2'>
-										<h4 className='text-xs font-medium text-muted-foreground'>
-											Par priorité
-										</h4>
-										<ChartContainer config={chartConfig} className='h-[120px]'>
-											<RechartsPieChart>
-												<ChartTooltip
-													content={<ChartTooltipContent hideLabel />}
-												/>
-												<Pie
-													data={priorityChartData}
-													dataKey='value'
-													nameKey='name'
-													cx='50%'
-													cy='50%'
-													outerRadius={50}
+								{/* Visual Statistics Charts */}
+								{showStats && (
+									<div className='grid grid-cols-2 gap-4 pt-2'>
+										{/* Status Pie Chart */}
+										<div className='space-y-2'>
+											<h4 className='text-xs font-medium text-muted-foreground'>
+												Par statut
+											</h4>
+											<ChartContainer
+												config={chartConfig}
+												className='h-[120px]'
+											>
+												<RechartsPieChart>
+													<ChartTooltip
+														content={<ChartTooltipContent hideLabel />}
+													/>
+													<Pie
+														data={statusChartData}
+														dataKey='value'
+														nameKey='name'
+														cx='50%'
+														cy='50%'
+														outerRadius={50}
+													>
+														{statusChartData.map((entry, index) => (
+															<Cell key={`cell-${index}`} fill={entry.fill} />
+														))}
+													</Pie>
+												</RechartsPieChart>
+											</ChartContainer>
+										</div>
+
+										{/* Priority Pie Chart */}
+										{priorityCount > 0 && (
+											<div className='space-y-2'>
+												<h4 className='text-xs font-medium text-muted-foreground'>
+													Par priorité
+												</h4>
+												<ChartContainer
+													config={chartConfig}
+													className='h-[120px]'
 												>
-													{priorityChartData.map((entry, index) => (
-														<Cell key={`cell-${index}`} fill={entry.fill} />
-													))}
-												</Pie>
-											</RechartsPieChart>
-										</ChartContainer>
+													<RechartsPieChart>
+														<ChartTooltip
+															content={<ChartTooltipContent hideLabel />}
+														/>
+														<Pie
+															data={priorityChartData}
+															dataKey='value'
+															nameKey='name'
+															cx='50%'
+															cy='50%'
+															outerRadius={50}
+														>
+															{priorityChartData.map((entry, index) => (
+																<Cell key={`cell-${index}`} fill={entry.fill} />
+															))}
+														</Pie>
+													</RechartsPieChart>
+												</ChartContainer>
+											</div>
+										)}
 									</div>
 								)}
 							</div>
 						)}
-					</div>
-				)}
 
-				{/* Search */}
-				<div className='relative'>
-					<Search className='absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-					<Input
-						type='text'
-						placeholder='Rechercher...'
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-						className='pl-8'
-						aria-label='Rechercher dans les tâches'
-					/>
-				</div>
-
-				{/* Add todo form */}
-				<form onSubmit={handleAddTodo} className='flex flex-col gap-2'>
-					<div className='flex gap-2'>
-						<Input
-							ref={inputRef}
-							placeholder='Ajouter une tâche...'
-							className='flex-1'
-							aria-label='Nouvelle tâche'
-						/>
-						<Button type='submit'>Ajouter</Button>
-					</div>
-					{showNewDeadline ? (
-						<div className='flex gap-2 items-center'>
-							<Calendar className='h-4 w-4 text-muted-foreground' />
+						{/* Recherche complète */}
+						<div className='relative'>
+							<Search className='absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
 							<Input
-								type='date'
-								value={newTodoDeadline}
-								onChange={(e) => setNewTodoDeadline(e.target.value)}
-								className='flex-1'
-								aria-label='Date limite'
-							/>
-							<Button
-								type='button'
-								variant='ghost'
-								size='sm'
-								onClick={() => {
-									setShowNewDeadline(false);
-									setNewTodoDeadline("");
+								type='text'
+								placeholder='Rechercher...'
+								value={searchQuery}
+								onChange={(e) => setSearchQuery(e.target.value)}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
 								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+								className='pl-8'
+								aria-label='Rechercher dans les tâches'
+							/>
+						</div>
+
+						{/* Input ajout avec deadline */}
+						<form onSubmit={handleAddTodo} className='flex flex-col gap-2'>
+							<div className='flex gap-2'>
+								<Input
+									ref={inputRef}
+									placeholder='Ajouter une tâche...'
+									onMouseDown={(e: React.MouseEvent) => {
+										e.stopPropagation();
+									}}
+									onDragStart={(e: React.DragEvent) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+									className='flex-1'
+									aria-label='Nouvelle tâche'
+								/>
+								<Button
+									type='submit'
+									onMouseDown={(e: React.MouseEvent) => {
+										e.stopPropagation();
+									}}
+									onDragStart={(e: React.DragEvent) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+								>
+									Ajouter
+								</Button>
+							</div>
+							{showNewDeadline ? (
+								<div className='flex gap-2 items-center'>
+									<Calendar className='h-4 w-4 text-muted-foreground' />
+									<Input
+										type='date'
+										value={newTodoDeadline}
+										onChange={(e) => setNewTodoDeadline(e.target.value)}
+										onMouseDown={(e: React.MouseEvent) => {
+											e.stopPropagation();
+										}}
+										onDragStart={(e: React.DragEvent) => {
+											e.preventDefault();
+											e.stopPropagation();
+										}}
+										className='flex-1'
+										aria-label='Date limite'
+									/>
+									<Button
+										type='button'
+										variant='ghost'
+										size='sm'
+										onClick={() => {
+											setShowNewDeadline(false);
+											setNewTodoDeadline("");
+										}}
+										onMouseDown={(e: React.MouseEvent) => {
+											e.stopPropagation();
+										}}
+										onDragStart={(e: React.DragEvent) => {
+											e.preventDefault();
+											e.stopPropagation();
+										}}
+									>
+										Annuler
+									</Button>
+								</div>
+							) : (
+								<Button
+									type='button'
+									variant='outline'
+									size='sm'
+									onClick={() => setShowNewDeadline(true)}
+									className='w-fit'
+									onMouseDown={(e: React.MouseEvent) => {
+										e.stopPropagation();
+									}}
+									onDragStart={(e: React.DragEvent) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+								>
+									<Calendar className='h-4 w-4 mr-2' />
+									Ajouter une date limite
+								</Button>
+							)}
+						</form>
+
+						{/* Filtres complets */}
+						<div className='flex gap-2 text-sm items-center flex-wrap'>
+							<Button
+								variant={filter === "all" ? "default" : "outline"}
+								size='sm'
+								onClick={() => setFilter("all")}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+								aria-label='Toutes les tâches'
 							>
-								Annuler
+								Toutes
+							</Button>
+							<Button
+								variant={filter === "active" ? "default" : "outline"}
+								size='sm'
+								onClick={() => setFilter("active")}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+								aria-label='Tâches actives'
+							>
+								Actives
+							</Button>
+							<Button
+								variant={filter === "completed" ? "default" : "outline"}
+								size='sm'
+								onClick={() => setFilter("completed")}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+								aria-label='Tâches terminées'
+							>
+								Terminées
+							</Button>
+							<Button
+								variant={filter === "priority" ? "default" : "outline"}
+								size='sm'
+								onClick={() => setFilter("priority")}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+								aria-label='Tâches prioritaires'
+							>
+								<Star className='h-3 w-3 mr-1' />
+								Prioritaires
 							</Button>
 						</div>
-					) : (
-						<Button
-							type='button'
-							variant='outline'
-							size='sm'
-							onClick={() => setShowNewDeadline(true)}
-							className='w-fit'
-						>
-							<Calendar className='h-4 w-4 mr-2' />
-							Ajouter une date limite
-						</Button>
-					)}
-				</form>
 
-				{/* Filter buttons */}
-				<div className='flex gap-2 text-sm items-center flex-wrap'>
-					<Button
-						variant={filter === "all" ? "default" : "outline"}
-						size='sm'
-						onClick={() => setFilter("all")}
-						aria-label='Toutes les tâches'
-					>
-						Toutes
-					</Button>
-					<Button
-						variant={filter === "active" ? "default" : "outline"}
-						size='sm'
-						onClick={() => setFilter("active")}
-						aria-label='Tâches actives'
-					>
-						Actives
-					</Button>
-					<Button
-						variant={filter === "completed" ? "default" : "outline"}
-						size='sm'
-						onClick={() => setFilter("completed")}
-						aria-label='Tâches terminées'
-					>
-						Terminées
-					</Button>
-					<Button
-						variant={filter === "priority" ? "default" : "outline"}
-						size='sm'
-						onClick={() => setFilter("priority")}
-						aria-label='Tâches prioritaires'
-					>
-						<Star className='h-3 w-3 mr-1' />
-						Prioritaires
-					</Button>
-				</div>
-
-				{/* Todo list */}
-				<div className='flex flex-col gap-2 min-h-[200px] max-h-[400px] overflow-y-auto'>
-					{filtered.length === 0 ? (
-						<motion.div
-							key='empty'
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							className='text-center text-muted-foreground py-8'
-						>
-							{searchQuery
-								? "Aucune tâche ne correspond à votre recherche"
-								: filter === "all"
-								? "Aucune tâche. Ajoutez-en une !"
-								: filter === "active"
-								? "Aucune tâche active"
-								: filter === "completed"
-								? "Aucune tâche terminée"
-								: "Aucune tâche prioritaire"}
-						</motion.div>
-					) : (
-						filtered.map((todo) => {
-							const deadlineStatus = getDeadlineStatus(todo.deadline);
-
-							return (
+						{/* Liste complète */}
+						<div className='flex flex-col gap-2 min-h-[200px] max-h-[400px] overflow-y-auto'>
+							{filtered.length === 0 ? (
 								<motion.div
-									key={todo.id}
-									initial={{ opacity: 0, y: -10 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, x: -20 }}
-									layout
+									key='empty'
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									className='text-center text-muted-foreground py-8 text-sm'
 								>
-									<div
-										className={cn(
-											"rounded-md p-2 border text-sm group",
-											todo.priority
-												? "border-yellow-400/50 bg-yellow-50/30 dark:bg-yellow-950/10"
-												: "border-border",
-											todo.completed && "opacity-60"
-										)}
-									>
-										<div className='flex items-start justify-between gap-2'>
-											<div className='flex items-start gap-2 flex-1 min-w-0'>
-												{/* Checkbox */}
-												<Checkbox
-													checked={todo.completed}
-													onCheckedChange={() => toggleTodo(todo.id)}
-													aria-label={
-														todo.completed
-															? "Marquer comme non terminé"
-															: "Marquer comme terminé"
-													}
-													className='mt-0.5'
-												/>
-
-												{/* Todo content */}
-												<div className='flex-1 min-w-0'>
-													{editingId === todo.id ? (
-														<div className='flex flex-col gap-2'>
-															<Input
-																ref={editInputRef}
-																value={editingValue}
-																onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-																	setEditingValue(e.target.value)
-																}
-																onBlur={() => saveEdit(todo.id)}
-																onKeyDown={(
-																	e: React.KeyboardEvent<HTMLInputElement>
-																) => {
-																	if (e.key === "Enter") {
-																		saveEdit(todo.id);
-																	} else if (e.key === "Escape") {
-																		cancelEdit();
-																	}
-																}}
-																className='flex-1 h-8'
-															/>
-															<div className='flex gap-2 items-center'>
-																<Calendar className='h-4 w-4 text-muted-foreground' />
+									{searchQuery
+										? "Aucune tâche ne correspond à votre recherche"
+										: filter === "all"
+										? "Aucune tâche. Ajoutez-en une !"
+										: filter === "active"
+										? "Aucune tâche active"
+										: filter === "completed"
+										? "Aucune tâche terminée"
+										: "Aucune tâche prioritaire"}
+								</motion.div>
+							) : (
+								filtered.map((todo) => {
+									const deadlineStatus = getDeadlineStatus(todo.deadline);
+									return (
+										<motion.div
+											key={todo.id}
+											initial={{ opacity: 0, y: -10 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, x: -20 }}
+											layout
+										>
+											<div
+												className={cn(
+													"rounded-md border p-3 group",
+													todo.priority
+														? "border-yellow-400/50 bg-yellow-50/30 dark:bg-yellow-950/10"
+														: "border-border",
+													todo.completed && "opacity-60"
+												)}
+											>
+												<div className='flex items-start justify-between gap-2'>
+													<div className='flex items-start gap-2 flex-1 min-w-0'>
+														<Checkbox
+															checked={todo.completed}
+															onCheckedChange={() => toggleTodo(todo.id)}
+															onMouseDown={(e: React.MouseEvent) => {
+																e.stopPropagation();
+															}}
+															onDragStart={(e: React.DragEvent) => {
+																e.preventDefault();
+																e.stopPropagation();
+															}}
+															className='mt-1'
+															aria-label={
+																todo.completed
+																	? "Marquer comme non terminé"
+																	: "Marquer comme terminé"
+															}
+														/>
+														<div className='flex-1 min-w-0'>
+															{editingId === todo.id ? (
 																<Input
-																	type='date'
-																	value={editingDeadline}
-																	onChange={(e) =>
-																		setEditingDeadline(e.target.value)
-																	}
+																	ref={editInputRef}
+																	value={editingValue}
+																	onChange={(
+																		e: React.ChangeEvent<HTMLInputElement>
+																	) => setEditingValue(e.target.value)}
+																	onBlur={() => saveEdit(todo.id)}
+																	onKeyDown={(
+																		e: React.KeyboardEvent<HTMLInputElement>
+																	) => {
+																		if (e.key === "Enter") {
+																			saveEdit(todo.id);
+																		} else if (e.key === "Escape") {
+																			cancelEdit();
+																		}
+																	}}
+																	onMouseDown={(e: React.MouseEvent) => {
+																		e.stopPropagation();
+																	}}
+																	onDragStart={(e: React.DragEvent) => {
+																		e.preventDefault();
+																		e.stopPropagation();
+																	}}
 																	className='flex-1'
 																/>
-															</div>
-														</div>
-													) : (
-														<>
-															<div
-																className={cn(
-																	"font-medium",
-																	todo.completed &&
-																		"line-through text-muted-foreground"
-																)}
-																onDoubleClick={() => startEdit(todo)}
-															>
-																{todo.title}
-															</div>
-															{deadlineStatus && !todo.completed && (
-																<div className='text-muted-foreground text-xs mt-1 flex items-center gap-1'>
-																	<Calendar className='h-3 w-3' />
-																	<span>{deadlineStatus.text}</span>
-																	{deadlineStatus.status === "overdue" && (
-																		<AlertCircle className='h-3 w-3 text-destructive' />
+															) : (
+																<>
+																	<div
+																		className={cn(
+																			"font-medium",
+																			todo.completed &&
+																				"line-through text-muted-foreground"
+																		)}
+																		onDoubleClick={() => startEdit(todo)}
+																		onMouseDown={(e: React.MouseEvent) => {
+																			e.stopPropagation();
+																		}}
+																		onDragStart={(e: React.DragEvent) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+																		}}
+																	>
+																		{todo.title}
+																	</div>
+																	{deadlineStatus && !todo.completed && (
+																		<div className='text-xs text-muted-foreground mt-1 flex items-center gap-1'>
+																			<Calendar className='h-3 w-3' />
+																			<span>{deadlineStatus.text}</span>
+																			{deadlineStatus.status === "overdue" && (
+																				<AlertCircle className='h-3 w-3 text-destructive' />
+																			)}
+																		</div>
 																	)}
-																</div>
+																</>
 															)}
-														</>
-													)}
-												</div>
-											</div>
-
-											{!editingId && (
-												<div className='opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1'>
-													{/* Priority button */}
-													<Tooltip>
-														<TooltipTrigger asChild>
+														</div>
+													</div>
+													{!editingId && (
+														<div className='opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1'>
 															<Button
 																variant='ghost'
 																size='icon'
-																className='h-6 w-6'
+																className='h-8 w-8'
 																onClick={(e) => {
 																	e.stopPropagation();
 																	togglePriority(todo.id);
+																}}
+																onMouseDown={(e: React.MouseEvent) => {
+																	e.stopPropagation();
+																}}
+																onDragStart={(e: React.DragEvent) => {
+																	e.preventDefault();
+																	e.stopPropagation();
 																}}
 																aria-label={
 																	todo.priority
@@ -1084,57 +1892,62 @@ export function TodoWidget() {
 															>
 																<Star
 																	className={cn(
-																		"h-3 w-3",
+																		"h-4 w-4",
 																		todo.priority
 																			? "fill-yellow-400 text-yellow-400"
 																			: "text-muted-foreground"
 																	)}
 																/>
 															</Button>
-														</TooltipTrigger>
-														<TooltipContent>
-															<p>
-																{todo.priority
-																	? "Retirer la priorité"
-																	: "Marquer comme prioritaire"}
-															</p>
-														</TooltipContent>
-													</Tooltip>
-													{/* Edit button */}
-													<Button
-														variant='ghost'
-														size='icon'
-														className='h-6 w-6'
-														onClick={(e) => {
-															e.stopPropagation();
-															startEdit(todo);
-														}}
-														aria-label='Modifier la tâche'
-													>
-														<Edit2 className='h-3 w-3' />
-													</Button>
-													{/* Delete button */}
-													<Button
-														variant='ghost'
-														size='icon'
-														className='h-6 w-6'
-														onClick={(e) => {
-															e.stopPropagation();
-															handleDeleteClick(todo.id);
-														}}
-														aria-label='Supprimer la tâche'
-													>
-														×
-													</Button>
+															<Button
+																variant='ghost'
+																size='icon'
+																className='h-8 w-8'
+																onClick={(e) => {
+																	e.stopPropagation();
+																	startEdit(todo);
+																}}
+																onMouseDown={(e: React.MouseEvent) => {
+																	e.stopPropagation();
+																}}
+																onDragStart={(e: React.DragEvent) => {
+																	e.preventDefault();
+																	e.stopPropagation();
+																}}
+																aria-label='Modifier la tâche'
+															>
+																<Edit2 className='h-4 w-4' />
+															</Button>
+															<Button
+																variant='ghost'
+																size='icon'
+																className='h-8 w-8'
+																onClick={(e) => {
+																	e.stopPropagation();
+																	handleDeleteClick(todo.id);
+																}}
+																onMouseDown={(e: React.MouseEvent) => {
+																	e.stopPropagation();
+																}}
+																onDragStart={(e: React.DragEvent) => {
+																	e.preventDefault();
+																	e.stopPropagation();
+																}}
+																aria-label='Supprimer la tâche'
+															>
+																<Trash2 className='h-4 w-4' />
+															</Button>
+														</div>
+													)}
 												</div>
-											)}
-										</div>
-									</div>
-								</motion.div>
-							);
-						})
-					)}
-				</div>
+											</div>
+										</motion.div>
+									);
+								})
+							)}
+						</div>
+					</>
+				)}
 
 				{/* Delete confirmation dialog */}
 				<Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -1150,10 +1963,27 @@ export function TodoWidget() {
 							<Button
 								variant='outline'
 								onClick={() => setDeleteDialogOpen(false)}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
 							>
 								Annuler
 							</Button>
-							<Button variant='destructive' onClick={confirmDelete}>
+							<Button
+								variant='destructive'
+								onClick={confirmDelete}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+							>
 								Supprimer
 							</Button>
 						</DialogFooter>

@@ -47,6 +47,9 @@ import {
 	RefreshCw,
 	Search,
 	Repeat,
+	ChevronLeft,
+	ChevronRight,
+	Trash2,
 } from "lucide-react";
 import {
 	format,
@@ -76,6 +79,7 @@ import {
 } from "@/lib/calendarNotifications";
 import { calendarSyncManager } from "@/lib/sync/calendarSyncManager";
 import { isDateInRecurrence } from "@/lib/calendarRecurrence";
+import type { WidgetProps } from "@/lib/widgetSize";
 
 // Fonction utilitaire pour formater une date en YYYY-MM-DD en local (évite les problèmes de timezone)
 function formatDateLocal(date: Date): string {
@@ -85,7 +89,10 @@ function formatDateLocal(date: Date): string {
 	return `${year}-${month}-${day}`;
 }
 
-export function CalendarWidget() {
+export function CalendarWidget({ size = "medium" }: WidgetProps) {
+	const isCompact = size === "compact";
+	const isMedium = size === "medium";
+	const isFull = size === "full";
 	const {
 		currentDate,
 		setCurrentDate,
@@ -526,530 +533,1215 @@ export function CalendarWidget() {
 		  })
 		: [];
 
+	const padding = isCompact ? "p-2" : isMedium ? "px-3 pb-3 pt-1" : "p-4";
+
+	// Forcer la vue "month" en mode compact et medium
+	useEffect(() => {
+		if ((isCompact || isMedium) && view !== "month") {
+			setView("month");
+		}
+	}, [isCompact, isMedium, view, setView]);
+
 	return (
-		<Card className='w-full max-w-md'>
-			<CardHeader>
-				{/* Barre de recherche */}
-				<div className='mb-4'>
-					<div className='relative'>
-						<Search className='absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
-						<Input
-							placeholder='Rechercher un événement...'
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-							className='pl-8'
-						/>
-					</div>
-				</div>
+		<Card
+			className={`w-full h-full max-w-none ${padding} flex flex-col ${
+				isCompact ? "overflow-hidden" : "overflow-auto"
+			} min-h-0`}
+		>
+			{/* COMPACT VERSION - Aujourd'hui et ses événements uniquement */}
+			{isCompact ? (
+				(() => {
+					// Toujours afficher aujourd'hui
+					const today = new Date();
+					today.setHours(0, 0, 0, 0);
+					const todayEvents = events.filter((e) => {
+						const eventDate = new Date(e.date);
+						eventDate.setHours(0, 0, 0, 0);
+						return eventDate.getTime() === today.getTime();
+					});
 
-				<div className='flex items-center justify-between w-full'>
-					{/* Boutons d'action à gauche */}
-					<ButtonGroup aria-label='Actions du calendrier'>
-						{/* Vue selector */}
-						<ButtonGroup>
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button variant='outline' size='sm'>
-										{view === "month" && <Grid3x3 className='h-4 w-4' />}
-										{view === "week" && <List className='h-4 w-4' />}
-										{view === "day" && <CalendarViewIcon className='h-4 w-4' />}
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align='end'>
-									<DropdownMenuItem onClick={() => setView("month")}>
-										<Grid3x3 className='mr-2 h-4 w-4' />
-										Mois
-									</DropdownMenuItem>
-									<DropdownMenuItem onClick={() => setView("week")}>
-										<List className='mr-2 h-4 w-4' />
-										Semaine
-									</DropdownMenuItem>
-									<DropdownMenuItem onClick={() => setView("day")}>
-										<CalendarViewIcon className='mr-2 h-4 w-4' />
-										Jour
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
-						</ButtonGroup>
-
-						{/* Export/Import menu */}
-						<ButtonGroup>
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button variant='outline' size='sm'>
-										<Download className='h-4 w-4' />
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align='end'>
-									<DropdownMenuItem onClick={handleExportJSON}>
-										<Download className='mr-2 h-4 w-4' />
-										Exporter JSON
-									</DropdownMenuItem>
-									<DropdownMenuItem onClick={handleExportICS}>
-										<Download className='mr-2 h-4 w-4' />
-										Exporter .ics
-									</DropdownMenuItem>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem onClick={handleImport}>
-										<Upload className='mr-2 h-4 w-4' />
-										Importer JSON
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
-						</ButtonGroup>
-
-						{/* Synchronisation et Notifications */}
-						<ButtonGroup>
-							<Button
-								variant='outline'
-								size='sm'
-								onClick={handleSync}
-								disabled={isSyncing}
-								aria-label='Synchroniser le calendrier'
-							>
-								<RefreshCw
-									className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
-								/>
-							</Button>
-							{notificationPermission === "granted" && (
-								<Button
-									variant='outline'
-									size='sm'
-									onClick={handleToggleNotifications}
-									aria-label={
-										notificationSettings.enabled
-											? "Désactiver les notifications"
-											: "Activer les notifications"
-									}
-								>
-									{notificationSettings.enabled ? (
-										<Bell className='h-4 w-4' />
-									) : (
-										<BellOff className='h-4 w-4' />
-									)}
-								</Button>
-							)}
-						</ButtonGroup>
-					</ButtonGroup>
-
-					{/* Bouton Aujourd'hui à droite */}
-					<Button
-						size='sm'
-						variant='outline'
-						onClick={() => {
-							const today = new Date();
-							setCurrentDate(today);
-							setSelectedDate(today);
-							setNewEventDate(today);
-						}}
-					>
-						Aujourd'hui
-					</Button>
-				</div>
-			</CardHeader>
-
-			{/* Calendrier shadcn/ui */}
-			<CardContent className='px-4'>
-				<motion.div
-					key={`${view}-${currentDate.getMonth()}-${currentDate.getFullYear()}`}
-					initial={{ opacity: 0, x: -10 }}
-					animate={{ opacity: 1, x: 0 }}
-					transition={{ duration: 0.2 }}
-					className='flex justify-center'
-				>
-					{view === "month" && (
-						<CalendarComponent
-							mode='single'
-							selected={selectedDate}
-							onSelect={handleSelect}
-							month={currentDate}
-							onMonthChange={setCurrentDate}
-							modifiers={modifiers}
-							modifiersClassNames={modifiersClassNames}
-							className='bg-transparent p-0'
-							captionLayout='dropdown'
-							required
-							components={{
-								DayButton: ({ day, modifiers, className, ...props }) => {
-									const handleDragOver = (e: React.DragEvent) => {
-										if (draggedEventId) {
-											e.preventDefault();
-											e.stopPropagation();
-										}
-									};
-
-									const handleDrop = (e: React.DragEvent) => {
-										if (draggedEventId) {
-											e.preventDefault();
-											e.stopPropagation();
-											const draggedEvent = events.find(
-												(event) => event.id === draggedEventId
-											);
-											if (draggedEvent) {
-												const newDate = formatDateLocal(day.date);
-												updateEvent(draggedEventId, { date: newDate });
-												toast.success("Événement déplacé");
-												setSelectedDate(day.date);
-											}
-											setDraggedEventId(null);
-										}
-									};
-
-									return (
-										<div
-											onDragOver={handleDragOver}
-											onDrop={handleDrop}
-											className='relative w-full h-full'
-										>
-											<Button
-												variant='ghost'
-												size='icon'
-												className={cn(
-													className,
-													"data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground"
-												)}
-												data-day={day.date.toLocaleDateString()}
-												data-selected-single={
-													modifiers.selected &&
-													!modifiers.range_start &&
-													!modifiers.range_end &&
-													!modifiers.range_middle
-												}
-												data-range-start={modifiers.range_start}
-												data-range-end={modifiers.range_end}
-												data-range-middle={modifiers.range_middle}
-												{...props}
-											>
-												{day.date.getDate()}
-											</Button>
-										</div>
-									);
-								},
-							}}
-						/>
-					)}
-					{view === "week" && (
-						<div className='w-full'>
-							<WeekView
-								currentDate={currentDate}
-								selectedDate={selectedDate}
-								onSelect={handleSelect}
-								getEventsForDate={getEventsForDate}
-								onEventClick={(event: CalendarEvent) => handleEditEvent(event)}
-								setCurrentDate={setCurrentDate}
-								events={events}
-								draggedEventId={draggedEventId}
-								onEventDragStart={handleEventDragStart}
-								onEventDragEnd={handleEventDragEnd}
-								updateEvent={updateEvent}
-							/>
-						</div>
-					)}
-					{view === "day" && (
-						<div className='w-full'>
-							<DayView
-								currentDate={currentDate}
-								selectedDate={selectedDate}
-								onSelect={handleSelect}
-								getEventsForDate={getEventsForDate}
-								onEventClick={(event: CalendarEvent) => handleEditEvent(event)}
-								setCurrentDate={setCurrentDate}
-								events={events}
-								draggedEventId={draggedEventId}
-								onEventDragStart={handleEventDragStart}
-								onEventDragEnd={handleEventDragEnd}
-								updateEvent={updateEvent}
-							/>
-						</div>
-					)}
-				</motion.div>
-			</CardContent>
-
-			{/* Zone d'affichage des événements */}
-			{/* Si recherche active, afficher tous les résultats */}
-			{searchQuery.trim() ? (
-				<CardFooter className='flex flex-col items-start gap-3 border-t px-4 !pt-4 max-h-96 overflow-y-auto'>
-					<div className='flex w-full items-center justify-between px-1'>
-						<div className='text-sm font-medium'>
-							Résultats de recherche ({filteredEvents.length})
-						</div>
-					</div>
-
-					{/* Liste de tous les événements correspondant à la recherche */}
-					{filteredEvents.length === 0 ? (
-						<p className='text-sm text-muted-foreground'>
-							Aucun événement trouvé pour "{searchQuery}"
-						</p>
-					) : (
-						<div className='flex w-full flex-col gap-2'>
-							{filteredEvents.map((event) => {
-								const eventDate = new Date(event.date);
-								return (
-									<div key={event.id} className='space-y-1'>
-										<div className='text-xs text-muted-foreground font-medium'>
-											{eventDate.toLocaleDateString("fr-FR", {
-												day: "numeric",
-												month: "long",
-												year: "numeric",
-											})}
-											{event.time && ` - ${event.time}`}
-										</div>
-										<CalendarEventItem
-											event={event}
-											onEdit={() => {
-												handleEditEvent(event);
-												setSelectedDate(eventDate);
-											}}
-											onDelete={() => deleteEvent(event.id)}
-											onDragStart={() => handleEventDragStart(event.id)}
-											onDragEnd={handleEventDragEnd}
-											isDragging={draggedEventId === event.id}
-										/>
-									</div>
-								);
-							})}
-						</div>
-					)}
-				</CardFooter>
-			) : (
-				/* Sinon, afficher les événements du jour sélectionné */
-				selectedDate && (
-					<CardFooter className='flex flex-col items-start gap-3 border-t px-4 !pt-4'>
-						<div className='flex w-full items-center justify-between px-1'>
-							<div className='text-sm font-medium'>
-								{selectedDate.toLocaleDateString("fr-FR", {
-									day: "numeric",
-									month: "long",
-									year: "numeric",
-								})}
+					return (
+						<div className='flex flex-col h-full justify-center gap-2'>
+							{/* Date d'aujourd'hui */}
+							<div className='text-center'>
+								<div className='text-sm font-bold'>
+									{today.toLocaleDateString("fr-FR", {
+										weekday: "long",
+										day: "numeric",
+										month: "long",
+									})}
+								</div>
+								<div className='text-xs text-muted-foreground mt-0.5'>
+									{today.toLocaleDateString("fr-FR", { year: "numeric" })}
+								</div>
 							</div>
-							<Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
-								<DialogTrigger asChild>
-									<Button
-										variant='ghost'
-										size='icon'
-										className='size-6'
-										title='Ajouter un événement'
-									>
-										<Plus className='h-4 w-4' />
-										<span className='sr-only'>Ajouter un événement</span>
-									</Button>
-								</DialogTrigger>
-								<DialogContent>
-									<DialogHeader>
-										<DialogTitle>
-											{editingEvent
-												? "Modifier l'événement"
-												: "Nouvel événement"}
-										</DialogTitle>
-									</DialogHeader>
-									<div className='flex flex-col gap-4 py-4'>
-										{/* Titre */}
-										<div className='flex flex-col gap-2'>
-											<Label htmlFor='event-title'>Titre *</Label>
-											<Input
-												id='event-title'
-												value={newEventTitle}
-												onChange={(e) => setNewEventTitle(e.target.value)}
-												placeholder="Nom de l'événement"
-											/>
-										</div>
 
-										{/* Date */}
-										<div className='flex flex-col gap-2'>
-											<Label>Date *</Label>
-											<Popover>
-												<PopoverTrigger asChild>
-													<Button
-														variant='outline'
-														className='w-full justify-start text-left font-normal'
-													>
-														<CalendarIcon className='mr-2 h-4 w-4' />
-														{newEventDate ? (
-															format(newEventDate, "PPP", { locale: fr })
-														) : (
-															<span>Sélectionner une date</span>
-														)}
-													</Button>
-												</PopoverTrigger>
-												<PopoverContent className='w-auto p-0' align='start'>
-													<CalendarComponent
-														mode='single'
-														selected={newEventDate}
-														onSelect={setNewEventDate}
-														initialFocus
-														captionLayout='dropdown'
-													/>
-												</PopoverContent>
-											</Popover>
-										</div>
-
-										{/* Heure */}
-										<div className='flex flex-col gap-2'>
-											<Label htmlFor='event-time'>Heure (optionnel)</Label>
-											<div className='relative'>
-												<Clock className='absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
-												<Input
-													id='event-time'
-													type='time'
-													value={newEventTime}
-													onChange={(e) => setNewEventTime(e.target.value)}
-													className='pl-8'
-												/>
-											</div>
-										</div>
-
-										{/* Description */}
-										<div className='flex flex-col gap-2'>
-											<Label htmlFor='event-description'>
-												Description (optionnel)
-											</Label>
-											<Input
-												id='event-description'
-												value={newEventDescription}
-												onChange={(e) => setNewEventDescription(e.target.value)}
-												placeholder="Description de l'événement"
-											/>
-										</div>
-
-										{/* Couleur */}
-										<div className='flex flex-col gap-2'>
-											<Label>Couleur (optionnel)</Label>
-											<div className='flex flex-wrap gap-2'>
-												{eventColors.map((color) => (
-													<button
-														key={color.value}
-														type='button'
-														onClick={() => setNewEventColor(color.value)}
-														className={cn(
-															"h-8 w-8 rounded-full border-2 transition-all",
-															color.class,
-															newEventColor === color.value
-																? "border-primary ring-2 ring-primary ring-offset-2 scale-110"
-																: "border-border hover:scale-105"
-														)}
-														title={color.name}
-														aria-label={`Sélectionner la couleur ${color.name}`}
-													/>
-												))}
-											</div>
-										</div>
-
-										{/* Répétition */}
-										<div className='flex flex-col gap-2'>
-											<Label htmlFor='event-recurrence'>
-												<Repeat className='mr-2 h-4 w-4 inline' />
-												Répétition (optionnel)
-											</Label>
-											<select
-												id='event-recurrence'
-												value={newEventRecurrence}
-												onChange={(e) =>
-													setNewEventRecurrence(
-														e.target.value as
-															| "none"
-															| "daily"
-															| "weekly"
-															| "monthly"
-															| "yearly"
-													)
-												}
-												className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
-											>
-												<option value='none'>Aucune</option>
-												<option value='daily'>Quotidien</option>
-												<option value='weekly'>Hebdomadaire</option>
-												<option value='monthly'>Mensuel</option>
-												<option value='yearly'>Annuel</option>
-											</select>
-										</div>
-
-										{/* Rappel */}
-										<div className='flex flex-col gap-2'>
-											<Label htmlFor='event-reminder'>
-												<Bell className='mr-2 h-4 w-4 inline' />
-												Rappel (optionnel)
-											</Label>
-											<select
-												id='event-reminder'
-												value={newEventReminderMinutes || ""}
-												onChange={(e) =>
-													setNewEventReminderMinutes(
-														e.target.value === ""
-															? undefined
-															: Number(e.target.value)
-													)
-												}
-												className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
-											>
-												<option value=''>Aucun rappel</option>
-												<option value='5'>5 minutes avant</option>
-												<option value='15'>15 minutes avant</option>
-												<option value='30'>30 minutes avant</option>
-												<option value='60'>1 heure avant</option>
-												<option value='120'>2 heures avant</option>
-												<option value='1440'>1 jour avant</option>
-											</select>
-										</div>
-
-										{/* Boutons */}
-										<div className='flex justify-end gap-2 mt-2'>
-											<Button
-												variant='outline'
-												onClick={() => handleDialogOpenChange(false)}
-											>
-												Annuler
-											</Button>
-											<Button
-												onClick={handleCreateEvent}
-												disabled={!newEventDate || !newEventTitle.trim()}
-											>
-												{editingEvent ? "Enregistrer" : "Créer"}
-											</Button>
-										</div>
+							{/* Événements d'aujourd'hui */}
+							<div className='flex-1 min-h-0 overflow-y-auto'>
+								{todayEvents.length === 0 ? (
+									<div className='text-xs text-muted-foreground text-center py-4'>
+										Aucun événement aujourd'hui
 									</div>
-								</DialogContent>
-							</Dialog>
+								) : (
+									<div className='flex flex-col gap-1.5'>
+										{todayEvents
+											.sort((a, b) => {
+												if (!a.time && !b.time) return 0;
+												if (!a.time) return 1;
+												if (!b.time) return -1;
+												return a.time.localeCompare(b.time);
+											})
+											.map((event) => (
+												<div
+													key={event.id}
+													className='flex items-start gap-2 p-2 border rounded-md hover:bg-accent transition-colors'
+												>
+													{event.time && (
+														<div className='text-xs font-medium text-muted-foreground shrink-0 min-w-[45px]'>
+															{event.time}
+														</div>
+													)}
+													<div className='flex-1 min-w-0'>
+														<div className='text-xs font-medium'>
+															{event.title}
+														</div>
+														{event.description && (
+															<div className='text-[10px] text-muted-foreground mt-0.5 line-clamp-1'>
+																{event.description}
+															</div>
+														)}
+													</div>
+												</div>
+											))}
+									</div>
+								)}
+							</div>
 						</div>
-
-						{/* Todos avec deadlines */}
-						{selectedDateTodos.length > 0 && (
-							<div className='mb-2'>
-								<div className='space-y-1'>
-									{selectedDateTodos.map((todo) => (
-										<div
-											key={todo.id}
-											className='bg-muted text-xs p-2 rounded-md flex items-center gap-2'
-										>
-											<Clock className='h-3 w-3 text-orange-600 dark:text-orange-400' />
-											<span className='flex-1'>{todo.title}</span>
-										</div>
-									))}
+					);
+				})()
+			) : isFull ? (
+				<>
+					{/* CardHeader seulement en mode full */}
+					<CardHeader>
+						{/* Barre de recherche - seulement en mode full */}
+						{isFull && (
+							<div className='mb-4'>
+								<div className='relative'>
+									<Search className='absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
+									<Input
+										placeholder='Rechercher un événement...'
+										value={searchQuery}
+										onChange={(e) => setSearchQuery(e.target.value)}
+										className='pl-8'
+									/>
 								</div>
 							</div>
 						)}
 
-						{/* Événements */}
-						<div className='flex w-full flex-col gap-2'>
-							{selectedDateEvents.length === 0 &&
-							selectedDateTodos.length === 0 ? (
-								<p className='text-sm text-muted-foreground'>Aucun événement</p>
-							) : (
-								selectedDateEvents.map((event) => (
-									<CalendarEventItem
-										key={event.id}
-										event={event}
-										onEdit={() => handleEditEvent(event)}
-										onDelete={() => deleteEvent(event.id)}
-										onDragStart={() => handleEventDragStart(event.id)}
-										onDragEnd={handleEventDragEnd}
-										isDragging={draggedEventId === event.id}
-									/>
-								))
+						{/* FULL VERSION - Actions complètes */}
+						<div className='flex items-center justify-between w-full'>
+							{/* Boutons d'action à gauche */}
+							<ButtonGroup aria-label='Actions du calendrier'>
+								{/* Vue selector - seulement en mode full */}
+								{isFull && (
+									<ButtonGroup>
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<Button
+													variant='outline'
+													size='sm'
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+												>
+													{view === "month" && <Grid3x3 className='h-4 w-4' />}
+													{view === "week" && <List className='h-4 w-4' />}
+													{view === "day" && (
+														<CalendarViewIcon className='h-4 w-4' />
+													)}
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align='end'>
+												<DropdownMenuItem onClick={() => setView("month")}>
+													<Grid3x3 className='mr-2 h-4 w-4' />
+													Mois
+												</DropdownMenuItem>
+												<DropdownMenuItem onClick={() => setView("week")}>
+													<List className='mr-2 h-4 w-4' />
+													Semaine
+												</DropdownMenuItem>
+												<DropdownMenuItem onClick={() => setView("day")}>
+													<CalendarViewIcon className='mr-2 h-4 w-4' />
+													Jour
+												</DropdownMenuItem>
+											</DropdownMenuContent>
+										</DropdownMenu>
+									</ButtonGroup>
+								)}
+
+								{/* Export/Import menu */}
+								<ButtonGroup>
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<Button
+												variant='outline'
+												size='sm'
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+											>
+												<Download className='h-4 w-4' />
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align='end'>
+											<DropdownMenuItem onClick={handleExportJSON}>
+												<Download className='mr-2 h-4 w-4' />
+												Exporter JSON
+											</DropdownMenuItem>
+											<DropdownMenuItem onClick={handleExportICS}>
+												<Download className='mr-2 h-4 w-4' />
+												Exporter .ics
+											</DropdownMenuItem>
+											<DropdownMenuSeparator />
+											<DropdownMenuItem onClick={handleImport}>
+												<Upload className='mr-2 h-4 w-4' />
+												Importer JSON
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
+								</ButtonGroup>
+
+								{/* Synchronisation et Notifications */}
+								<ButtonGroup>
+									<Button
+										variant='outline'
+										size='sm'
+										onClick={handleSync}
+										disabled={isSyncing}
+										onMouseDown={(e: React.MouseEvent) => {
+											e.stopPropagation();
+										}}
+										onDragStart={(e: React.DragEvent) => {
+											e.preventDefault();
+											e.stopPropagation();
+										}}
+										aria-label='Synchroniser le calendrier'
+									>
+										<RefreshCw
+											className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
+										/>
+									</Button>
+									{notificationPermission === "granted" && (
+										<Button
+											variant='outline'
+											size='sm'
+											onClick={handleToggleNotifications}
+											onMouseDown={(e: React.MouseEvent) => {
+												e.stopPropagation();
+											}}
+											onDragStart={(e: React.DragEvent) => {
+												e.preventDefault();
+												e.stopPropagation();
+											}}
+											aria-label={
+												notificationSettings.enabled
+													? "Désactiver les notifications"
+													: "Activer les notifications"
+											}
+										>
+											{notificationSettings.enabled ? (
+												<Bell className='h-4 w-4' />
+											) : (
+												<BellOff className='h-4 w-4' />
+											)}
+										</Button>
+									)}
+								</ButtonGroup>
+							</ButtonGroup>
+
+							{/* Bouton Aujourd'hui à droite */}
+							<Button
+								size='sm'
+								variant='outline'
+								onClick={() => {
+									const today = new Date();
+									setCurrentDate(today);
+									setSelectedDate(today);
+									setNewEventDate(today);
+								}}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+							>
+								Aujourd'hui
+							</Button>
+						</div>
+					</CardHeader>
+				</>
+			) : null}
+
+			{/* MEDIUM VERSION - Nouvelle conception */}
+			{isMedium ? (
+				<CardContent className='p-2 pt-0 flex flex-col h-full gap-2'>
+					{/* Header avec date et bouton ajouter */}
+					<div className='flex items-center justify-between shrink-0'>
+						<div>
+							<div className='text-sm font-semibold'>
+								{currentDate.toLocaleDateString("fr-FR", {
+									month: "long",
+									year: "numeric",
+								})}
+							</div>
+							{selectedDate && (
+								<div className='text-[10px] text-muted-foreground mt-0.5'>
+									{selectedDate.toLocaleDateString("fr-FR", {
+										weekday: "short",
+										day: "numeric",
+									})}
+								</div>
 							)}
 						</div>
-					</CardFooter>
+						<Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
+							<DialogTrigger asChild>
+								<Button
+									variant='outline'
+									size='sm'
+									className='h-7 text-xs px-2'
+									title='Ajouter un événement'
+									onMouseDown={(e: React.MouseEvent) => {
+										e.stopPropagation();
+									}}
+									onDragStart={(e: React.DragEvent) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+								>
+									<Plus className='h-3.5 w-3.5 mr-1' />
+									Événement
+								</Button>
+							</DialogTrigger>
+							<DialogContent className='max-w-md'>
+								<DialogHeader>
+									<DialogTitle className='text-base'>
+										{editingEvent ? "Modifier l'événement" : "Nouvel événement"}
+									</DialogTitle>
+								</DialogHeader>
+								<div className='flex flex-col gap-3 py-3'>
+									<div className='flex flex-col gap-1.5'>
+										<Label htmlFor='event-title-medium' className='text-sm'>
+											Titre *
+										</Label>
+										<Input
+											id='event-title-medium'
+											value={newEventTitle}
+											onChange={(e) => setNewEventTitle(e.target.value)}
+											placeholder="Nom de l'événement"
+											className='h-9 text-sm'
+										/>
+									</div>
+									<div className='flex flex-col gap-1.5'>
+										<Label className='text-sm'>Date *</Label>
+										<Popover>
+											<PopoverTrigger asChild>
+												<Button
+													variant='outline'
+													className='w-full justify-start text-left font-normal h-9 text-sm'
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+												>
+													<CalendarIcon className='mr-2 h-4 w-4' />
+													{newEventDate ? (
+														format(newEventDate, "PPP", { locale: fr })
+													) : (
+														<span>Sélectionner une date</span>
+													)}
+												</Button>
+											</PopoverTrigger>
+											<PopoverContent className='w-auto p-0' align='start'>
+												<CalendarComponent
+													mode='single'
+													selected={newEventDate}
+													onSelect={setNewEventDate}
+													initialFocus
+													captionLayout='dropdown'
+												/>
+											</PopoverContent>
+										</Popover>
+									</div>
+									<div className='flex flex-col gap-1.5'>
+										<Label htmlFor='event-time-medium' className='text-sm'>
+											Heure
+										</Label>
+										<div className='relative'>
+											<Clock className='absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
+											<Input
+												id='event-time-medium'
+												type='time'
+												value={newEventTime}
+												onChange={(e) => setNewEventTime(e.target.value)}
+												className='pl-9 h-9 text-sm'
+											/>
+										</div>
+									</div>
+									<div className='flex justify-end gap-2 mt-2'>
+										<Button
+											variant='outline'
+											size='sm'
+											onClick={() => handleDialogOpenChange(false)}
+											onMouseDown={(e: React.MouseEvent) => {
+												e.stopPropagation();
+											}}
+											onDragStart={(e: React.DragEvent) => {
+												e.preventDefault();
+												e.stopPropagation();
+											}}
+											className='h-8'
+										>
+											Annuler
+										</Button>
+										<Button
+											onClick={handleCreateEvent}
+											disabled={!newEventDate || !newEventTitle.trim()}
+											onMouseDown={(e: React.MouseEvent) => {
+												e.stopPropagation();
+											}}
+											onDragStart={(e: React.DragEvent) => {
+												e.preventDefault();
+												e.stopPropagation();
+											}}
+											size='sm'
+											className='h-8'
+										>
+											{editingEvent ? "Enregistrer" : "Créer"}
+										</Button>
+									</div>
+								</div>
+							</DialogContent>
+						</Dialog>
+					</div>
+
+					{/* Layout principal : Mini-calendrier + Liste des événements */}
+					<div className='flex gap-2 flex-1 min-h-0'>
+						{/* Mini-calendrier vertical compact */}
+						<div className='w-[150px] shrink-0 border rounded-lg p-1.5 flex flex-col'>
+							<div className='flex items-center justify-between mb-1'>
+								<Button
+									variant='ghost'
+									size='icon'
+									className='h-6 w-6'
+									onClick={() => {
+										const prevMonth = new Date(currentDate);
+										prevMonth.setMonth(prevMonth.getMonth() - 1);
+										setCurrentDate(prevMonth);
+									}}
+									onMouseDown={(e: React.MouseEvent) => {
+										e.stopPropagation();
+									}}
+									onDragStart={(e: React.DragEvent) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+								>
+									<ChevronLeft className='h-4 w-4' />
+								</Button>
+								<div className='text-xs font-medium'>
+									{currentDate.toLocaleDateString("fr-FR", {
+										month: "short",
+										year: "2-digit",
+									})}
+								</div>
+								<Button
+									variant='ghost'
+									size='icon'
+									className='h-6 w-6'
+									onClick={() => {
+										const nextMonth = new Date(currentDate);
+										nextMonth.setMonth(nextMonth.getMonth() + 1);
+										setCurrentDate(nextMonth);
+									}}
+									onMouseDown={(e: React.MouseEvent) => {
+										e.stopPropagation();
+									}}
+									onDragStart={(e: React.DragEvent) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+								>
+									<ChevronRight className='h-4 w-4' />
+								</Button>
+							</div>
+
+							{/* Grille de calendrier ultra compacte */}
+							<div className='grid grid-cols-7 gap-0.5 mb-0.5'>
+								{["L", "M", "M", "J", "V", "S", "D"].map((day) => (
+									<div
+										key={day}
+										className='text-[9px] text-muted-foreground text-center py-0.5'
+									>
+										{day}
+									</div>
+								))}
+							</div>
+							<div className='grid grid-cols-7 gap-0.5 flex-1'>
+								{Array.from({ length: 42 }).map((_, i) => {
+									const date = new Date(
+										currentDate.getFullYear(),
+										currentDate.getMonth(),
+										1
+									);
+									const dayOfWeek = date.getDay();
+									const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+									const dayNumber = i - adjustedDay + 1;
+									const isCurrentMonth =
+										dayNumber > 0 &&
+										dayNumber <=
+											new Date(
+												currentDate.getFullYear(),
+												currentDate.getMonth() + 1,
+												0
+											).getDate();
+									const dayDate = isCurrentMonth
+										? new Date(
+												currentDate.getFullYear(),
+												currentDate.getMonth(),
+												dayNumber
+										  )
+										: null;
+									const today = new Date();
+									const isToday =
+										dayDate && dayDate.toDateString() === today.toDateString();
+									const isSelected =
+										dayDate &&
+										selectedDate &&
+										dayDate.toDateString() === selectedDate.toDateString();
+									const hasEvents =
+										dayDate &&
+										events.some((e) => {
+											const eventDate = new Date(e.date);
+											return (
+												eventDate.toDateString() === dayDate.toDateString()
+											);
+										});
+
+									if (!isCurrentMonth && !dayDate) {
+										return <div key={i} className='aspect-square' />;
+									}
+
+									return (
+										<Button
+											key={i}
+											variant={isSelected ? "default" : "ghost"}
+											size='sm'
+											className={`h-5 w-5 p-0 text-[9px] font-normal relative ${
+												!isCurrentMonth ? "text-muted-foreground/30" : ""
+											} ${isToday && !isSelected ? "ring-1 ring-primary" : ""}`}
+											onClick={() => dayDate && handleSelect(dayDate)}
+											onMouseDown={(e: React.MouseEvent) => {
+												e.stopPropagation();
+											}}
+											onDragStart={(e: React.DragEvent) => {
+												e.preventDefault();
+												e.stopPropagation();
+											}}
+										>
+											{isCurrentMonth ? dayNumber : dayDate ? dayNumber : ""}
+											{hasEvents && (
+												<span className='absolute bottom-0 left-1/2 -translate-x-1/2 w-0.5 h-0.5 rounded-full bg-primary' />
+											)}
+										</Button>
+									);
+								})}
+							</div>
+
+							{/* Bouton "Aujourd'hui" */}
+							<Button
+								variant='outline'
+								size='sm'
+								className='h-6 mt-1.5 text-[10px]'
+								onClick={() => {
+									const today = new Date();
+									setCurrentDate(today);
+									setSelectedDate(today);
+								}}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+							>
+								Aujourd'hui
+							</Button>
+						</div>
+
+						{/* Liste des événements à venir */}
+						<div className='flex-1 min-w-0 flex flex-col'>
+							<div className='text-xs font-semibold mb-1 shrink-0'>
+								{selectedDate ? (
+									<>
+										Événements{" "}
+										{selectedDate.toDateString() === new Date().toDateString()
+											? "d'aujourd'hui"
+											: "du " +
+											  selectedDate.toLocaleDateString("fr-FR", {
+													day: "numeric",
+													month: "long",
+											  })}
+									</>
+								) : (
+									"Événements à venir"
+								)}
+							</div>
+							<div className='flex-1 min-h-0 overflow-y-auto'>
+								{selectedDate ? (
+									/* Événements de la date sélectionnée */
+									selectedDateEvents.length === 0 ? (
+										<div className='text-xs text-muted-foreground text-center py-4'>
+											Aucun événement
+										</div>
+									) : (
+										<div className='flex flex-col gap-1.5'>
+											{selectedDateEvents
+												.sort((a, b) => {
+													if (!a.time && !b.time) return 0;
+													if (!a.time) return 1;
+													if (!b.time) return -1;
+													return a.time.localeCompare(b.time);
+												})
+												.map((event) => (
+													<div
+														key={event.id}
+														className='bg-muted relative rounded-md p-2 pl-4 group hover:bg-muted/80 transition-colors cursor-pointer after:absolute after:inset-y-1.5 after:left-1.5 after:w-0.5 after:rounded-full after:bg-primary/70'
+														onClick={() => {
+															setEditingEvent(event);
+															setNewEventTitle(event.title);
+															setNewEventDate(new Date(event.date));
+															setNewEventTime(event.time || "");
+															setIsDialogOpen(true);
+														}}
+														onMouseDown={(e: React.MouseEvent) => {
+															e.stopPropagation();
+														}}
+														onDragStart={(e: React.DragEvent) => {
+															e.preventDefault();
+															e.stopPropagation();
+														}}
+													>
+														<div className='flex items-start justify-between gap-1.5'>
+															<div className='flex-1 min-w-0'>
+																<div className='font-medium text-xs'>
+																	{event.title}
+																</div>
+																{event.time && (
+																	<div className='text-[10px] text-muted-foreground mt-0.5'>
+																		{event.time}
+																	</div>
+																)}
+																{event.description && (
+																	<div className='text-[10px] text-muted-foreground mt-0.5 line-clamp-1'>
+																		{event.description}
+																	</div>
+																)}
+															</div>
+															<Button
+																variant='ghost'
+																size='icon'
+																className='h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0'
+																onClick={(e) => {
+																	e.stopPropagation();
+																	deleteEvent(event.id);
+																	toast.success("Événement supprimé");
+																}}
+																onMouseDown={(e: React.MouseEvent) => {
+																	e.stopPropagation();
+																}}
+																onDragStart={(e: React.DragEvent) => {
+																	e.preventDefault();
+																	e.stopPropagation();
+																}}
+															>
+																<Trash2 className='h-3 w-3' />
+															</Button>
+														</div>
+													</div>
+												))}
+										</div>
+									)
+								) : (
+									/* Événements à venir (prochains 7 jours) */
+									(() => {
+										const upcomingEvents = events
+											.filter((e) => {
+												const eventDate = new Date(e.date);
+												const today = new Date();
+												today.setHours(0, 0, 0, 0);
+												const sevenDaysLater = new Date(today);
+												sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+												return (
+													eventDate >= today && eventDate <= sevenDaysLater
+												);
+											})
+											.sort((a, b) => {
+												const dateA = new Date(a.date);
+												const dateB = new Date(b.date);
+												if (dateA.getTime() !== dateB.getTime()) {
+													return dateA.getTime() - dateB.getTime();
+												}
+												if (!a.time && !b.time) return 0;
+												if (!a.time) return 1;
+												if (!b.time) return -1;
+												return a.time.localeCompare(b.time);
+											});
+
+										if (upcomingEvents.length === 0) {
+											return (
+												<div className='text-xs text-muted-foreground text-center py-4'>
+													Aucun événement à venir
+												</div>
+											);
+										}
+
+										return (
+											<div className='flex flex-col gap-1.5'>
+												{upcomingEvents.map((event) => {
+													const eventDate = new Date(event.date);
+													const isToday =
+														eventDate.toDateString() ===
+														new Date().toDateString();
+													return (
+														<div
+															key={event.id}
+															className='bg-muted relative rounded-md p-2 pl-4 group hover:bg-muted/80 transition-colors cursor-pointer after:absolute after:inset-y-1.5 after:left-1.5 after:w-0.5 after:rounded-full after:bg-primary/70'
+															onClick={() => {
+																setEditingEvent(event);
+																setNewEventTitle(event.title);
+																setNewEventDate(new Date(event.date));
+																setNewEventTime(event.time || "");
+																setIsDialogOpen(true);
+																setSelectedDate(eventDate);
+																setCurrentDate(eventDate);
+															}}
+															onMouseDown={(e: React.MouseEvent) => {
+																e.stopPropagation();
+															}}
+															onDragStart={(e: React.DragEvent) => {
+																e.preventDefault();
+																e.stopPropagation();
+															}}
+														>
+															<div className='flex items-start justify-between gap-1.5'>
+																<div className='flex-1 min-w-0'>
+																	<div className='flex items-center gap-1.5 mb-0.5'>
+																		<div className='text-[10px] font-medium text-muted-foreground'>
+																			{isToday
+																				? "Aujourd'hui"
+																				: eventDate.toLocaleDateString(
+																						"fr-FR",
+																						{
+																							weekday: "short",
+																							day: "numeric",
+																							month: "short",
+																						}
+																				  )}
+																		</div>
+																		{event.time && (
+																			<div className='text-[10px] text-muted-foreground'>
+																				{event.time}
+																			</div>
+																		)}
+																	</div>
+																	<div className='font-medium text-xs'>
+																		{event.title}
+																	</div>
+																	{event.description && (
+																		<div className='text-[10px] text-muted-foreground mt-0.5 line-clamp-1'>
+																			{event.description}
+																		</div>
+																	)}
+																</div>
+																<Button
+																	variant='ghost'
+																	size='icon'
+																	className='h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0'
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		deleteEvent(event.id);
+																		toast.success("Événement supprimé");
+																	}}
+																	onMouseDown={(e: React.MouseEvent) => {
+																		e.stopPropagation();
+																	}}
+																	onDragStart={(e: React.DragEvent) => {
+																		e.preventDefault();
+																		e.stopPropagation();
+																	}}
+																>
+																	<Trash2 className='h-3 w-3' />
+																</Button>
+															</div>
+														</div>
+													);
+												})}
+											</div>
+										);
+									})()
+								)}
+							</div>
+						</div>
+					</div>
+				</CardContent>
+			) : (
+				!isCompact && (
+					/* FULL VERSION - Calendrier shadcn/ui */
+					<CardContent className='px-4'>
+						<motion.div
+							key={`${view}-${currentDate.getMonth()}-${currentDate.getFullYear()}`}
+							initial={{ opacity: 0, x: -10 }}
+							animate={{ opacity: 1, x: 0 }}
+							transition={{ duration: 0.2 }}
+							className='flex justify-center w-full'
+						>
+							{/* Full : Toutes les vues */}
+							{view === "month" && (
+								<div className='w-full max-w-[350px]'>
+									<CalendarComponent
+										mode='single'
+										selected={selectedDate}
+										onSelect={handleSelect}
+										month={currentDate}
+										onMonthChange={setCurrentDate}
+										modifiers={modifiers}
+										modifiersClassNames={modifiersClassNames}
+										className='bg-transparent p-0 w-full'
+										captionLayout='dropdown'
+										required
+										components={{
+											DayButton: ({ day, modifiers, className, ...props }) => {
+												const handleDragOver = (e: React.DragEvent) => {
+													if (draggedEventId) {
+														e.preventDefault();
+														e.stopPropagation();
+													}
+												};
+
+												const handleDrop = (e: React.DragEvent) => {
+													if (draggedEventId) {
+														e.preventDefault();
+														e.stopPropagation();
+														const draggedEvent = events.find(
+															(event) => event.id === draggedEventId
+														);
+														if (draggedEvent) {
+															const newDate = formatDateLocal(day.date);
+															updateEvent(draggedEventId, { date: newDate });
+															toast.success("Événement déplacé");
+															setSelectedDate(day.date);
+														}
+														setDraggedEventId(null);
+													}
+												};
+
+												return (
+													<div
+														onDragOver={handleDragOver}
+														onDrop={handleDrop}
+														className='relative w-full h-full'
+													>
+														<Button
+															variant='ghost'
+															size='icon'
+															className={cn(
+																className,
+																"data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground"
+															)}
+															data-day={day.date.toLocaleDateString()}
+															data-selected-single={
+																modifiers.selected &&
+																!modifiers.range_start &&
+																!modifiers.range_end &&
+																!modifiers.range_middle
+															}
+															data-range-start={modifiers.range_start}
+															data-range-end={modifiers.range_end}
+															data-range-middle={modifiers.range_middle}
+															onMouseDown={(e: React.MouseEvent) => {
+																e.stopPropagation();
+															}}
+															onDragStart={(e: React.DragEvent) => {
+																e.preventDefault();
+																e.stopPropagation();
+															}}
+															{...props}
+														>
+															{day.date.getDate()}
+														</Button>
+													</div>
+												);
+											},
+										}}
+									/>
+								</div>
+							)}
+							{view === "week" && (
+								<div className='w-full'>
+									<WeekView
+										currentDate={currentDate}
+										selectedDate={selectedDate}
+										onSelect={handleSelect}
+										getEventsForDate={getEventsForDate}
+										onEventClick={(event: CalendarEvent) =>
+											handleEditEvent(event)
+										}
+										setCurrentDate={setCurrentDate}
+										events={events}
+										draggedEventId={draggedEventId}
+										onEventDragStart={handleEventDragStart}
+										onEventDragEnd={handleEventDragEnd}
+										updateEvent={updateEvent}
+									/>
+								</div>
+							)}
+							{view === "day" && (
+								<div className='w-full'>
+									<DayView
+										currentDate={currentDate}
+										selectedDate={selectedDate}
+										onSelect={handleSelect}
+										getEventsForDate={getEventsForDate}
+										onEventClick={(event: CalendarEvent) =>
+											handleEditEvent(event)
+										}
+										setCurrentDate={setCurrentDate}
+										events={events}
+										draggedEventId={draggedEventId}
+										onEventDragStart={handleEventDragStart}
+										onEventDragEnd={handleEventDragEnd}
+										updateEvent={updateEvent}
+									/>
+								</div>
+							)}
+						</motion.div>
+					</CardContent>
 				)
+			)}
+
+			{/* Zone d'affichage des événements - Full uniquement */}
+			{isFull && (
+				<>
+					{/* Si recherche active, afficher tous les résultats */}
+					{searchQuery.trim() ? (
+						<CardFooter className='flex flex-col items-start border-t gap-3 px-4 !pt-4 max-h-96 overflow-y-auto'>
+							<div className='flex w-full items-center justify-between px-1'>
+								<div className='text-sm font-medium'>
+									Résultats de recherche ({filteredEvents.length})
+								</div>
+							</div>
+
+							{/* Liste de tous les événements correspondant à la recherche */}
+							{filteredEvents.length === 0 ? (
+								<p className='text-sm text-muted-foreground'>
+									Aucun événement trouvé pour "{searchQuery}"
+								</p>
+							) : (
+								<div className='flex w-full flex-col gap-2'>
+									{filteredEvents.map((event) => {
+										const eventDate = new Date(event.date);
+										return (
+											<div key={event.id} className='space-y-1'>
+												<div className='text-xs text-muted-foreground font-medium'>
+													{eventDate.toLocaleDateString("fr-FR", {
+														day: "numeric",
+														month: "long",
+														year: "numeric",
+													})}
+													{event.time && ` - ${event.time}`}
+												</div>
+												<CalendarEventItem
+													event={event}
+													onEdit={() => {
+														handleEditEvent(event);
+														setSelectedDate(eventDate);
+													}}
+													onDelete={() => deleteEvent(event.id)}
+													onDragStart={() => handleEventDragStart(event.id)}
+													onDragEnd={handleEventDragEnd}
+													isDragging={draggedEventId === event.id}
+												/>
+											</div>
+										);
+									})}
+								</div>
+							)}
+						</CardFooter>
+					) : (
+						/* Sinon, afficher les événements du jour sélectionné */
+						selectedDate && (
+							<CardFooter className='flex flex-col items-start gap-3 border-t px-4 !pt-4'>
+								<div className='flex w-full items-center justify-between px-1'>
+									<div className='text-sm font-medium'>
+										{selectedDate.toLocaleDateString("fr-FR", {
+											day: "numeric",
+											month: "long",
+											year: "numeric",
+										})}
+									</div>
+									<Dialog
+										open={isDialogOpen}
+										onOpenChange={handleDialogOpenChange}
+									>
+										<DialogTrigger asChild>
+											<Button
+												variant='ghost'
+												size='icon'
+												className='size-6'
+												title='Ajouter un événement'
+											>
+												<Plus className='h-4 w-4' />
+												<span className='sr-only'>Ajouter un événement</span>
+											</Button>
+										</DialogTrigger>
+										<DialogContent>
+											<DialogHeader>
+												<DialogTitle>
+													{editingEvent
+														? "Modifier l'événement"
+														: "Nouvel événement"}
+												</DialogTitle>
+											</DialogHeader>
+											<div className='flex flex-col gap-4 py-4'>
+												{/* Titre */}
+												<div className='flex flex-col gap-2'>
+													<Label htmlFor='event-title'>Titre *</Label>
+													<Input
+														id='event-title'
+														value={newEventTitle}
+														onChange={(e) => setNewEventTitle(e.target.value)}
+														placeholder="Nom de l'événement"
+													/>
+												</div>
+
+												{/* Date */}
+												<div className='flex flex-col gap-2'>
+													<Label>Date *</Label>
+													<Popover>
+														<PopoverTrigger asChild>
+															<Button
+																variant='outline'
+																className='w-full justify-start text-left font-normal'
+															>
+																<CalendarIcon className='mr-2 h-4 w-4' />
+																{newEventDate ? (
+																	format(newEventDate, "PPP", { locale: fr })
+																) : (
+																	<span>Sélectionner une date</span>
+																)}
+															</Button>
+														</PopoverTrigger>
+														<PopoverContent
+															className='w-auto p-0'
+															align='start'
+														>
+															<CalendarComponent
+																mode='single'
+																selected={newEventDate}
+																onSelect={setNewEventDate}
+																initialFocus
+																captionLayout='dropdown'
+															/>
+														</PopoverContent>
+													</Popover>
+												</div>
+
+												{/* Heure */}
+												<div className='flex flex-col gap-2'>
+													<Label htmlFor='event-time'>Heure (optionnel)</Label>
+													<div className='relative'>
+														<Clock className='absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
+														<Input
+															id='event-time'
+															type='time'
+															value={newEventTime}
+															onChange={(e) => setNewEventTime(e.target.value)}
+															className='pl-8'
+														/>
+													</div>
+												</div>
+
+												{/* Description */}
+												<div className='flex flex-col gap-2'>
+													<Label htmlFor='event-description'>
+														Description (optionnel)
+													</Label>
+													<Input
+														id='event-description'
+														value={newEventDescription}
+														onChange={(e) =>
+															setNewEventDescription(e.target.value)
+														}
+														placeholder="Description de l'événement"
+													/>
+												</div>
+
+												{/* Couleur */}
+												<div className='flex flex-col gap-2'>
+													<Label>Couleur (optionnel)</Label>
+													<div className='flex flex-wrap gap-2'>
+														{eventColors.map((color) => (
+															<button
+																key={color.value}
+																type='button'
+																onClick={() => setNewEventColor(color.value)}
+																className={cn(
+																	"h-8 w-8 rounded-full border-2 transition-all",
+																	color.class,
+																	newEventColor === color.value
+																		? "border-primary ring-2 ring-primary ring-offset-2 scale-110"
+																		: "border-border hover:scale-105"
+																)}
+																title={color.name}
+																aria-label={`Sélectionner la couleur ${color.name}`}
+															/>
+														))}
+													</div>
+												</div>
+
+												{/* Répétition */}
+												<div className='flex flex-col gap-2'>
+													<Label htmlFor='event-recurrence'>
+														<Repeat className='mr-2 h-4 w-4 inline' />
+														Répétition (optionnel)
+													</Label>
+													<select
+														id='event-recurrence'
+														value={newEventRecurrence}
+														onChange={(e) =>
+															setNewEventRecurrence(
+																e.target.value as
+																	| "none"
+																	| "daily"
+																	| "weekly"
+																	| "monthly"
+																	| "yearly"
+															)
+														}
+														className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+													>
+														<option value='none'>Aucune</option>
+														<option value='daily'>Quotidien</option>
+														<option value='weekly'>Hebdomadaire</option>
+														<option value='monthly'>Mensuel</option>
+														<option value='yearly'>Annuel</option>
+													</select>
+												</div>
+
+												{/* Rappel */}
+												<div className='flex flex-col gap-2'>
+													<Label htmlFor='event-reminder'>
+														<Bell className='mr-2 h-4 w-4 inline' />
+														Rappel (optionnel)
+													</Label>
+													<select
+														id='event-reminder'
+														value={newEventReminderMinutes || ""}
+														onChange={(e) =>
+															setNewEventReminderMinutes(
+																e.target.value === ""
+																	? undefined
+																	: Number(e.target.value)
+															)
+														}
+														className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+													>
+														<option value=''>Aucun rappel</option>
+														<option value='5'>5 minutes avant</option>
+														<option value='15'>15 minutes avant</option>
+														<option value='30'>30 minutes avant</option>
+														<option value='60'>1 heure avant</option>
+														<option value='120'>2 heures avant</option>
+														<option value='1440'>1 jour avant</option>
+													</select>
+												</div>
+
+												{/* Boutons */}
+												<div className='flex justify-end gap-2 mt-2'>
+													<Button
+														variant='outline'
+														onClick={() => handleDialogOpenChange(false)}
+													>
+														Annuler
+													</Button>
+													<Button
+														onClick={handleCreateEvent}
+														disabled={!newEventDate || !newEventTitle.trim()}
+													>
+														{editingEvent ? "Enregistrer" : "Créer"}
+													</Button>
+												</div>
+											</div>
+										</DialogContent>
+									</Dialog>
+								</div>
+
+								{/* Todos avec deadlines */}
+								{selectedDateTodos.length > 0 && (
+									<div className='mb-2'>
+										<div className='space-y-1'>
+											{selectedDateTodos.map((todo) => (
+												<div
+													key={todo.id}
+													className='bg-muted text-xs p-2 rounded-md flex items-center gap-2'
+												>
+													<Clock className='h-3 w-3 text-orange-600 dark:text-orange-400' />
+													<span className='flex-1'>{todo.title}</span>
+												</div>
+											))}
+										</div>
+									</div>
+								)}
+
+								{/* Événements */}
+								<div className='flex w-full flex-col gap-2'>
+									{selectedDateEvents.length === 0 &&
+									selectedDateTodos.length === 0 ? (
+										<p className='text-sm text-muted-foreground'>
+											Aucun événement
+										</p>
+									) : (
+										selectedDateEvents.map((event) => (
+											<CalendarEventItem
+												key={event.id}
+												event={event}
+												onEdit={() => handleEditEvent(event)}
+												onDelete={() => deleteEvent(event.id)}
+												onDragStart={() => handleEventDragStart(event.id)}
+												onDragEnd={handleEventDragEnd}
+												isDragging={draggedEventId === event.id}
+											/>
+										))
+									)}
+								</div>
+							</CardFooter>
+						)
+					)}
+				</>
 			)}
 
 			{/* Input caché pour l'import */}
