@@ -86,13 +86,13 @@ export class TokenStorage {
 		provider: OAuthProvider,
 		tokens: Partial<OAuthConnection["tokens"]>,
 	): void {
-		const connection = this.getConnection(provider);
+		const connection = TokenStorage.getConnection(provider);
 		if (!connection) {
 			throw new Error(`Aucune connexion trouvée pour ${provider}`);
 		}
 		connection.tokens = { ...connection.tokens, ...tokens };
 		connection.lastSyncAt = Date.now();
-		this.saveConnection(connection);
+		TokenStorage.saveConnection(connection);
 	}
 }
 

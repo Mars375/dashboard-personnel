@@ -22,8 +22,7 @@ export interface CalendarSyncConfig {
 	providers: {
 		googleCalendar?: {
 			enabled: boolean;
-			apiKey?: string;
-			calendarId?: string;
+			calendarId?: string; // "primary" par défaut
 		};
 		outlook?: {
 			enabled: boolean;

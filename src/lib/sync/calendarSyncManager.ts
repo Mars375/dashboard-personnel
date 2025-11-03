@@ -21,7 +21,6 @@ export class CalendarSyncManager {
 	private loadProviders(config: CalendarSyncConfig): void {
 		if (config.providers.googleCalendar?.enabled) {
 			const provider = new GoogleCalendarSyncProvider({
-				apiKey: config.providers.googleCalendar.apiKey,
 				calendarId: config.providers.googleCalendar.calendarId,
 			});
 			provider.enabled = true;
