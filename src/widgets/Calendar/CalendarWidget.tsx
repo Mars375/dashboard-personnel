@@ -47,6 +47,8 @@ import {
 	RefreshCw,
 	Search,
 	Repeat,
+	ChevronLeft,
+	ChevronRight,
 	Trash2,
 } from "lucide-react";
 import {
@@ -1096,20 +1098,58 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 					<div className='flex gap-2 flex-1 min-h-0'>
 						{/* Mini-calendrier vertical compact */}
 						<div className='w-[150px] shrink-0 border rounded-lg p-1.5 flex flex-col'>
-							<div className='flex items-center justify-center mb-1'>
+							<div className='flex items-center justify-between mb-1'>
+								<Button
+									variant='ghost'
+									size='icon'
+									className='h-6 w-6'
+									onClick={() => {
+										const prevMonth = new Date(currentDate);
+										prevMonth.setMonth(prevMonth.getMonth() - 1);
+										setCurrentDate(prevMonth);
+									}}
+									onMouseDown={(e: React.MouseEvent) => {
+										e.stopPropagation();
+									}}
+									onDragStart={(e: React.DragEvent) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+								>
+									<ChevronLeft className='h-4 w-4' />
+								</Button>
 								<div className='text-xs font-medium'>
 									{currentDate.toLocaleDateString("fr-FR", {
 										month: "short",
 										year: "2-digit",
 									})}
 								</div>
+								<Button
+									variant='ghost'
+									size='icon'
+									className='h-6 w-6'
+									onClick={() => {
+										const nextMonth = new Date(currentDate);
+										nextMonth.setMonth(nextMonth.getMonth() + 1);
+										setCurrentDate(nextMonth);
+									}}
+									onMouseDown={(e: React.MouseEvent) => {
+										e.stopPropagation();
+									}}
+									onDragStart={(e: React.DragEvent) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+								>
+									<ChevronRight className='h-4 w-4' />
+								</Button>
 							</div>
 
 							{/* Grille de calendrier ultra compacte */}
 							<div className='grid grid-cols-7 gap-0.5 mb-0.5'>
-								{["L", "M", "M", "J", "V", "S", "D"].map((day) => (
+								{["L", "M", "M", "J", "V", "S", "D"].map((day, index) => (
 									<div
-										key={day}
+										key={`day-header-${index}`}
 										className='text-[9px] text-muted-foreground text-center py-0.5'
 									>
 										{day}
