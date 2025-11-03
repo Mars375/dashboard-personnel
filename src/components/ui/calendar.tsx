@@ -155,7 +155,7 @@ function Calendar({
             <ChevronDownIcon className={cn("size-4", className)} {...props} />
           )
         },
-        ButtonPrevious: ({ ...props }) => {
+        ButtonPrevious: ({ ...props }: any) => {
           return (
             <button
               {...props}
@@ -175,7 +175,7 @@ function Calendar({
             />
           )
         },
-        ButtonNext: ({ ...props }) => {
+        ButtonNext: ({ ...props }: any) => {
           return (
             <button
               {...props}
@@ -206,7 +206,7 @@ function Calendar({
           )
         },
         ...components,
-      }}
+      } as any}
       {...props}
     />
   )
