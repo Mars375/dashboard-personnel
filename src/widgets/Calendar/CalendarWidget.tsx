@@ -461,7 +461,9 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 					const pulledEvents = await googleProvider.pullEvents();
 					// Ajouter les événements récupérés aux événements existants
 					// (à implémenter selon votre logique de merge)
-					toast.info(`${pulledEvents.length} événement(s) récupéré(s) depuis Google Calendar`);
+					toast.info(
+						`${pulledEvents.length} événement(s) récupéré(s) depuis Google Calendar`
+					);
 				}
 			} else {
 				if (!isGoogleConnected) {
@@ -757,10 +759,10 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 									{/* Bouton OAuth Google Calendar */}
 									{isFull && (
 										<OAuthButton
-											provider="google"
-											service="google-calendar"
-											variant="outline"
-											size="sm"
+											provider='google'
+											service='google-calendar'
+											variant='outline'
+											size='icon'
 											onConnect={() => {
 												// Activer le provider après connexion
 												const config = {

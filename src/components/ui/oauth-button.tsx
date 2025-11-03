@@ -3,13 +3,19 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, CheckCircle2, Calendar } from "lucide-react";
 import type { OAuthProvider } from "@/lib/auth";
 import { getOAuthManager } from "@/lib/auth/oauthManager";
 import { toast } from "sonner";
@@ -99,6 +105,51 @@ export function OAuthButton({
 				return service;
 		}
 	};
+
+	// Si size="icon", afficher uniquement l'icône avec tooltip
+	if (size === "icon") {
+		return (
+			<TooltipProvider>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant={variant}
+							size={size}
+							onClick={isConnected ? handleDisconnect : handleConnect}
+							disabled={isConnecting}
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+							aria-label={
+								isConnected
+									? `Déconnecter ${getServiceName()}`
+									: `Se connecter à ${getServiceName()}`
+							}
+						>
+							{isConnecting ? (
+								<Loader2 className="h-4 w-4 animate-spin" />
+							) : isConnected ? (
+								<CheckCircle2 className="h-4 w-4 text-green-600" />
+							) : (
+								<Calendar className="h-4 w-4" />
+							)}
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent>
+						{isConnecting
+							? "Connexion..."
+							: isConnected
+								? `Déconnecter ${getServiceName()}`
+								: `Se connecter à ${getServiceName()}`}
+					</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
+		);
+	}
 
 	if (isConnected) {
 		return (
