@@ -1,11 +1,12 @@
 // Page de callback OAuth pour gérer les redirections OAuth
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export function OAuthCallback() {
+	// Flag pour s'assurer que le message n'est envoyé qu'une seule fois
+	const messageSentRef = useRef(false);
+	
 	useEffect(() => {
-		// Flag pour s'assurer que le message n'est envoyé qu'une seule fois
-		let messageSent = false;
 		
 		// Extraire les paramètres de l'URL
 		const urlParams = new URLSearchParams(window.location.search);
@@ -20,8 +21,8 @@ export function OAuthCallback() {
 		if (window.location.pathname.includes("notion")) provider = "notion";
 
 		// Envoyer un message au parent (popup) - une seule fois
-		if (window.opener && !messageSent) {
-			messageSent = true;
+		if (window.opener && !messageSentRef.current) {
+			messageSentRef.current = true;
 			
 			const message = error
 				? {
