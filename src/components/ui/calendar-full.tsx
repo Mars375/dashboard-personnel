@@ -53,13 +53,13 @@ export function Calendar({
 	selectedDate: controlledSelectedDate,
 	onSelectDate,
 	view: controlledView,
-	onViewChange: _onViewChange,
+	onViewChange,
 	events = [],
 	getEventsForDate: externalGetEventsForDate,
 	onEventClick,
 	onEventUpdate,
-	onSync: _onSync,
-	syncLoading: _syncLoading = false,
+	onSync,
+	syncLoading = false,
 	className,
 	showOutsideDays = true,
 	captionLayout = "dropdown-buttons",
@@ -71,13 +71,13 @@ export function Calendar({
 	const [internalSelectedDate, setInternalSelectedDate] = useState<
 		Date | undefined
 	>(undefined);
-	const [_internalView, _setInternalView] = useState<CalendarView>("month");
+	const [internalView] = useState<CalendarView>("month");
 	const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
 
 	// Utiliser état contrôlé ou interne
 	const currentDate = controlledCurrentDate ?? internalCurrentDate;
 	const selectedDate = controlledSelectedDate ?? internalSelectedDate;
-	const view = controlledView ?? _internalView;
+	const view = controlledView ?? internalView;
 
 	const handleDateChange = useCallback(
 		(date: Date) => {
