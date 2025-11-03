@@ -2067,28 +2067,12 @@ function WeekView({
 
 		return (
 			<div className='space-y-2'>
-				{/* Header avec navigation */}
-				<div className='flex items-center justify-between mb-4'>
-					<Button
-						variant='outline'
-						size='icon'
-						onClick={handlePreviousWeek}
-						aria-label='Semaine précédente'
-					>
-						<CalendarIcon className='h-4 w-4 rotate-180' />
-					</Button>
+				{/* Header sans navigation */}
+				<div className='flex items-center justify-center mb-4'>
 					<div className='text-sm font-medium'>
 						{format(weekStart, "d MMM", { locale: fr })} -{" "}
 						{format(weekEnd, "d MMM yyyy", { locale: fr })}
 					</div>
-					<Button
-						variant='outline'
-						size='icon'
-						onClick={handleNextWeek}
-						aria-label='Semaine suivante'
-					>
-						<CalendarIcon className='h-4 w-4' />
-					</Button>
 				</div>
 
 				{/* Grille de la semaine */}
@@ -2271,27 +2255,11 @@ function DayView({
 
 		return (
 			<div className='space-y-4'>
-				{/* Header avec navigation */}
-				<div className='flex items-center justify-between'>
-					<Button
-						variant='outline'
-						size='icon'
-						onClick={handlePreviousDay}
-						aria-label='Jour précédent'
-					>
-						<CalendarIcon className='h-4 w-4 rotate-180' />
-					</Button>
+				{/* Header sans navigation */}
+				<div className='flex items-center justify-center'>
 					<div className='text-lg font-medium'>
 						{format(displayDate, "EEEE d MMMM yyyy", { locale: fr })}
 					</div>
-					<Button
-						variant='outline'
-						size='icon'
-						onClick={handleNextDay}
-						aria-label='Jour suivant'
-					>
-						<CalendarIcon className='h-4 w-4' />
-					</Button>
 				</div>
 
 				{/* Agenda horaire */}
