@@ -2233,6 +2233,8 @@ function DayView({
 	selectedDate,
 	getEventsForDate,
 	onEventClick,
+	setCurrentDate,
+	onSelect,
 	events,
 	draggedEventId,
 	onEventDragStart,
@@ -2243,6 +2245,8 @@ function DayView({
 	selectedDate: Date | undefined;
 	getEventsForDate: (date: Date) => CalendarEvent[];
 	onEventClick: (event: CalendarEvent) => void;
+	setCurrentDate: (date: Date) => void;
+	onSelect: (date: Date | undefined) => void;
 	events: CalendarEvent[];
 	draggedEventId: string | null;
 	onEventDragStart: (eventId: string) => void;
@@ -2267,15 +2271,57 @@ function DayView({
 			return a.time.localeCompare(b.time);
 		});
 
+		const handlePreviousDay = () => {
+			const prevDay = subDays(displayDate, 1);
+			setCurrentDate(prevDay);
+			onSelect(prevDay);
+		};
+
+		const handleNextDay = () => {
+			const nextDay = addDays(displayDate, 1);
+			setCurrentDate(nextDay);
+			onSelect(nextDay);
+		};
+
 		const hours = Array.from({ length: 24 }, (_, i) => i);
 
 		return (
 			<div className='space-y-4'>
-				{/* Header sans navigation */}
-				<div className='flex items-center justify-center'>
+				{/* Header avec navigation */}
+				<div className='flex items-center justify-between'>
+					<Button
+						variant='ghost'
+						size='icon'
+						onClick={handlePreviousDay}
+						aria-label='Jour précédent'
+						onMouseDown={(e: React.MouseEvent) => {
+							e.stopPropagation();
+						}}
+						onDragStart={(e: React.DragEvent) => {
+							e.preventDefault();
+							e.stopPropagation();
+						}}
+					>
+						<ChevronLeft className='h-4 w-4' />
+					</Button>
 					<div className='text-lg font-medium'>
 						{format(displayDate, "EEEE d MMMM yyyy", { locale: fr })}
 					</div>
+					<Button
+						variant='ghost'
+						size='icon'
+						onClick={handleNextDay}
+						aria-label='Jour suivant'
+						onMouseDown={(e: React.MouseEvent) => {
+							e.stopPropagation();
+						}}
+						onDragStart={(e: React.DragEvent) => {
+							e.preventDefault();
+							e.stopPropagation();
+						}}
+					>
+						<ChevronRight className='h-4 w-4' />
+					</Button>
 				</div>
 
 				{/* Agenda horaire */}
