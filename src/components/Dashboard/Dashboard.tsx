@@ -1,4 +1,4 @@
-import { Plus, LayoutDashboard } from "lucide-react";
+import { Plus, LayoutDashboard, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WidgetGrid } from "./WidgetGrid";
 import { WidgetPicker } from "./WidgetPicker";
@@ -76,16 +76,66 @@ export function Dashboard() {
 
 				{/* Grille de widgets */}
 				{widgets.length === 0 ? (
-					<div className="flex flex-col items-center justify-center h-[60vh] gap-4 text-center">
-						<p className="text-lg text-muted-foreground">Aucun widget configuré</p>
-						<p className="text-sm text-muted-foreground">
-							Cliquez sur "Ajouter un widget" pour commencer
-						</p>
-						<Button onClick={openPicker} variant="outline" className="gap-2 mt-2">
-							<Plus className="h-4 w-4" />
-							Ajouter votre premier widget
-						</Button>
-					</div>
+					<motion.div
+						initial={{ opacity: 0, scale: 0.95 }}
+						animate={{ opacity: 1, scale: 1 }}
+						transition={{ duration: 0.3 }}
+						className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center"
+					>
+						{/* Icône animée */}
+						<motion.div
+							initial={{ scale: 0 }}
+							animate={{ scale: 1 }}
+							transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+							className="relative"
+						>
+							<div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse" />
+							<div className="relative flex items-center justify-center h-24 w-24 rounded-full bg-primary/10 border-2 border-primary/20">
+								<Sparkles className="h-12 w-12 text-primary" />
+							</div>
+						</motion.div>
+
+						{/* Texte */}
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.3 }}
+							className="space-y-2 max-w-md"
+						>
+							<h2 className="text-2xl font-semibold">Commencez votre dashboard</h2>
+							<p className="text-muted-foreground">
+								Ajoutez des widgets pour personnaliser votre tableau de bord et rester
+								organisé.
+							</p>
+						</motion.div>
+
+						{/* Bouton CTA */}
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.4 }}
+						>
+							<Button
+								onClick={openPicker}
+								variant="default"
+								size="lg"
+								className="gap-2 shadow-lg hover:shadow-xl transition-all duration-200"
+							>
+								<Plus className="h-4 w-4" />
+								Ajouter votre premier widget
+							</Button>
+						</motion.div>
+
+						{/* Suggestions de widgets */}
+						<motion.div
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							transition={{ delay: 0.5 }}
+							className="mt-8 text-xs text-muted-foreground"
+						>
+							<p>Suggestions : Météo • Tâches • Calendrier</p>
+						</motion.div>
+					</motion.div>
 				) : (
 					<WidgetGrid />
 				)}
