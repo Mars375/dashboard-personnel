@@ -450,19 +450,25 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 			const totalSynced = results.reduce((sum, r) => sum + r.synced, 0);
 
 			if (successCount > 0) {
-				toast.success(
-					`Synchronisation réussie: ${totalSynced} événement(s) synchronisé(s)`
-				);
 				// Recharger les événements depuis Google Calendar
 				const googleProvider = calendarSyncManager
 					.getAllProviders()
 					.find((p) => p.name === "Google Calendar");
+				let pulledEventsCount = 0;
+				
 				if (googleProvider && googleProvider.enabled) {
 					const pulledEvents = await googleProvider.pullEvents();
-					// Ajouter les événements récupérés aux événements existants
-					// (à implémenter selon votre logique de merge)
-					toast.info(
-						`${pulledEvents.length} événement(s) récupéré(s) depuis Google Calendar`
+					pulledEventsCount = pulledEvents.length;
+				}
+				
+				// Une seule notification combinée
+				if (pulledEventsCount > 0) {
+					toast.success(
+						`Synchronisation réussie: ${pulledEventsCount} événement(s) récupéré(s) depuis Google Calendar`
+					);
+				} else {
+					toast.success(
+						`Synchronisation réussie: ${totalSynced} événement(s) synchronisé(s)`
 					);
 				}
 			} else {
@@ -701,15 +707,42 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 												</Button>
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align='end'>
-												<DropdownMenuItem onClick={() => setView("month")}>
+												<DropdownMenuItem 
+													onClick={() => setView("month")}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+												>
 													<Grid3x3 className='mr-2 h-4 w-4' />
 													Mois
 												</DropdownMenuItem>
-												<DropdownMenuItem onClick={() => setView("week")}>
+												<DropdownMenuItem 
+													onClick={() => setView("week")}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+												>
 													<List className='mr-2 h-4 w-4' />
 													Semaine
 												</DropdownMenuItem>
-												<DropdownMenuItem onClick={() => setView("day")}>
+												<DropdownMenuItem 
+													onClick={() => setView("day")}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+												>
 													<CalendarViewIcon className='mr-2 h-4 w-4' />
 													Jour
 												</DropdownMenuItem>
@@ -737,16 +770,43 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 											</Button>
 										</DropdownMenuTrigger>
 										<DropdownMenuContent align='end'>
-											<DropdownMenuItem onClick={handleExportJSON}>
+											<DropdownMenuItem 
+												onClick={handleExportJSON}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+											>
 												<Download className='mr-2 h-4 w-4' />
 												Exporter JSON
 											</DropdownMenuItem>
-											<DropdownMenuItem onClick={handleExportICS}>
+											<DropdownMenuItem 
+												onClick={handleExportICS}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+											>
 												<Download className='mr-2 h-4 w-4' />
 												Exporter .ics
 											</DropdownMenuItem>
 											<DropdownMenuSeparator />
-											<DropdownMenuItem onClick={handleImport}>
+											<DropdownMenuItem 
+												onClick={handleImport}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+											>
 												<Upload className='mr-2 h-4 w-4' />
 												Importer JSON
 											</DropdownMenuItem>
@@ -1116,11 +1176,15 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 									return (
 										<Button
 											key={i}
-											variant={isSelected ? "default" : isToday ? "outline" : "ghost"}
+											variant={
+												isSelected ? "default" : isToday ? "outline" : "ghost"
+											}
 											size='sm'
 											className={`h-5 w-5 p-0 text-[9px] font-normal relative ${
 												!isCurrentMonth ? "text-muted-foreground/30" : ""
-											} ${isToday && !isSelected ? "border-primary border" : ""}`}
+											} ${
+												isToday && !isSelected ? "border-primary border" : ""
+											}`}
 											onClick={() => dayDate && handleSelect(dayDate)}
 											onMouseDown={(e: React.MouseEvent) => {
 												e.stopPropagation();
