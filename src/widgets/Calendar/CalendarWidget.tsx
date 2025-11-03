@@ -1508,7 +1508,9 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 												}
 
 												if (orientation === "right") {
-													return <ChevronRight className='h-4 w-4' {...props} />;
+													return (
+														<ChevronRight className='h-4 w-4' {...props} />
+													);
 												}
 
 												// Fallback pour orientation "up" ou "down"
