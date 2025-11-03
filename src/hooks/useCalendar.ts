@@ -13,18 +13,27 @@ export function useCalendar() {
 	const [view, setView] = useState<CalendarView>("month");
 	const [events, setEvents] = useState<CalendarEvent[]>([]);
 
+	// État pour suivre si c'est le montage initial
+	const [isInitialMount, setIsInitialMount] = useState(true);
+
 	// Charger les événements au montage
 	useEffect(() => {
 		const loaded = loadCalendarEvents();
+		console.log("🚀 Montage initial: Chargement de", loaded.length, "événement(s)");
 		setEvents(loaded);
+		setIsInitialMount(false);
 	}, []);
 
-	// Sauvegarder les événements à chaque changement
+	// Sauvegarder les événements à chaque changement (sauf au montage initial)
 	useEffect(() => {
-		if (events.length > 0 || loadCalendarEvents().length > 0) {
-			saveCalendarEvents(events);
+		if (isInitialMount) {
+			console.log("⏭️ Skip sauvegarde (montage initial)");
+			return;
 		}
-	}, [events]);
+		
+		console.log("🔄 useEffect: Sauvegarde de", events.length, "événement(s)");
+		saveCalendarEvents(events);
+	}, [events, isInitialMount]);
 
 	// Navigation
 	const goToPreviousMonth = useCallback(() => {
@@ -49,31 +58,52 @@ export function useCalendar() {
 
 	// Gestion des événements
 	const addEvent = useCallback(
-		(event: Omit<CalendarEvent, "id" | "createdAt" | "updatedAt">) => {
-			const newEvent: CalendarEvent = {
-				...event,
-				id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-			};
-			setEvents((prev) => [...prev, newEvent]);
+		(event: Omit<CalendarEvent, "id" | "createdAt" | "updatedAt"> | CalendarEvent) => {
+			// Si l'événement a déjà un ID (ex: synchronisé depuis Google), l'utiliser
+			// Sinon, générer un nouvel ID
+			const hasId = "id" in event && event.id;
+			const newEvent: CalendarEvent = hasId
+				? {
+						...event,
+						createdAt: event.createdAt || new Date().toISOString(),
+						updatedAt: event.updatedAt || new Date().toISOString(),
+					}
+				: {
+						...event,
+						id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+						createdAt: new Date().toISOString(),
+						updatedAt: new Date().toISOString(),
+					};
+			
+			setEvents((prev) => {
+				// Vérifier si l'événement existe déjà pour éviter les doublons
+				const exists = prev.some((e) => e.id === newEvent.id);
+				if (exists) {
+					return prev;
+				}
+				return [...prev, newEvent];
+			});
 			return newEvent;
 		},
 		[]
 	);
 
 	const updateEvent = useCallback((id: string, updates: Partial<CalendarEvent>) => {
+		let updatedEvent: CalendarEvent | undefined;
 		setEvents((prev) =>
-			prev.map((event) =>
-				event.id === id
-					? {
-							...event,
-							...updates,
-							updatedAt: new Date().toISOString(),
-						}
-					: event
-			)
+			prev.map((event) => {
+				if (event.id === id) {
+					updatedEvent = {
+						...event,
+						...updates,
+						updatedAt: new Date().toISOString(),
+					};
+					return updatedEvent;
+				}
+				return event;
+			})
 		);
+		return updatedEvent;
 	}, []);
 
 	const deleteEvent = useCallback((id: string) => {
@@ -93,8 +123,27 @@ export function useCalendar() {
 		(date: Date) => {
 			const dateStr = formatDateLocal(date);
 			return events.filter((event) => {
+				// Parser les dates en évitant les problèmes de timezone
+				const [startYear, startMonth, startDay] = event.date.split("-").map(Number);
+				const startDate = new Date(startYear, startMonth - 1, startDay);
+				startDate.setHours(0, 0, 0, 0);
+				
+				const checkDate = new Date(date);
+				checkDate.setHours(0, 0, 0, 0);
+				
 				// Événement direct
-				if (event.date === dateStr) return true;
+				if (formatDateLocal(checkDate) === formatDateLocal(startDate)) return true;
+				
+				// Événement multi-jours : vérifier si la date est dans la plage
+				if (event.endDate) {
+					const [endYear, endMonth, endDay] = event.endDate.split("-").map(Number);
+					const endDate = new Date(endYear, endMonth - 1, endDay);
+					endDate.setHours(23, 59, 59, 999);
+					
+					if (checkDate >= startDate && checkDate <= endDate) {
+						return true;
+					}
+				}
 				
 				// Événement récurrent
 				if (event.recurrence && event.recurrence.type !== "none") {
@@ -121,6 +170,51 @@ export function useCalendar() {
 		[events]
 	);
 
+	// Fonction pour ajouter plusieurs événements en une seule fois
+	const addEvents = useCallback((newEvents: (Omit<CalendarEvent, "id" | "createdAt" | "updatedAt"> | CalendarEvent)[]) => {
+		console.log("➕ addEvents: Ajout de", newEvents.length, "événement(s)");
+		setEvents((prev) => {
+			const existingIds = new Set(prev.map((e) => e.id));
+			const eventsToAdd: CalendarEvent[] = [];
+
+			for (const event of newEvents) {
+				// Si l'événement a déjà un ID (ex: synchronisé depuis Google), l'utiliser
+				// Sinon, générer un nouvel ID
+				const hasId = "id" in event && event.id;
+				const processedEvent: CalendarEvent = hasId
+					? {
+							...event,
+							createdAt: event.createdAt || new Date().toISOString(),
+							updatedAt: event.updatedAt || new Date().toISOString(),
+						}
+					: {
+							...event,
+							id: `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+							createdAt: new Date().toISOString(),
+							updatedAt: new Date().toISOString(),
+						};
+
+				// Vérifier si l'événement existe déjà pour éviter les doublons
+				if (!existingIds.has(processedEvent.id)) {
+					eventsToAdd.push(processedEvent);
+					existingIds.add(processedEvent.id);
+					console.log("  ✓ Ajouté:", processedEvent.title, "(" + processedEvent.id + ")");
+				} else {
+					console.log("  ⏭️ Ignoré (déjà présent):", processedEvent.title, "(" + processedEvent.id + ")");
+				}
+			}
+
+			if (eventsToAdd.length === 0) {
+				console.log("⚠️ Aucun événement à ajouter (tous déjà présents)");
+				return prev;
+			}
+
+			const newEventsList = [...prev, ...eventsToAdd];
+			console.log("✅ Total après ajout:", newEventsList.length, "événement(s)");
+			return newEventsList;
+		});
+	}, []);
+
 	return {
 		// State
 		currentDate,
@@ -134,6 +228,7 @@ export function useCalendar() {
 		setView,
 		// Events
 		addEvent,
+		addEvents,
 		updateEvent,
 		deleteEvent,
 		getEventsForDate,

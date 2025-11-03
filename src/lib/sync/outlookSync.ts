@@ -27,9 +27,10 @@ export class OutlookSyncProvider implements CalendarSyncProvider {
 		};
 	}
 
-	async pushEvents(events: CalendarEvent[]): Promise<void> {
+	async pushEvents(events: CalendarEvent[]): Promise<CalendarEvent[]> {
 		// TODO: Implémenter push vers Outlook
 		console.log("Push events to Outlook (not implemented)", events.length);
+		return events; // Retourner les événements sans modification pour le moment
 	}
 
 	async pullEvents(): Promise<CalendarEvent[]> {

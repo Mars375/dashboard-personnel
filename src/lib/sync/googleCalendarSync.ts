@@ -41,6 +41,8 @@ interface GoogleCalendarListResponse {
 		id: string;
 		summary: string;
 		primary?: boolean;
+		accessRole?: string;
+		hidden?: boolean;
 	}>;
 }
 
@@ -71,6 +73,67 @@ export class GoogleCalendarSyncProvider implements CalendarSyncProvider {
 	}
 
 	/**
+	 * Récupère tous les calendriers disponibles
+	 */
+	async getAllCalendars(): Promise<Array<{ id: string; summary: string; primary?: boolean }>> {
+		try {
+			const accessToken = await this.getAccessToken();
+			const calendars: Array<{ id: string; summary: string; primary?: boolean }> = [];
+			let pageToken: string | undefined;
+
+			do {
+				const params = new URLSearchParams();
+				if (pageToken) {
+					params.append("pageToken", pageToken);
+				}
+
+				const response = await fetch(
+					`https://www.googleapis.com/calendar/v3/users/me/calendarList?${params.toString()}`,
+					{
+						headers: {
+							Authorization: `Bearer ${accessToken}`,
+						},
+					},
+				);
+
+				if (!response.ok) {
+					throw new Error(`Erreur lors de la récupération des calendriers: ${response.statusText}`);
+				}
+
+				const data = (await response.json()) as GoogleCalendarListResponse;
+				
+				// Filtrer les calendriers indésirables
+				const filteredCalendars = data.items.filter((calendar) => {
+					const summary = calendar.summary.toLowerCase();
+					
+					// Exclure les calendriers de semaines (Semaine X, Week X)
+					if (summary.match(/^(semaine|week)\s+\d+/i)) {
+						return false;
+					}
+					
+					// Exclure les calendriers cachés
+					if (calendar.hidden) {
+						return false;
+					}
+					
+					// Inclure tous les autres calendriers
+					return true;
+				});
+				
+				calendars.push(...filteredCalendars);
+				
+				// Vérifier s'il y a une page suivante
+				pageToken = (data as any).nextPageToken;
+			} while (pageToken);
+
+			return calendars;
+		} catch (error) {
+			console.error("Erreur lors de la récupération des calendriers:", error);
+			throw error;
+		}
+	}
+
+	/**
 	 * Récupère le calendrier principal ou celui spécifié
 	 */
 	async getCalendarId(): Promise<string> {
@@ -79,22 +142,8 @@ export class GoogleCalendarSyncProvider implements CalendarSyncProvider {
 		}
 
 		try {
-			const accessToken = await this.getAccessToken();
-			const response = await fetch(
-				"https://www.googleapis.com/calendar/v3/users/me/calendarList",
-				{
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
-					},
-				},
-			);
-
-			if (!response.ok) {
-				throw new Error(`Erreur lors de la récupération des calendriers: ${response.statusText}`);
-			}
-
-			const data = (await response.json()) as GoogleCalendarListResponse;
-			const primaryCalendar = data.items.find((cal) => cal.primary) || data.items[0];
+			const calendars = await this.getAllCalendars();
+			const primaryCalendar = calendars.find((cal) => cal.primary) || calendars[0];
 			
 			if (!primaryCalendar) {
 				throw new Error("Aucun calendrier trouvé");
@@ -117,16 +166,41 @@ export class GoogleCalendarSyncProvider implements CalendarSyncProvider {
 		// Extraire la date et l'heure
 		let date: string;
 		let time: string | undefined;
+		let endDate: string | undefined;
+		let endTime: string | undefined;
 
 		if (googleEvent.start?.dateTime) {
 			// Événement avec heure
 			const dateTime = parseISO(googleEvent.start.dateTime);
 			date = format(dateTime, "yyyy-MM-dd");
 			time = format(dateTime, "HH:mm");
+			
+			// Extraire la date et heure de fin si disponibles
+			if (googleEvent.end?.dateTime) {
+				const endDateTime = parseISO(googleEvent.end.dateTime);
+				const endDateStr = format(endDateTime, "yyyy-MM-dd");
+				// Si la date de fin est différente de la date de début, c'est un événement multi-jours
+				if (endDateStr !== date) {
+					endDate = endDateStr;
+				}
+				endTime = format(endDateTime, "HH:mm");
+			}
 		} else if (googleEvent.start?.date) {
 			// Événement toute la journée
 			date = googleEvent.start.date;
 			time = undefined;
+			
+			// Extraire la date de fin si disponible (Google Calendar utilise le jour suivant pour les événements toute la journée)
+			if (googleEvent.end?.date) {
+				const endDateObj = parseISO(googleEvent.end.date);
+				// Google Calendar utilise le jour suivant, donc on doit soustraire 1 jour
+				endDateObj.setDate(endDateObj.getDate() - 1);
+				const endDateStr = format(endDateObj, "yyyy-MM-dd");
+				// Si la date de fin est différente de la date de début, c'est un événement multi-jours
+				if (endDateStr !== date) {
+					endDate = endDateStr;
+				}
+			}
 		} else {
 			// Fallback
 			date = format(new Date(), "yyyy-MM-dd");
@@ -178,7 +252,9 @@ export class GoogleCalendarSyncProvider implements CalendarSyncProvider {
 			id,
 			title: googleEvent.summary || "Sans titre",
 			date,
+			endDate,
 			time,
+			endTime,
 			description: googleEvent.description,
 			color: googleEvent.colorId ? this.mapGoogleColorToHex(googleEvent.colorId) : undefined,
 			recurrence,
@@ -205,17 +281,51 @@ export class GoogleCalendarSyncProvider implements CalendarSyncProvider {
 				dateTime: dateTime.toISOString(),
 				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 			};
-			googleEvent.end = {
-				dateTime: new Date(dateTime.getTime() + 60 * 60 * 1000).toISOString(), // +1h par défaut
-				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-			};
+			
+			// Si événement multi-jours avec heure de fin
+			if (event.endDate && event.endTime) {
+				const endDateTime = new Date(`${event.endDate}T${event.endTime}`);
+				googleEvent.end = {
+					dateTime: endDateTime.toISOString(),
+					timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				};
+			} else if (event.endDate) {
+				// Événement multi-jours toute la journée
+				const endDate = new Date(event.endDate);
+				endDate.setDate(endDate.getDate() + 1); // Google Calendar utilise le jour suivant pour les événements toute la journée
+				googleEvent.end = {
+					date: `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`,
+				};
+				googleEvent.start = {
+					date: event.date,
+				};
+			} else if (event.endTime) {
+				// Même jour mais heure de fin différente
+				const endDateTime = new Date(`${event.date}T${event.endTime}`);
+				googleEvent.end = {
+					dateTime: endDateTime.toISOString(),
+					timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				};
+			} else {
+				// Par défaut +1h
+				googleEvent.end = {
+					dateTime: new Date(dateTime.getTime() + 60 * 60 * 1000).toISOString(),
+					timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				};
+			}
 		} else {
 			// Événement toute la journée
+			const endDate = event.endDate ? event.endDate : event.date;
+			// Pour les événements toute la journée multi-jours, Google Calendar utilise le jour suivant pour la date de fin
+			const endDateObj = new Date(endDate);
+			if (event.endDate && endDate !== event.date) {
+				endDateObj.setDate(endDateObj.getDate() + 1);
+			}
 			googleEvent.start = {
 				date: event.date,
 			};
 			googleEvent.end = {
-				date: event.date,
+				date: `${endDateObj.getFullYear()}-${String(endDateObj.getMonth() + 1).padStart(2, "0")}-${String(endDateObj.getDate()).padStart(2, "0")}`,
 			};
 		}
 
@@ -348,7 +458,7 @@ export class GoogleCalendarSyncProvider implements CalendarSyncProvider {
 	/**
 	 * Pousse les événements vers Google Calendar
 	 */
-	async pushEvents(events: CalendarEvent[]): Promise<void> {
+	async pushEvents(events: CalendarEvent[]): Promise<CalendarEvent[]> {
 		if (!this.enabled) {
 			throw new Error("Google Calendar sync is disabled");
 		}
@@ -360,7 +470,7 @@ export class GoogleCalendarSyncProvider implements CalendarSyncProvider {
 			try {
 				const googleEvent = this.convertToGoogleEvent(event);
 
-				// Si l'événement a un ID, tenter de mettre à jour
+				// Si l'événement a un ID Google, tenter de mettre à jour
 				// Sinon, créer un nouvel événement
 				if (event.id && event.id.startsWith("google-")) {
 					// ID Google existant, mettre à jour
@@ -403,19 +513,23 @@ export class GoogleCalendarSyncProvider implements CalendarSyncProvider {
 					// Mettre à jour l'ID de l'événement avec celui de Google
 					const createdEvent = (await response.json()) as GoogleCalendarEvent;
 					if (createdEvent.id) {
-						// On pourrait sauvegarder le mapping ID local -> ID Google ici
 						console.log(`Événement créé avec l'ID Google: ${createdEvent.id}`);
+						// Mettre à jour l'ID de l'événement local avec le préfixe google-
+						event.id = `google-${createdEvent.id}`;
 					}
 				}
 			} catch (error) {
 				console.error(`Erreur lors du push de l'événement ${event.id}:`, error);
-				// Continuer avec les autres événements
+				throw error; // Propager l'erreur pour que l'appelant puisse la gérer
 			}
 		}
+		
+		// Retourner les événements avec leurs IDs mis à jour
+		return events;
 	}
 
 	/**
-	 * Récupère les événements depuis Google Calendar
+	 * Récupère les événements depuis Google Calendar de TOUS les calendriers
 	 */
 	async pullEvents(): Promise<CalendarEvent[]> {
 		if (!this.enabled) {
@@ -423,7 +537,14 @@ export class GoogleCalendarSyncProvider implements CalendarSyncProvider {
 		}
 
 		const accessToken = await this.getAccessToken();
-		const calendarId = await this.getCalendarId();
+		
+		// Récupérer tous les calendriers disponibles
+		const calendars = await this.getAllCalendars();
+		
+		if (calendars.length === 0) {
+			console.warn("Aucun calendrier trouvé");
+			return [];
+		}
 
 		// Récupérer les événements des 3 derniers mois et des 3 prochains mois
 		const now = new Date();
@@ -435,56 +556,97 @@ export class GoogleCalendarSyncProvider implements CalendarSyncProvider {
 		const timeMin = threeMonthsAgo.toISOString();
 		const timeMax = threeMonthsFromNow.toISOString();
 
-		const events: CalendarEvent[] = [];
-		let pageToken: string | undefined;
+		const allEvents: CalendarEvent[] = [];
 
-		do {
-			const params = new URLSearchParams({
-				timeMin,
-				timeMax,
-				singleEvents: "true", // Développer les événements récurrents
-				orderBy: "startTime",
-				maxResults: "2500",
-			});
+		// Récupérer les événements de tous les calendriers en parallèle
+		const calendarPromises = calendars.map(async (calendar) => {
+			const events: CalendarEvent[] = [];
+			let pageToken: string | undefined;
 
-			if (pageToken) {
-				params.append("pageToken", pageToken);
-			}
+			do {
+				const params = new URLSearchParams({
+					timeMin,
+					timeMax,
+					singleEvents: "true", // Développer les événements récurrents
+					orderBy: "startTime",
+					maxResults: "2500",
+				});
 
-			const response = await fetch(
-				`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`,
-				{
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
-					},
-				},
-			);
-
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(`Erreur lors de la récupération: ${error.error?.message || response.statusText}`);
-			}
-
-			const data = (await response.json()) as GoogleEventsResponse;
-
-			for (const googleEvent of data.items || []) {
-				try {
-					const localEvent = this.convertFromGoogleEvent(googleEvent);
-					// Préfixer l'ID avec "google-" pour identifier l'origine
-					if (googleEvent.id) {
-						localEvent.id = `google-${googleEvent.id}`;
-					}
-					events.push(localEvent);
-				} catch (error) {
-					console.error("Erreur lors de la conversion d'un événement:", error);
-					// Continuer avec les autres événements
+				if (pageToken) {
+					params.append("pageToken", pageToken);
 				}
+
+				try {
+					const response = await fetch(
+						`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendar.id)}/events?${params.toString()}`,
+						{
+							headers: {
+								Authorization: `Bearer ${accessToken}`,
+							},
+						},
+					);
+
+					if (!response.ok) {
+						// Si le calendrier n'est pas accessible, continuer avec les autres
+						if (response.status === 403 || response.status === 404) {
+							console.warn(`Calendrier ${calendar.summary} (${calendar.id}) non accessible, ignoré`);
+							break;
+						}
+						const error = await response.json();
+						throw new Error(`Erreur lors de la récupération: ${error.error?.message || response.statusText}`);
+					}
+
+					const data = (await response.json()) as GoogleEventsResponse;
+
+					for (const googleEvent of data.items || []) {
+						try {
+							// Filtrer les événements indésirables
+							const eventTitle = googleEvent.summary?.toLowerCase() || "";
+							
+							// Exclure les événements de semaines (Semaine X de YYYY, Week X of YYYY)
+							if (eventTitle.match(/^(semaine|week)\s+\d+/i)) {
+								continue;
+							}
+							
+							const localEvent = this.convertFromGoogleEvent(googleEvent);
+							// Préfixer l'ID avec "google-" pour identifier l'origine
+							if (googleEvent.id) {
+								localEvent.id = `google-${googleEvent.id}`;
+							}
+							// Ajouter le nom du calendrier source
+							localEvent.sourceCalendar = calendar.summary;
+							events.push(localEvent);
+						} catch (error) {
+							console.error("Erreur lors de la conversion d'un événement:", error);
+							// Continuer avec les autres événements
+						}
+					}
+
+					pageToken = data.nextPageToken;
+				} catch (error) {
+					console.error(`Erreur lors de la récupération des événements du calendrier ${calendar.summary}:`, error);
+					// Continuer avec les autres calendriers même en cas d'erreur
+					break;
+				}
+			} while (pageToken);
+
+			return events;
+		});
+
+		// Attendre que tous les calendriers soient traités
+		const results = await Promise.allSettled(calendarPromises);
+		
+		// Collecter tous les événements
+		for (const result of results) {
+			if (result.status === "fulfilled") {
+				allEvents.push(...result.value);
+			} else {
+				console.error("Erreur lors de la récupération des calendriers:", result.reason);
 			}
+		}
 
-			pageToken = data.nextPageToken;
-		} while (pageToken);
-
-		return events;
+		console.log(`✅ ${allEvents.length} événement(s) récupéré(s) depuis ${calendars.length} calendrier(s)`);
+		return allEvents;
 	}
 
 	/**

@@ -53,16 +53,27 @@ export function OAuthButton({
 			const manager = getOAuthManager();
 			await manager.connect(provider, service);
 			setIsConnected(true);
-			// Un seul toast avec message unifié et sans background
-			toast.success(`${getServiceName()} connecté`, {
-				className: "bg-transparent border-none shadow-none",
-				style: { background: "transparent", border: "none", boxShadow: "none" },
-			});
+			// Un seul toast avec message unifié
+			toast.success(`${getServiceName()} connecté`);
 			onConnect?.();
 		} catch (error) {
-			toast.error(
-				`Erreur lors de la connexion à ${provider}: ${error instanceof Error ? error.message : "Erreur inconnue"}`,
-			);
+			// Détecter si l'utilisateur a annulé la connexion
+			const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
+			const isCancelled = 
+				errorMessage.includes("Access denied") ||
+				errorMessage.includes("access_denied") ||
+				errorMessage.includes("user_cancelled") ||
+				errorMessage.includes("popup_closed_by_user") ||
+				errorMessage.toLowerCase().includes("annulé") ||
+				errorMessage.toLowerCase().includes("cancelled");
+			
+			if (isCancelled) {
+				toast.error("Connexion annulée");
+			} else {
+				toast.error(
+					`Erreur lors de la connexion à ${getServiceName()}: ${errorMessage}`,
+				);
+			}
 			console.error("Erreur OAuth:", error);
 		} finally {
 			setIsConnecting(false);
@@ -74,10 +85,7 @@ export function OAuthButton({
 			const manager = getOAuthManager();
 			await manager.disconnect(provider);
 			setIsConnected(false);
-			toast.success(`${getServiceName()} déconnecté`, {
-				className: "bg-transparent border-none shadow-none",
-				style: { background: "transparent", border: "none", boxShadow: "none" },
-			});
+			toast.success(`${getServiceName()} déconnecté`);
 			onDisconnect?.();
 		} catch (error) {
 			toast.error(

@@ -13,6 +13,7 @@ import {
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
@@ -33,7 +34,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { useCalendar } from "@/hooks/useCalendar";
-import { useTodos } from "@/hooks/useTodos";
 import { useState, useEffect, useRef } from "react";
 import {
 	Plus,
@@ -75,7 +75,6 @@ import {
 import { calendarSyncManager } from "@/lib/sync/calendarSyncManager";
 import { isDateInRecurrence } from "@/lib/calendarRecurrence";
 import type { WidgetProps } from "@/lib/widgetSize";
-import { OAuthButton } from "@/components/ui/oauth-button";
 import { getOAuthManager } from "@/lib/auth/oauthManager";
 
 // Fonction utilitaire pour formater une date en YYYY-MM-DD en local (évite les problèmes de timezone)
@@ -96,13 +95,12 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 		getEventsForDate,
 		events,
 		addEvent,
+		addEvents,
 		updateEvent,
 		deleteEvent,
 		view,
 		setView,
 	} = useCalendar();
-
-	const { todos } = useTodos();
 
 	const [selectedDate, setSelectedDate] = useState<Date | undefined>(
 		currentDate
@@ -112,8 +110,12 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 	const [newEventDate, setNewEventDate] = useState<Date | undefined>(
 		selectedDate
 	);
+	const [newEventEndDate, setNewEventEndDate] = useState<Date | undefined>(
+		undefined
+	);
 	const [newEventTitle, setNewEventTitle] = useState("");
 	const [newEventTime, setNewEventTime] = useState("");
+	const [newEventEndTime, setNewEventEndTime] = useState("");
 	const [newEventDescription, setNewEventDescription] = useState("");
 	const [newEventColor, setNewEventColor] = useState<string>("");
 	const [newEventRecurrence, setNewEventRecurrence] = useState<
@@ -149,19 +151,40 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 	// Drag & drop uniquement pour CalendarEventItem dans les listes
 	const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
 
-	// Charger les todos pour afficher les deadlines
-	const todosWithDeadlines = todos.filter(
-		(todo) => todo.deadline && !todo.completed
-	);
+	// Plus d'affichage des todos dans le calendrier (séparation complète avec TodoWidget)
+	const todosWithDeadlines: Array<{
+		id: string;
+		title: string;
+		deadline: string;
+		listName?: string;
+	}> = [];
 
 	// Obtenir les dates qui ont des événements pour les marquer visuellement
 	// Convertir "YYYY-MM-DD" en Date locale (évite les problèmes de timezone)
-	// Inclure aussi les événements récurrents pour le mois actuel
+	// Inclure aussi les événements récurrents et multi-jours pour le mois actuel
 	const datesWithEventsSet = new Set<string>();
 	events.forEach((event) => {
 		const [year, month, day] = event.date.split("-").map(Number);
 		const eventDate = new Date(year, month - 1, day);
-		datesWithEventsSet.add(formatDateLocal(eventDate));
+		eventDate.setHours(0, 0, 0, 0);
+
+		// Si événement multi-jours, ajouter toutes les dates de la plage
+		if (event.endDate) {
+			const [endYear, endMonth, endDay] = event.endDate.split("-").map(Number);
+			const endDate = new Date(endYear, endMonth - 1, endDay);
+			endDate.setHours(23, 59, 59, 999);
+
+			for (
+				let d = new Date(eventDate);
+				d <= endDate;
+				d.setDate(d.getDate() + 1)
+			) {
+				datesWithEventsSet.add(formatDateLocal(d));
+			}
+		} else {
+			// Événement d'un seul jour
+			datesWithEventsSet.add(formatDateLocal(eventDate));
+		}
 
 		// Si récurrent, ajouter les occurrences du mois actuel
 		if (event.recurrence && event.recurrence.type !== "none") {
@@ -211,7 +234,9 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 				Partial<Pick<CalendarEvent, "recurrence" | "reminderMinutes">> = {
 				title: newEventTitle.trim(),
 				date: formatDateLocal(newEventDate),
+				endDate: newEventEndDate ? formatDateLocal(newEventEndDate) : undefined,
 				time: newEventTime || undefined,
+				endTime: newEventEndTime || undefined,
 				description: newEventDescription || undefined,
 				color: newEventColor || undefined,
 				reminderMinutes: newEventReminderMinutes || undefined,
@@ -228,9 +253,22 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 			if (editingEvent) {
 				updateEvent(editingEvent.id, eventData);
 				toast.success("Événement modifié");
+				// Pousser vers Google Calendar en arrière-plan
+				const currentEvent = events.find((e) => e.id === editingEvent.id);
+				if (currentEvent) {
+					pushEventToGoogle({ ...currentEvent, ...eventData }, "update").catch(
+						(err) => {
+							console.error("Erreur push Google:", err);
+						}
+					);
+				}
 			} else {
-				addEvent(eventData);
+				const newEvent = addEvent(eventData);
 				toast.success("Événement créé");
+				// Pousser vers Google Calendar en arrière-plan
+				pushEventToGoogle(newEvent, "create").catch((err) => {
+					console.error("Erreur push Google:", err);
+				});
 			}
 
 			handleDialogOpenChange(false);
@@ -245,6 +283,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 			setEditingEvent(event);
 			setNewEventTitle(event.title || "");
 			setNewEventTime(event.time || "");
+			setNewEventEndTime(event.endTime || "");
 			setNewEventDescription(event.description || "");
 			setNewEventColor(event.color || "");
 			setNewEventRecurrence(event.recurrence?.type || "none");
@@ -256,6 +295,17 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 				setNewEventDate(selectedDate || new Date());
 			} else {
 				setNewEventDate(eventDate);
+			}
+			// Gérer la date de fin
+			if (event.endDate) {
+				const endDate = new Date(event.endDate);
+				if (!isNaN(endDate.getTime())) {
+					setNewEventEndDate(endDate);
+				} else {
+					setNewEventEndDate(undefined);
+				}
+			} else {
+				setNewEventEndDate(undefined);
 			}
 			setIsDialogOpen(true);
 		} catch (error) {
@@ -276,9 +326,11 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 			setEditingEvent(null);
 			setNewEventTitle("");
 			setNewEventTime("");
+			setNewEventEndTime("");
 			setNewEventDescription("");
 			setNewEventColor("");
 			setNewEventDate(selectedDate);
+			setNewEventEndDate(undefined);
 		}
 	};
 
@@ -396,6 +448,126 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 		);
 	};
 
+	// Fonction pour pousser un événement vers Google Calendar
+	const pushEventToGoogle = async (
+		event: CalendarEvent,
+		operation: "create" | "update" | "delete"
+	) => {
+		try {
+			const oauthManager = getOAuthManager();
+			const isGoogleConnected = oauthManager.isConnected("google");
+
+			if (!isGoogleConnected) {
+				console.log("⏭️ Google Calendar non connecté, skip push");
+				return;
+			}
+
+			// Activer le provider si nécessaire
+			const googleProvider = calendarSyncManager
+				.getAllProviders()
+				.find((p) => p.name === "Google Calendar");
+
+			if (!googleProvider || !googleProvider.enabled) {
+				const config = {
+					providers: {
+						googleCalendar: {
+							enabled: true,
+							calendarId: "primary",
+						},
+					},
+				};
+				calendarSyncManager.updateConfig(config);
+			}
+
+			if (!googleProvider) {
+				console.log("⏭️ Google Calendar provider non disponible");
+				return;
+			}
+
+			// Pour les événements qui viennent déjà de Google (avec ID google-*),
+			// on les met à jour/supprime directement
+			if (event.id.startsWith("google-")) {
+				if (operation === "delete") {
+					// Supprimer un événement Google directement via l'API
+					const googleEventId = event.id.replace("google-", "");
+					const oauthManager = getOAuthManager();
+					const accessToken = await oauthManager.getValidAccessToken("google");
+					// Utiliser getCalendarId() si disponible, sinon "primary"
+					// googleProvider est de type GoogleCalendarSyncProvider qui a getCalendarId()
+					const googleSyncProvider = googleProvider as unknown as {
+						getCalendarId?: () => Promise<string>;
+					};
+					const calendarId = googleSyncProvider.getCalendarId
+						? await googleSyncProvider.getCalendarId()
+						: "primary";
+
+					const response = await fetch(
+						`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+							calendarId
+						)}/events/${googleEventId}`,
+						{
+							method: "DELETE",
+							headers: {
+								Authorization: `Bearer ${accessToken}`,
+							},
+						}
+					);
+
+					if (!response.ok && response.status !== 404) {
+						// 404 = déjà supprimé, c'est OK
+						const error = await response
+							.json()
+							.catch(() => ({ error: { message: response.statusText } }));
+						throw new Error(
+							`Erreur lors de la suppression: ${
+								error.error?.message || response.statusText
+							}`
+						);
+					}
+					console.log(`✅ Événement Google supprimé: ${googleEventId}`);
+				} else {
+					// Mise à jour d'un événement Google existant
+					await googleProvider.pushEvents([event]);
+					console.log(
+						`✅ Événement Google ${
+							operation === "create" ? "créé" : "mis à jour"
+						}`
+					);
+				}
+			} else {
+				// Événement local : créer dans Google
+				if (operation === "create") {
+					const createdEvents = await googleProvider.pushEvents([event]);
+					// Si création, mettre à jour l'ID local avec l'ID Google
+					if (createdEvents && createdEvents.length > 0) {
+						const googleEvent = createdEvents[0];
+						if (googleEvent?.id && googleEvent.id.startsWith("google-")) {
+							// Mettre à jour l'ID de l'événement local
+							updateEvent(event.id, { id: googleEvent.id });
+							console.log(
+								`✅ Événement local synchronisé vers Google avec ID: ${googleEvent.id}`
+							);
+						}
+					}
+				} else if (operation === "update") {
+					// Pour les événements locaux mis à jour, créer dans Google (car ils n'existent pas encore là-bas)
+					await googleProvider.pushEvents([event]);
+					console.log(`✅ Événement local mis à jour dans Google`);
+				} else if (operation === "delete") {
+					// Pour les événements locaux supprimés, pas besoin de les supprimer de Google
+					// car ils n'existent que localement
+					console.log(
+						"⏭️ Événement local supprimé (non synchronisé avec Google)"
+					);
+				}
+			}
+		} catch (error) {
+			console.error("❌ Erreur lors du push vers Google Calendar:", error);
+			// Ne pas afficher de toast d'erreur pour ne pas perturber l'UX
+			// L'utilisateur peut toujours faire une sync manuelle
+		}
+	};
+
 	const handleSync = async () => {
 		setIsSyncing(true);
 		try {
@@ -447,11 +619,11 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 						return !exists;
 					});
 
-					// Ajouter les nouveaux événements
+					// Ajouter les nouveaux événements en une seule fois
 					if (newEvents.length > 0) {
-						newEvents.forEach((event) => {
-							addEvent(event);
-						});
+						// Utiliser addEvents pour ajouter tous les événements en une seule opération
+						// Cela garantit que la sauvegarde se fait avec tous les événements
+						addEvents(newEvents);
 						newEventsCount = newEvents.length;
 					}
 				}
@@ -481,6 +653,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 			toast.error("Erreur lors de la synchronisation", {
 				description: error instanceof Error ? error.message : "Erreur inconnue",
 			});
+			console.error("Erreur lors de la synchronisation:", error);
 		} finally {
 			setIsSyncing(false);
 		}
@@ -561,17 +734,6 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 		? searchQuery.trim()
 			? getFilteredEventsForDate(selectedDate)
 			: getEventsForDate(selectedDate)
-		: [];
-	const selectedDateTodos = selectedDate
-		? todosWithDeadlines.filter((todo) => {
-				if (!todo.deadline) return false;
-				const deadlineDate = new Date(todo.deadline);
-				return (
-					deadlineDate.getDate() === selectedDate.getDate() &&
-					deadlineDate.getMonth() === selectedDate.getMonth() &&
-					deadlineDate.getFullYear() === selectedDate.getFullYear()
-				);
-		  })
 		: [];
 
 	const padding = isCompact ? "p-2" : isMedium ? "px-3 pb-3 pt-1" : "p-4";
@@ -816,40 +978,6 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 
 								{/* Synchronisation et Notifications */}
 								<ButtonGroup>
-									{/* Bouton OAuth Google Calendar */}
-									{isFull && (
-										<OAuthButton
-											provider='google'
-											service='google-calendar'
-											variant='outline'
-											size='sm'
-											iconOnly
-											onConnect={() => {
-												// Activer le provider après connexion
-												const config = {
-													providers: {
-														googleCalendar: {
-															enabled: true,
-															calendarId: "primary",
-														},
-													},
-												};
-												calendarSyncManager.updateConfig(config);
-												// Ne pas afficher de toast ici - déjà affiché dans OAuthButton
-											}}
-											onDisconnect={() => {
-												// Désactiver le provider après déconnexion
-												const config = {
-													providers: {
-														googleCalendar: {
-															enabled: false,
-														},
-													},
-												};
-												calendarSyncManager.updateConfig(config);
-											}}
-										/>
-									)}
 									<Button
 										variant='outline'
 										size='sm'
@@ -1467,6 +1595,11 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 								className='w-full'
 								captionLayout='dropdown-buttons'
 								showOutsideDays={true}
+								todosWithDeadlines={todosWithDeadlines.map((todo) => ({
+									id: todo.id,
+									title: todo.title,
+									deadline: todo.deadline!,
+								}))}
 							/>
 						</motion.div>
 					</CardContent>
@@ -1543,6 +1676,13 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 												size='icon'
 												className='size-6'
 												title='Ajouter un événement'
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
 											>
 												<Plus className='h-4 w-4' />
 												<span className='sr-only'>Ajouter un événement</span>
@@ -1555,6 +1695,11 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 														? "Modifier l'événement"
 														: "Nouvel événement"}
 												</DialogTitle>
+												<DialogDescription>
+													{editingEvent
+														? "Modifiez les détails de votre événement."
+														: "Créez un nouvel événement dans votre calendrier."}
+												</DialogDescription>
 											</DialogHeader>
 											<div className='flex flex-col gap-4 py-4'>
 												{/* Titre */}
@@ -1568,9 +1713,9 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 													/>
 												</div>
 
-												{/* Date */}
+												{/* Date de début */}
 												<div className='flex flex-col gap-2'>
-													<Label>Date *</Label>
+													<Label>Date de début *</Label>
 													<Popover>
 														<PopoverTrigger asChild>
 															<Button
@@ -1598,9 +1743,44 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 													</Popover>
 												</div>
 
-												{/* Heure */}
+												{/* Date de fin */}
 												<div className='flex flex-col gap-2'>
-													<Label htmlFor='event-time'>Heure (optionnel)</Label>
+													<Label>
+														Date de fin (optionnel - pour événements
+														multi-jours)
+													</Label>
+													<Popover>
+														<PopoverTrigger asChild>
+															<Button
+																variant='outline'
+																className='w-full justify-start text-left font-normal'
+															>
+																<CalendarIcon className='mr-2 h-4 w-4' />
+																{newEventEndDate ? (
+																	format(newEventEndDate, "PPP", { locale: fr })
+																) : (
+																	<span>Sélectionner une date de fin</span>
+																)}
+															</Button>
+														</PopoverTrigger>
+														<PopoverContent
+															className='w-auto p-0'
+															align='start'
+														>
+															<DatePicker
+																selected={newEventEndDate}
+																onSelect={setNewEventEndDate}
+																captionLayout='dropdown'
+															/>
+														</PopoverContent>
+													</Popover>
+												</div>
+
+												{/* Heure de début */}
+												<div className='flex flex-col gap-2'>
+													<Label htmlFor='event-time'>
+														Heure de début (optionnel)
+													</Label>
 													<div className='relative'>
 														<Clock className='absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
 														<Input
@@ -1608,6 +1788,25 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 															type='time'
 															value={newEventTime}
 															onChange={(e) => setNewEventTime(e.target.value)}
+															className='pl-8'
+														/>
+													</div>
+												</div>
+
+												{/* Heure de fin */}
+												<div className='flex flex-col gap-2'>
+													<Label htmlFor='event-end-time'>
+														Heure de fin (optionnel)
+													</Label>
+													<div className='relative'>
+														<Clock className='absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
+														<Input
+															id='event-end-time'
+															type='time'
+															value={newEventEndTime}
+															onChange={(e) =>
+																setNewEventEndTime(e.target.value)
+															}
 															className='pl-8'
 														/>
 													</div>
@@ -1713,12 +1912,26 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 													<Button
 														variant='outline'
 														onClick={() => handleDialogOpenChange(false)}
+														onMouseDown={(e: React.MouseEvent) => {
+															e.stopPropagation();
+														}}
+														onDragStart={(e: React.DragEvent) => {
+															e.preventDefault();
+															e.stopPropagation();
+														}}
 													>
 														Annuler
 													</Button>
 													<Button
 														onClick={handleCreateEvent}
 														disabled={!newEventDate || !newEventTitle.trim()}
+														onMouseDown={(e: React.MouseEvent) => {
+															e.stopPropagation();
+														}}
+														onDragStart={(e: React.DragEvent) => {
+															e.preventDefault();
+															e.stopPropagation();
+														}}
 													>
 														{editingEvent ? "Enregistrer" : "Créer"}
 													</Button>
@@ -1728,27 +1941,9 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 									</Dialog>
 								</div>
 
-								{/* Todos avec deadlines */}
-								{selectedDateTodos.length > 0 && (
-									<div className='mb-2'>
-										<div className='space-y-1'>
-											{selectedDateTodos.map((todo) => (
-												<div
-													key={todo.id}
-													className='bg-muted text-xs p-2 rounded-md flex items-center gap-2'
-												>
-													<Clock className='h-3 w-3 text-orange-600 dark:text-orange-400' />
-													<span className='flex-1'>{todo.title}</span>
-												</div>
-											))}
-										</div>
-									</div>
-								)}
-
 								{/* Événements */}
 								<div className='flex w-full flex-col gap-2'>
-									{selectedDateEvents.length === 0 &&
-									selectedDateTodos.length === 0 ? (
+									{selectedDateEvents.length === 0 ? (
 										<p className='text-sm text-muted-foreground'>
 											Aucun événement
 										</p>
@@ -1758,7 +1953,13 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 												key={event.id}
 												event={event}
 												onEdit={() => handleEditEvent(event)}
-												onDelete={() => deleteEvent(event.id)}
+												onDelete={async () => {
+													// Pousser la suppression vers Google Calendar en arrière-plan
+													pushEventToGoogle(event, "delete").catch((err) => {
+														console.error("Erreur push Google:", err);
+													});
+													deleteEvent(event.id);
+												}}
 												onDragStart={() => handleEventDragStart(event.id)}
 												onDragEnd={handleEventDragEnd}
 												isDragging={draggedEventId === event.id}
@@ -1810,15 +2011,44 @@ function CalendarEventItem({
 	};
 
 	const formattedTime = formatEventTime();
+	const sourceCalendar = event.sourceCalendar;
 
 	// Déterminer la couleur de la barre via after pseudo-element
 	const afterBgColor = eventColor ? `${eventColor}70` : undefined;
 
+	const handleDragStart = (e: React.DragEvent) => {
+		try {
+			e.stopPropagation();
+			// Empêcher les extensions de navigateur d'interférer
+			e.dataTransfer.effectAllowed = "move";
+			onDragStart();
+		} catch (error) {
+			// Ignorer les erreurs d'extensions de navigateur
+			console.warn(
+				"Erreur lors du drag start (peut être causée par une extension):",
+				error
+			);
+		}
+	};
+
+	const handleDragEnd = (e: React.DragEvent) => {
+		try {
+			e.stopPropagation();
+			onDragEnd();
+		} catch (error) {
+			// Ignorer les erreurs d'extensions de navigateur
+			console.warn(
+				"Erreur lors du drag end (peut être causée par une extension):",
+				error
+			);
+		}
+	};
+
 	return (
 		<div
 			draggable
-			onDragStart={onDragStart}
-			onDragEnd={onDragEnd}
+			onDragStart={handleDragStart}
+			onDragEnd={handleDragEnd}
 			className={cn(
 				"bg-muted relative rounded-md p-2 pl-6 text-sm cursor-move group",
 				"after:absolute after:inset-y-2 after:left-2 after:w-1 after:rounded-full",
@@ -1844,9 +2074,18 @@ function CalendarEventItem({
 			<div className='flex items-start justify-between gap-2'>
 				<div className='flex-1'>
 					<div className='font-medium'>{event.title}</div>
-					{formattedTime && (
-						<div className='text-muted-foreground text-xs'>{formattedTime}</div>
-					)}
+					<div className='flex items-center gap-2 flex-wrap'>
+						{formattedTime && (
+							<div className='text-muted-foreground text-xs'>
+								{formattedTime}
+							</div>
+						)}
+						{sourceCalendar && (
+							<span className='text-[10px] text-muted-foreground px-1.5 py-0.5 bg-background rounded border'>
+								{sourceCalendar}
+							</span>
+						)}
+					</div>
 				</div>
 				<div className='opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1'>
 					<Button
@@ -1856,6 +2095,13 @@ function CalendarEventItem({
 						onClick={(e) => {
 							e.stopPropagation();
 							onEdit();
+						}}
+						onMouseDown={(e: React.MouseEvent) => {
+							e.stopPropagation();
+						}}
+						onDragStart={(e: React.DragEvent) => {
+							e.preventDefault();
+							e.stopPropagation();
 						}}
 						aria-label="Modifier l'événement"
 					>
@@ -1868,6 +2114,13 @@ function CalendarEventItem({
 						onClick={(e) => {
 							e.stopPropagation();
 							onDelete();
+						}}
+						onMouseDown={(e: React.MouseEvent) => {
+							e.stopPropagation();
+						}}
+						onDragStart={(e: React.DragEvent) => {
+							e.preventDefault();
+							e.stopPropagation();
 						}}
 						aria-label="Supprimer l'événement"
 					>

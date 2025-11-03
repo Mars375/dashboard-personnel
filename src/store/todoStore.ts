@@ -23,7 +23,7 @@ interface TodoStore extends TodoHistory {
 	renameList: (listId: string, name: string) => void;
 	deleteList: (listId: string) => void;
 	// Todo actions
-	addTodo: (title: string, deadline?: string) => void;
+	addTodo: (title: string, deadline?: string, id?: string, completed?: boolean, priority?: boolean, createdAt?: number) => void;
 	toggleTodo: (id: string) => void;
 	deleteTodo: (id: string) => void;
 	editTodo: (id: string, title: string) => void;
@@ -142,16 +142,16 @@ export const useTodoStore = create<TodoStore>((set, get) => {
 			saveTodoLists(listsData);
 		},
 
-		addTodo: (title: string, deadline?: string) => {
+		addTodo: (title: string, deadline?: string, id?: string, completed?: boolean, priority?: boolean, createdAt?: number) => {
 			if (!title.trim()) return;
 			const { present, past, currentListId } = get();
 
 			const newTodo: Todo = {
-				id: crypto.randomUUID(),
+				id: id || crypto.randomUUID(),
 				title: title.trim(),
-				completed: false,
-				priority: false,
-				createdAt: Date.now(),
+				completed: completed ?? false,
+				priority: priority ?? false,
+				createdAt: createdAt ?? Date.now(),
 				deadline,
 			};
 

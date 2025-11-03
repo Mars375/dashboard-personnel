@@ -8,7 +8,7 @@ export interface CalendarSyncProvider {
 	name: string;
 	enabled: boolean;
 	sync(): Promise<CalendarSyncResult>;
-	pushEvents(events: CalendarEvent[]): Promise<void>;
+	pushEvents(events: CalendarEvent[]): Promise<CalendarEvent[]>;
 	pullEvents(): Promise<CalendarEvent[]>;
 }
 

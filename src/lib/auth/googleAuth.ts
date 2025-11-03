@@ -43,8 +43,19 @@ export class GoogleAuth {
 				return;
 			}
 
-			// Flag pour s'assurer que l'échange ne se fait qu'une seule fois
+			// Flags pour gérer l'état de l'authentification
 			let isExchanging = false;
+			let isResolved = false;
+			let checkPopupClosed: NodeJS.Timeout | null = null;
+			
+			// Nettoyer les listeners et interval
+			const cleanup = () => {
+				window.removeEventListener("message", messageHandler);
+				if (checkPopupClosed) {
+					clearInterval(checkPopupClosed);
+					checkPopupClosed = null;
+				}
+			};
 			
 			// Écouter le message du callback
 			const messageHandler = async (event: MessageEvent) => {
@@ -53,7 +64,7 @@ export class GoogleAuth {
 
 				if (event.data.type === "OAUTH_SUCCESS") {
 					// Protection contre les appels multiples
-					if (isExchanging) {
+					if (isExchanging || isResolved) {
 						console.warn("⚠️ Tentative d'échange du code déjà en cours, ignorée");
 						return;
 					}
@@ -63,7 +74,7 @@ export class GoogleAuth {
 					
 					if (!code) {
 						isExchanging = false;
-						window.removeEventListener("message", messageHandler);
+						cleanup();
 						if (!popup.closed) {
 							popup.close();
 						}
@@ -77,14 +88,15 @@ export class GoogleAuth {
 						// Pour le MVP, on va utiliser un proxy ou une solution alternative
 						const tokens = await this.exchangeCodeForTokensWithProxy(code);
 						
-						window.removeEventListener("message", messageHandler);
+						isResolved = true;
+						cleanup();
 						if (!popup.closed) {
 							popup.close();
 						}
 						resolve(tokens);
 					} catch (error) {
 						isExchanging = false;
-						window.removeEventListener("message", messageHandler);
+						cleanup();
 						if (!popup.closed) {
 							popup.close();
 						}
@@ -93,21 +105,33 @@ export class GoogleAuth {
 				} else if (event.data.type === "OAUTH_ERROR") {
 					// Réinitialiser le flag même en cas d'erreur
 					isExchanging = false;
-					window.removeEventListener("message", messageHandler);
+					cleanup();
 					if (!popup.closed) {
 						popup.close();
 					}
-					reject(new Error(event.data.error || event.data.errorDescription || "Erreur d'authentification"));
+					const errorMsg = event.data.error || event.data.errorDescription || "Erreur d'authentification";
+					reject(new Error(errorMsg));
 				}
 			};
 
 			window.addEventListener("message", messageHandler);
 
+			// Vérifier périodiquement si la popup est fermée par l'utilisateur (annulation)
+			checkPopupClosed = setInterval(() => {
+				if (popup.closed && !isResolved && !isExchanging) {
+					// La popup a été fermée sans recevoir de message = annulation
+					cleanup();
+					reject(new Error("Connexion annulée par l'utilisateur"));
+				}
+			}, 500); // Vérifier toutes les 500ms
+
 			// Timeout après 5 minutes
 			setTimeout(() => {
-				window.removeEventListener("message", messageHandler);
-				if (!popup.closed) {
-					popup.close();
+				if (!isResolved) {
+					cleanup();
+					if (!popup.closed) {
+						popup.close();
+					}
 					reject(new Error("Authentification expirée"));
 				}
 			}, 5 * 60 * 1000);
@@ -211,14 +235,20 @@ export class GoogleAuth {
 
 		switch (service) {
 			case "google-calendar":
+				// Pour google-calendar, on demande aussi les scopes Tasks pour simplifier
+				// L'utilisateur connecte Google une fois et a accès à Calendar + Tasks
 				return [
 					...baseScopes,
 					"https://www.googleapis.com/auth/calendar",
 					"https://www.googleapis.com/auth/calendar.events",
+					"https://www.googleapis.com/auth/tasks",
 				];
 			case "google-tasks":
+				// Même chose pour Tasks, on inclut Calendar aussi
 				return [
 					...baseScopes,
+					"https://www.googleapis.com/auth/calendar",
+					"https://www.googleapis.com/auth/calendar.events",
 					"https://www.googleapis.com/auth/tasks",
 				];
 			default:

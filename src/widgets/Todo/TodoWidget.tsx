@@ -33,9 +33,12 @@ import {
 import { toast } from "sonner";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { motion } from "framer-motion";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useTodos, type TodoFilter } from "@/hooks/useTodos";
 import { saveTodos, type Todo } from "@/store/todoStorage";
+import { DatePicker } from "@/components/ui/calendar-full";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import {
 	requestNotificationPermission,
 	getNotificationPermission,
@@ -44,8 +47,10 @@ import {
 	checkAndSendNotifications,
 	type NotificationSettings,
 } from "@/lib/notifications";
-import { syncManager } from "@/lib/sync/syncManager";
 import { cn } from "@/lib/utils";
+import { getOAuthManager } from "@/lib/auth/oauthManager";
+import { GoogleTasksSyncProvider } from "@/lib/sync/googleTasksSync";
+import type { SyncConfig } from "@/lib/sync/apiSync";
 import {
 	Star,
 	Trash2,
@@ -104,22 +109,31 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [editingValue, setEditingValue] = useState("");
-	const [editingDeadline, setEditingDeadline] = useState("");
-	const [newTodoDeadline, setNewTodoDeadline] = useState("");
+	const [editingDeadline, setEditingDeadline] = useState<Date | undefined>(
+		undefined
+	);
+	const [newTodoDeadline, setNewTodoDeadline] = useState<Date | undefined>(
+		undefined
+	);
 	const [showNewDeadline, setShowNewDeadline] = useState(false);
+	const [deadlinePickerOpen, setDeadlinePickerOpen] = useState(false);
+	const [newTodoDeadlinePickerOpen, setNewTodoDeadlinePickerOpen] =
+		useState(false);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [todoToDelete, setTodoToDelete] = useState<string | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const [showStats, setShowStats] = useState(false);
 	const [newListName, setNewListName] = useState("");
 	const [showNewList, setShowNewList] = useState(false);
+	const [isSyncing, setIsSyncing] = useState(false);
+	const [googleTasksProvider, setGoogleTasksProvider] =
+		useState<GoogleTasksSyncProvider | null>(null);
 	const [editingListId, setEditingListId] = useState<string | null>(null);
 	const [editingListName, setEditingListName] = useState("");
 	const [notificationSettings, setNotificationSettings] =
 		useState<NotificationSettings>(() => loadNotificationSettings());
 	const [notificationPermission, setNotificationPermission] =
 		useState<NotificationPermission>(getNotificationPermission());
-	const [isSyncing, setIsSyncing] = useState(false);
 	const notificationNotifiedRef = useRef<Set<string>>(new Set());
 	const inputRef = useRef<HTMLInputElement>(null);
 	const editInputRef = useRef<HTMLInputElement>(null);
@@ -182,39 +196,387 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 		}
 	}, [editingId]);
 
-	const handleAddTodo = (e: React.FormEvent) => {
+	// Gérer les clics en dehors du formulaire d'édition pour sauvegarder
+	useEffect(() => {
+		if (!editingId) return;
+
+		const handleClickOutside = (e: MouseEvent) => {
+			const target = e.target as HTMLElement;
+			// Ne pas sauvegarder si on clique sur le DatePicker ou ses éléments
+			if (
+				target.closest('[role="dialog"]') ||
+				target.closest("[data-radix-popper-content-wrapper]") ||
+				target.closest("[data-radix-popover-content]") ||
+				target.closest(".group")
+			) {
+				return;
+			}
+
+			// Sauvegarder si on clique en dehors du formulaire d'édition
+			if (!target.closest("[data-editing-todo]")) {
+				const todoId = editingId;
+				if (todoId) {
+					// Utiliser les valeurs actuelles depuis les états
+					saveEdit(todoId);
+				}
+			}
+		};
+
+		// Petit délai pour éviter la sauvegarde immédiate lors de l'ouverture
+		const timeoutId = setTimeout(() => {
+			document.addEventListener("mousedown", handleClickOutside);
+		}, 100);
+
+		return () => {
+			clearTimeout(timeoutId);
+			document.removeEventListener("mousedown", handleClickOutside);
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [editingId]); // Ne dépendre que de editingId, les valeurs seront récupérées depuis les états
+
+	const handleAddTodo = async (e: React.FormEvent) => {
 		e.preventDefault();
 		const input = inputRef.current;
 		if (input?.value.trim()) {
-			addTodo(input.value, newTodoDeadline || undefined);
+			// Convertir Date en string YYYY-MM-DD pour la deadline
+			const deadlineStr = newTodoDeadline
+				? `${newTodoDeadline.getFullYear()}-${String(
+						newTodoDeadline.getMonth() + 1
+				  ).padStart(2, "0")}-${String(newTodoDeadline.getDate()).padStart(
+						2,
+						"0"
+				  )}`
+				: undefined;
+
+			const todoTitle = input.value.trim();
+			const isPriority = false; // Par défaut, sera géré si l'utilisateur ajoute la priorité plus tard
+
+			addTodo(todoTitle, deadlineStr);
+
+			// Synchroniser avec Google Tasks si connecté (après ajout)
+			if (googleTasksProvider && googleTasksProvider.enabled) {
+				// Utiliser setTimeout pour laisser le temps à addTodo de mettre à jour todos
+				setTimeout(async () => {
+					try {
+						// Trouver la tâche qui vient d'être ajoutée
+						const allTodos = todos;
+						const newTodo = allTodos.find(
+							(t) => t.title === todoTitle && !t.completed
+						);
+						if (newTodo) {
+							// Ne pas passer currentListId, le provider utilisera @default
+							await googleTasksProvider.pushTodos([newTodo]);
+						}
+					} catch (error) {
+						console.error(
+							"Erreur lors de la synchronisation avec Google Tasks:",
+							error
+						);
+					}
+				}, 100);
+			}
+
 			input.value = "";
-			setNewTodoDeadline("");
+			setNewTodoDeadline(undefined);
 			setShowNewDeadline(false);
-			toast.success("Tâche ajoutée");
+			toast.success(
+				deadlineStr ? "Tâche ajoutée avec deadline" : "Tâche ajoutée"
+			);
 		}
 	};
 
 	const startEdit = (todo: Todo) => {
 		setEditingId(todo.id);
 		setEditingValue(todo.title);
-		setEditingDeadline(todo.deadline || "");
+		setEditingDeadline(todo.deadline ? new Date(todo.deadline) : undefined);
 	};
 
-	const saveEdit = (id: string) => {
+	const saveEdit = async (id: string) => {
 		if (editingValue.trim()) {
 			editTodo(id, editingValue);
-			setDeadline(id, editingDeadline || undefined);
+			// Convertir Date en string YYYY-MM-DD pour la deadline
+			const deadlineStr = editingDeadline
+				? `${editingDeadline.getFullYear()}-${String(
+						editingDeadline.getMonth() + 1
+				  ).padStart(2, "0")}-${String(editingDeadline.getDate()).padStart(
+						2,
+						"0"
+				  )}`
+				: undefined;
+
+			const todo = todos.find((t) => t.id === id);
+			const previousDeadline = todo?.deadline;
+
+			setDeadline(id, deadlineStr);
+
+			// Synchroniser avec Google Tasks si connecté
+			if (googleTasksProvider && googleTasksProvider.enabled) {
+				try {
+					const updatedTodo = todos.find((t) => t.id === id);
+					if (updatedTodo) {
+						// Ne pas passer currentListId, le provider utilisera @default
+						await googleTasksProvider.pushTodos([updatedTodo]);
+					}
+				} catch (error) {
+					console.error(
+						"Erreur lors de la synchronisation avec Google Tasks:",
+						error
+					);
+				}
+			}
 		}
 		setEditingId(null);
 		setEditingValue("");
-		setEditingDeadline("");
+		setEditingDeadline(undefined);
 	};
 
 	const cancelEdit = () => {
 		setEditingId(null);
 		setEditingValue("");
-		setEditingDeadline("");
+		setEditingDeadline(undefined);
 	};
+
+	// Fonction pour gérer le toggle d'une tâche
+	const handleToggleTodo = async (todo: Todo) => {
+		toggleTodo(todo.id);
+
+		// Synchroniser avec Google Tasks si connecté
+		if (googleTasksProvider && googleTasksProvider.enabled) {
+			try {
+				const updatedTodos = todos.map((t) =>
+					t.id === todo.id ? { ...t, completed: !t.completed } : t
+				);
+				// Ne pas passer currentListId, le provider utilisera @default
+				await googleTasksProvider.pushTodos(
+					updatedTodos.filter((t) => t.id === todo.id)
+				);
+			} catch (error) {
+				console.error(
+					"Erreur lors de la synchronisation avec Google Tasks:",
+					error
+				);
+			}
+		}
+	};
+
+	// Fonction de synchronisation avec Google Tasks (définie AVANT le useEffect qui l'utilise)
+	// Utilisation de useCallback pour stabiliser la référence de la fonction
+	const handleSync = useCallback(async () => {
+		if (!googleTasksProvider || !googleTasksProvider.enabled) {
+			toast.error(
+				"Google Tasks n'est pas connecté. Connectez-vous depuis le header."
+			);
+			return;
+		}
+
+		if (isSyncing) {
+			// Éviter les appels multiples simultanés
+			return;
+		}
+
+		setIsSyncing(true);
+		try {
+			// Pull: récupérer les tâches depuis Google Tasks (utiliser la liste par défaut, pas currentListId)
+			// Le provider gère automatiquement la liste par défaut Google Tasks
+			const pulledTodos = await googleTasksProvider.pullTodos(); // Pas de listId = utilise @default
+
+			console.log(
+				`📥 ${pulledTodos.length} tâche(s) récupérée(s) depuis Google Tasks`
+			);
+
+			// Fusionner avec les tâches locales de la liste actuelle (éviter les doublons)
+			const currentTodos = todos; // Utiliser la valeur courante de todos
+			const existingTodoIds = new Set(currentTodos.map((t) => t.id));
+
+			let addedCount = 0;
+			let updatedCount = 0;
+
+			for (const pulledTodo of pulledTodos) {
+				// Si la tâche n'existe pas localement, l'ajouter avec son ID Google
+				if (!existingTodoIds.has(pulledTodo.id)) {
+					// Ajouter à la liste locale actuelle avec l'ID Google pour éviter les doublons
+					addTodo(
+						pulledTodo.title,
+						pulledTodo.deadline,
+						pulledTodo.id, // Utiliser l'ID Google directement
+						pulledTodo.completed,
+						pulledTodo.priority,
+						pulledTodo.createdAt
+					);
+					addedCount++;
+					console.log(
+						`✅ Tâche ajoutée: "${pulledTodo.title}"${
+							pulledTodo.deadline ? ` (deadline: ${pulledTodo.deadline})` : ""
+						}`
+					);
+				} else {
+					// Mettre à jour la tâche existante si nécessaire
+					const existingTodo = currentTodos.find((t) => t.id === pulledTodo.id);
+					if (existingTodo) {
+						let needsUpdate = false;
+						if (existingTodo.title !== pulledTodo.title) {
+							editTodo(pulledTodo.id, pulledTodo.title);
+							needsUpdate = true;
+						}
+						if (existingTodo.deadline !== pulledTodo.deadline) {
+							setDeadline(pulledTodo.id, pulledTodo.deadline);
+							needsUpdate = true;
+						}
+						if (existingTodo.completed !== pulledTodo.completed) {
+							toggleTodo(pulledTodo.id);
+							needsUpdate = true;
+						}
+						if (needsUpdate) {
+							updatedCount++;
+							console.log(`🔄 Tâche mise à jour: "${pulledTodo.title}"`);
+						}
+					}
+				}
+			}
+
+			// Push: envoyer seulement les tâches locales qui n'existent pas encore dans Google Tasks
+			// (celles qui n'ont pas d'ID Google, donc pas de préfixe "google-")
+			await new Promise((resolve) => setTimeout(resolve, 100)); // Attendre que les todos soient mis à jour
+			const updatedTodos = todos; // Récupérer les todos mis à jour
+
+			// Ne push que les tâches locales qui n'ont pas encore été synchronisées avec Google Tasks
+			// (pas de préfixe "google-" dans l'ID)
+			const localOnlyTodos = updatedTodos.filter(
+				(todo) => !todo.id.startsWith("google-")
+			);
+
+			if (localOnlyTodos.length > 0) {
+				console.log(
+					`📤 Push de ${localOnlyTodos.length} tâche(s) locale(s) vers Google Tasks`
+				);
+				await googleTasksProvider.pushTodos(localOnlyTodos);
+			} else {
+				console.log(`✅ Aucune tâche locale à synchroniser`);
+			}
+
+			// Message de succès avec détails
+			if (addedCount > 0 || updatedCount > 0) {
+				let message = "Synchronisation réussie";
+				const details: string[] = [];
+				if (addedCount > 0) {
+					details.push(`${addedCount} ajoutée(s)`);
+				}
+				if (updatedCount > 0) {
+					details.push(`${updatedCount} mise(s) à jour`);
+				}
+				if (details.length > 0) {
+					message += ` : ${details.join(", ")}`;
+				}
+				toast.success(message);
+			} else {
+				toast.success("Synchronisation réussie");
+			}
+		} catch (error) {
+			console.error("Erreur lors de la synchronisation:", error);
+			toast.error("Erreur lors de la synchronisation", {
+				description: error instanceof Error ? error.message : "Erreur inconnue",
+			});
+		} finally {
+			setIsSyncing(false);
+		}
+	}, [
+		googleTasksProvider,
+		isSyncing,
+		todos,
+		addTodo,
+		editTodo,
+		setDeadline,
+		toggleTodo,
+	]);
+
+	// Initialiser le provider Google Tasks si Google est connecté
+	useEffect(() => {
+		const oauthManager = getOAuthManager();
+		let hasSyncedInitially = false; // Flag pour éviter les synchronisations multiples initiales
+
+		const checkConnection = () => {
+			const connected = oauthManager.isConnected("google");
+
+			if (connected && !googleTasksProvider) {
+				// Créer le provider si connecté et qu'on n'en a pas encore
+				const config: SyncConfig = {
+					provider: "google-tasks",
+					enabled: true,
+					credentials: { token: "oauth" },
+				};
+				const provider = new GoogleTasksSyncProvider(config);
+				setGoogleTasksProvider(provider);
+
+				// Synchroniser automatiquement une seule fois après connexion
+				if (!hasSyncedInitially) {
+					hasSyncedInitially = true;
+					setTimeout(async () => {
+						try {
+							await handleSync();
+						} catch (error) {
+							console.error(
+								"Erreur lors de la synchronisation automatique:",
+								error
+							);
+						}
+					}, 1500);
+				}
+			} else if (!connected && googleTasksProvider) {
+				// Supprimer le provider si déconnecté
+				setGoogleTasksProvider(null);
+				hasSyncedInitially = false;
+			}
+		};
+
+		// Vérifier immédiatement
+		checkConnection();
+
+		// Vérifier périodiquement la connexion (toutes les 2 secondes)
+		const connectionInterval = setInterval(checkConnection, 2000);
+
+		return () => clearInterval(connectionInterval);
+		// Ne pas mettre googleTasksProvider dans les dépendances pour éviter la boucle
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	// Synchronisation périodique automatique (toutes les 5 minutes si connecté)
+	useEffect(() => {
+		if (!googleTasksProvider || !googleTasksProvider.enabled) {
+			return;
+		}
+
+		// Synchroniser immédiatement si le provider vient d'être créé
+		const initialSync = setTimeout(async () => {
+			try {
+				await handleSync();
+			} catch (error) {
+				console.error("Erreur lors de la synchronisation périodique:", error);
+			}
+		}, 2000);
+
+		// Puis synchroniser toutes les 5 minutes
+		const syncInterval = setInterval(
+			async () => {
+				if (googleTasksProvider && googleTasksProvider.enabled && !isSyncing) {
+					try {
+						console.log("🔄 Synchronisation automatique Google Tasks...");
+						await handleSync();
+					} catch (error) {
+						console.error(
+							"Erreur lors de la synchronisation périodique:",
+							error
+						);
+					}
+				}
+			},
+			5 * 60 * 1000
+		); // 5 minutes
+
+		return () => {
+			clearTimeout(initialSync);
+			clearInterval(syncInterval);
+		};
+	}, [googleTasksProvider, isSyncing]);
 
 	const exportTodos = () => {
 		const dataStr = JSON.stringify(todos, null, 2);
@@ -333,8 +695,25 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 		setDeleteDialogOpen(true);
 	};
 
-	const confirmDelete = () => {
+	const confirmDelete = async () => {
 		if (todoToDelete) {
+			const todo = todos.find((t) => t.id === todoToDelete);
+
+			// Synchroniser la suppression avec Google Tasks si connecté
+			if (googleTasksProvider && googleTasksProvider.enabled && todo) {
+				try {
+					// Si la tâche a un ID Google, supprimer directement (sans listId = utilise @default)
+					if (todo.id.startsWith("google-")) {
+						await googleTasksProvider.deleteTask(todo.id);
+					}
+				} catch (error) {
+					console.error(
+						"Erreur lors de la suppression sur Google Tasks:",
+						error
+					);
+				}
+			}
+
 			deleteTodo(todoToDelete);
 			toast.success("Tâche supprimée");
 			setTodoToDelete(null);
@@ -433,20 +812,6 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				? "Notifications activées"
 				: "Notifications désactivées"
 		);
-	};
-
-	// Sync with external APIs
-	const handleSync = async () => {
-		setIsSyncing(true);
-		try {
-			await syncManager.syncAll();
-			toast.success("Synchronisation réussie");
-		} catch (error) {
-			toast.error("Erreur lors de la synchronisation");
-			console.error("Sync error:", error);
-		} finally {
-			setIsSyncing(false);
-		}
 	};
 
 	const getDeadlineStatus = (deadline?: string) => {
@@ -563,48 +928,188 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 													}
 												/>
 												<div className='flex-1 min-w-0'>
-													<div
-														className={cn(
-															"font-medium truncate text-sm",
-															todo.completed &&
-																"line-through text-muted-foreground"
-														)}
-													>
-														{todo.title}
-													</div>
-													{deadlineStatus && !todo.completed && (
-														<span
-															className={cn(
-																"text-xs",
-																deadlineStatus.status === "overdue" &&
-																	"text-destructive font-medium"
-															)}
+													{editingId === todo.id ? (
+														<div
+															className='flex flex-col gap-1'
+															data-editing-todo={todo.id}
 														>
-															{deadlineStatus.status === "overdue"
-																? "⚠"
-																: deadlineStatus.text}
-														</span>
+															<Input
+																ref={editInputRef}
+																value={editingValue}
+																onChange={(
+																	e: React.ChangeEvent<HTMLInputElement>
+																) => setEditingValue(e.target.value)}
+																onKeyDown={(
+																	e: React.KeyboardEvent<HTMLInputElement>
+																) => {
+																	if (e.key === "Enter") {
+																		saveEdit(todo.id);
+																	} else if (e.key === "Escape") {
+																		cancelEdit();
+																	}
+																}}
+																onMouseDown={(e: React.MouseEvent) => {
+																	e.stopPropagation();
+																}}
+																onDragStart={(e: React.DragEvent) => {
+																	e.preventDefault();
+																	e.stopPropagation();
+																}}
+																className='flex-1 h-6 text-xs'
+															/>
+															{/* Champ deadline dans l'édition compacte */}
+															<div className='flex gap-1 items-center'>
+																<Popover>
+																	<PopoverTrigger asChild>
+																		<Button
+																			variant='outline'
+																			size='sm'
+																			className='flex-1 justify-start text-left font-normal h-6 text-[10px] px-2'
+																			onMouseDown={(e: React.MouseEvent) => {
+																				e.stopPropagation();
+																			}}
+																			onDragStart={(e: React.DragEvent) => {
+																				e.preventDefault();
+																				e.stopPropagation();
+																			}}
+																		>
+																			<Calendar className='mr-1 h-2.5 w-2.5' />
+																			{editingDeadline ? (
+																				format(editingDeadline, "PPP", {
+																					locale: fr,
+																				})
+																			) : (
+																				<span className='text-muted-foreground text-[10px]'>
+																					Date limite
+																				</span>
+																			)}
+																		</Button>
+																	</PopoverTrigger>
+																	<PopoverContent
+																		className='w-auto p-0'
+																		align='start'
+																		onMouseDown={(e: React.MouseEvent) => {
+																			e.stopPropagation();
+																		}}
+																		onDragStart={(e: React.DragEvent) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+																		}}
+																	>
+																		<DatePicker
+																			selected={editingDeadline}
+																			onSelect={setEditingDeadline}
+																			captionLayout='dropdown'
+																		/>
+																	</PopoverContent>
+																</Popover>
+																{editingDeadline && (
+																	<Button
+																		type='button'
+																		variant='ghost'
+																		size='sm'
+																		className='h-6 px-1.5 text-[10px] shrink-0'
+																		onClick={() =>
+																			setEditingDeadline(undefined)
+																		}
+																		onMouseDown={(e: React.MouseEvent) => {
+																			e.stopPropagation();
+																		}}
+																		onDragStart={(e: React.DragEvent) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+																		}}
+																		aria-label='Supprimer la date limite'
+																	>
+																		×
+																	</Button>
+																)}
+															</div>
+														</div>
+													) : (
+														<>
+															<div
+																className={cn(
+																	"font-medium truncate text-sm",
+																	todo.completed &&
+																		"line-through text-muted-foreground"
+																)}
+																onDoubleClick={(e) => {
+																	e.stopPropagation();
+																	startEdit(todo);
+																}}
+																onMouseDown={(e: React.MouseEvent) => {
+																	e.stopPropagation();
+																}}
+															>
+																{todo.title}
+															</div>
+															{deadlineStatus && !todo.completed && (
+																<span
+																	className={cn(
+																		"text-xs",
+																		deadlineStatus.status === "overdue" &&
+																			"text-destructive font-medium"
+																	)}
+																>
+																	{deadlineStatus.status === "overdue"
+																		? "⚠"
+																		: deadlineStatus.text}
+																</span>
+															)}
+														</>
 													)}
 												</div>
-												<Button
-													variant='ghost'
-													size='icon'
-													className='h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0'
-													onClick={(e) => {
-														e.stopPropagation();
-														handleDeleteClick(todo.id);
-													}}
-													onMouseDown={(e: React.MouseEvent) => {
-														e.stopPropagation();
-													}}
-													onDragStart={(e: React.DragEvent) => {
-														e.preventDefault();
-														e.stopPropagation();
-													}}
-													aria-label='Supprimer'
-												>
-													×
-												</Button>
+												<div className='opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1'>
+													{/* Bouton pour créer un événement depuis un todo avec deadline */}
+													{todo.deadline && !todo.completed && (
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<Button
+																	variant='ghost'
+																	size='icon'
+																	className='h-5 w-5'
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		// Fonction supprimée : plus de synchronisation Calendar/Todo
+																	}}
+																	onMouseDown={(e: React.MouseEvent) => {
+																		e.stopPropagation();
+																	}}
+																	onDragStart={(e: React.DragEvent) => {
+																		e.preventDefault();
+																		e.stopPropagation();
+																	}}
+																	aria-label='Créer un événement calendrier'
+																>
+																	<Calendar className='h-3 w-3 text-blue-500' />
+																</Button>
+															</TooltipTrigger>
+															<TooltipContent>
+																<p>Créer un événement dans le calendrier</p>
+															</TooltipContent>
+														</Tooltip>
+													)}
+													<Button
+														variant='ghost'
+														size='icon'
+														className='h-5 w-5 shrink-0'
+														onClick={(e) => {
+															e.stopPropagation();
+															handleDeleteClick(todo.id);
+														}}
+														onMouseDown={(e: React.MouseEvent) => {
+															e.stopPropagation();
+														}}
+														onDragStart={(e: React.DragEvent) => {
+															e.preventDefault();
+															e.stopPropagation();
+														}}
+														aria-label='Supprimer'
+													>
+														×
+													</Button>
+												</div>
 											</motion.div>
 										);
 									})
@@ -1086,7 +1591,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 													size='icon'
 													className='h-8 w-8'
 													onClick={handleSync}
-													disabled={isSyncing}
+													disabled={isSyncing || !googleTasksProvider}
 													onMouseDown={(e: React.MouseEvent) => {
 														e.stopPropagation();
 													}}
@@ -1094,7 +1599,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 														e.preventDefault();
 														e.stopPropagation();
 													}}
-													aria-label='Synchroniser'
+													aria-label='Synchroniser avec Google Tasks'
 												>
 													<RefreshCw
 														className={`h-4 w-4 ${
@@ -1104,7 +1609,13 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 												</Button>
 											</TooltipTrigger>
 											<TooltipContent>
-												<p>Synchroniser avec les services externes</p>
+												<p>
+													{isSyncing
+														? "Synchronisation en cours..."
+														: googleTasksProvider
+														? "Synchroniser avec Google Tasks"
+														: "Connectez Google depuis le header pour synchroniser"}
+												</p>
 											</TooltipContent>
 										</Tooltip>
 									</ButtonGroup>
@@ -1325,7 +1836,9 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 														<div className='flex items-start gap-1.5 flex-1 min-w-0'>
 															<Checkbox
 																checked={todo.completed}
-																onCheckedChange={() => toggleTodo(todo.id)}
+																onCheckedChange={async () => {
+																	await handleToggleTodo(todo);
+																}}
 																onMouseDown={(e: React.MouseEvent) => {
 																	e.stopPropagation();
 																}}
@@ -1342,14 +1855,16 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 															/>
 															<div className='flex-1 min-w-0'>
 																{editingId === todo.id ? (
-																	<div className='flex flex-col gap-1.5'>
+																	<div
+																		className='flex flex-col gap-1.5'
+																		data-editing-todo={todo.id}
+																	>
 																		<Input
 																			ref={editInputRef}
 																			value={editingValue}
 																			onChange={(
 																				e: React.ChangeEvent<HTMLInputElement>
 																			) => setEditingValue(e.target.value)}
-																			onBlur={() => saveEdit(todo.id)}
 																			onKeyDown={(
 																				e: React.KeyboardEvent<HTMLInputElement>
 																			) => {
@@ -1368,6 +1883,90 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 																			}}
 																			className='flex-1 h-7 text-xs'
 																		/>
+																		{/* Champ deadline dans l'édition */}
+																		<div className='flex gap-2 items-center'>
+																			<Popover
+																				open={deadlinePickerOpen}
+																				onOpenChange={setDeadlinePickerOpen}
+																			>
+																				<PopoverTrigger asChild>
+																					<Button
+																						variant='outline'
+																						className='flex-1 justify-start text-left font-normal h-7 text-xs'
+																						onMouseDown={(
+																							e: React.MouseEvent
+																						) => {
+																							e.stopPropagation();
+																						}}
+																						onDragStart={(
+																							e: React.DragEvent
+																						) => {
+																							e.preventDefault();
+																							e.stopPropagation();
+																						}}
+																					>
+																						<Calendar className='mr-2 h-3 w-3' />
+																						{editingDeadline ? (
+																							format(editingDeadline, "PPP", {
+																								locale: fr,
+																							})
+																						) : (
+																							<span className='text-muted-foreground'>
+																								Date limite (optionnel)
+																							</span>
+																						)}
+																					</Button>
+																				</PopoverTrigger>
+																				<PopoverContent
+																					className='w-auto p-0'
+																					align='start'
+																					onMouseDown={(
+																						e: React.MouseEvent
+																					) => {
+																						e.stopPropagation();
+																					}}
+																					onDragStart={(e: React.DragEvent) => {
+																						e.preventDefault();
+																						e.stopPropagation();
+																					}}
+																				>
+																					<DatePicker
+																						selected={editingDeadline}
+																						onSelect={(date) => {
+																							setEditingDeadline(date);
+																							// Fermer le Popover après la sélection
+																							if (date) {
+																								setDeadlinePickerOpen(false);
+																							}
+																						}}
+																						captionLayout='dropdown'
+																					/>
+																				</PopoverContent>
+																			</Popover>
+																			{editingDeadline && (
+																				<Button
+																					type='button'
+																					variant='ghost'
+																					size='sm'
+																					className='h-7 px-2 text-xs shrink-0'
+																					onClick={() =>
+																						setEditingDeadline(undefined)
+																					}
+																					onMouseDown={(
+																						e: React.MouseEvent
+																					) => {
+																						e.stopPropagation();
+																					}}
+																					onDragStart={(e: React.DragEvent) => {
+																						e.preventDefault();
+																						e.stopPropagation();
+																					}}
+																					aria-label='Supprimer la date limite'
+																				>
+																					×
+																				</Button>
+																			)}
+																		</div>
 																	</div>
 																) : (
 																	<>
@@ -1377,18 +1976,27 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 																				todo.completed &&
 																					"line-through text-muted-foreground"
 																			)}
-																			onDoubleClick={() => startEdit(todo)}
+																			onDoubleClick={(e) => {
+																				e.stopPropagation();
+																				startEdit(todo);
+																			}}
+																			onMouseDown={(e: React.MouseEvent) => {
+																				e.stopPropagation();
+																			}}
 																		>
 																			{todo.title}
 																		</div>
 																		{deadlineStatus && !todo.completed && (
-																			<div className='text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1'>
-																				<Calendar className='h-2.5 w-2.5' />
-																				<span>{deadlineStatus.text}</span>
-																				{deadlineStatus.status ===
-																					"overdue" && (
-																					<AlertCircle className='h-2.5 w-2.5 text-destructive' />
-																				)}
+																			<div className='text-[10px] text-muted-foreground mt-0.5 flex flex-col gap-1'>
+																				<div className='flex items-center gap-1'>
+																					<Calendar className='h-2.5 w-2.5' />
+																					<span>{deadlineStatus.text}</span>
+																					{deadlineStatus.status ===
+																						"overdue" && (
+																						<AlertCircle className='h-2.5 w-2.5 text-destructive' />
+																					)}
+																				</div>
+																				{/* Affichage des événements du calendrier supprimé : séparation Calendar/Todo */}
 																			</div>
 																		)}
 																	</>
@@ -1397,6 +2005,37 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 														</div>
 														{!editingId && (
 															<div className='opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5'>
+																{/* Bouton pour créer un événement depuis un todo avec deadline */}
+																{todo.deadline && !todo.completed && (
+																	<Tooltip>
+																		<TooltipTrigger asChild>
+																			<Button
+																				variant='ghost'
+																				size='icon'
+																				className='h-5 w-5'
+																				onClick={(e) => {
+																					e.stopPropagation();
+																					// Fonction supprimée : plus de synchronisation Calendar/Todo
+																				}}
+																				onMouseDown={(e: React.MouseEvent) => {
+																					e.stopPropagation();
+																				}}
+																				onDragStart={(e: React.DragEvent) => {
+																					e.preventDefault();
+																					e.stopPropagation();
+																				}}
+																				aria-label='Créer un événement calendrier'
+																			>
+																				<Calendar className='h-2.5 w-2.5 text-blue-500' />
+																			</Button>
+																		</TooltipTrigger>
+																		<TooltipContent>
+																			<p>
+																				Créer un événement dans le calendrier
+																			</p>
+																		</TooltipContent>
+																	</Tooltip>
+																)}
 																<Button
 																	variant='ghost'
 																	size='icon'
@@ -1630,28 +2269,63 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 							</div>
 							{showNewDeadline ? (
 								<div className='flex gap-2 items-center'>
-									<Calendar className='h-4 w-4 text-muted-foreground' />
-									<Input
-										type='date'
-										value={newTodoDeadline}
-										onChange={(e) => setNewTodoDeadline(e.target.value)}
-										onMouseDown={(e: React.MouseEvent) => {
-											e.stopPropagation();
-										}}
-										onDragStart={(e: React.DragEvent) => {
-											e.preventDefault();
-											e.stopPropagation();
-										}}
-										className='flex-1'
-										aria-label='Date limite'
-									/>
+									<Popover
+										open={newTodoDeadlinePickerOpen}
+										onOpenChange={setNewTodoDeadlinePickerOpen}
+									>
+										<PopoverTrigger asChild>
+											<Button
+												variant='outline'
+												className='flex-1 justify-start text-left font-normal'
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+											>
+												<Calendar className='mr-2 h-4 w-4' />
+												{newTodoDeadline ? (
+													format(newTodoDeadline, "PPP", { locale: fr })
+												) : (
+													<span className='text-muted-foreground'>
+														Sélectionner une date
+													</span>
+												)}
+											</Button>
+										</PopoverTrigger>
+										<PopoverContent
+											className='w-auto p-0'
+											align='start'
+											onMouseDown={(e: React.MouseEvent) => {
+												e.stopPropagation();
+											}}
+											onDragStart={(e: React.DragEvent) => {
+												e.preventDefault();
+												e.stopPropagation();
+											}}
+										>
+											<DatePicker
+												selected={newTodoDeadline}
+												onSelect={(date) => {
+													setNewTodoDeadline(date);
+													// Fermer le Popover après la sélection
+													if (date) {
+														setNewTodoDeadlinePickerOpen(false);
+													}
+												}}
+												captionLayout='dropdown'
+											/>
+										</PopoverContent>
+									</Popover>
 									<Button
 										type='button'
 										variant='ghost'
 										size='sm'
 										onClick={() => {
 											setShowNewDeadline(false);
-											setNewTodoDeadline("");
+											setNewTodoDeadline(undefined);
 										}}
 										onMouseDown={(e: React.MouseEvent) => {
 											e.stopPropagation();
@@ -1810,31 +2484,113 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 														/>
 														<div className='flex-1 min-w-0'>
 															{editingId === todo.id ? (
-																<Input
-																	ref={editInputRef}
-																	value={editingValue}
-																	onChange={(
-																		e: React.ChangeEvent<HTMLInputElement>
-																	) => setEditingValue(e.target.value)}
-																	onBlur={() => saveEdit(todo.id)}
-																	onKeyDown={(
-																		e: React.KeyboardEvent<HTMLInputElement>
-																	) => {
-																		if (e.key === "Enter") {
-																			saveEdit(todo.id);
-																		} else if (e.key === "Escape") {
-																			cancelEdit();
-																		}
-																	}}
-																	onMouseDown={(e: React.MouseEvent) => {
-																		e.stopPropagation();
-																	}}
-																	onDragStart={(e: React.DragEvent) => {
-																		e.preventDefault();
-																		e.stopPropagation();
-																	}}
-																	className='flex-1'
-																/>
+																<div
+																	className='flex flex-col gap-2'
+																	data-editing-todo={todo.id}
+																>
+																	<Input
+																		ref={editInputRef}
+																		value={editingValue}
+																		onChange={(
+																			e: React.ChangeEvent<HTMLInputElement>
+																		) => setEditingValue(e.target.value)}
+																		onKeyDown={(
+																			e: React.KeyboardEvent<HTMLInputElement>
+																		) => {
+																			if (e.key === "Enter") {
+																				saveEdit(todo.id);
+																			} else if (e.key === "Escape") {
+																				cancelEdit();
+																			}
+																		}}
+																		onMouseDown={(e: React.MouseEvent) => {
+																			e.stopPropagation();
+																		}}
+																		onDragStart={(e: React.DragEvent) => {
+																			e.preventDefault();
+																			e.stopPropagation();
+																		}}
+																		className='flex-1'
+																	/>
+																	{/* Champ deadline dans l'édition full */}
+																	<div className='flex gap-2 items-center'>
+																		<Popover
+																			open={deadlinePickerOpen}
+																			onOpenChange={setDeadlinePickerOpen}
+																		>
+																			<PopoverTrigger asChild>
+																				<Button
+																					variant='outline'
+																					className='flex-1 justify-start text-left font-normal'
+																					onMouseDown={(
+																						e: React.MouseEvent
+																					) => {
+																						e.stopPropagation();
+																					}}
+																					onDragStart={(e: React.DragEvent) => {
+																						e.preventDefault();
+																						e.stopPropagation();
+																					}}
+																				>
+																					<Calendar className='mr-2 h-4 w-4' />
+																					{editingDeadline ? (
+																						format(editingDeadline, "PPP", {
+																							locale: fr,
+																						})
+																					) : (
+																						<span className='text-muted-foreground'>
+																							Date limite (optionnel)
+																						</span>
+																					)}
+																				</Button>
+																			</PopoverTrigger>
+																			<PopoverContent
+																				className='w-auto p-0'
+																				align='start'
+																				onMouseDown={(e: React.MouseEvent) => {
+																					e.stopPropagation();
+																				}}
+																				onDragStart={(e: React.DragEvent) => {
+																					e.preventDefault();
+																					e.stopPropagation();
+																				}}
+																			>
+																				<DatePicker
+																					selected={editingDeadline}
+																					onSelect={(date) => {
+																						setEditingDeadline(date);
+																						// Fermer le Popover après la sélection
+																						if (date) {
+																							setDeadlinePickerOpen(false);
+																						}
+																					}}
+																					captionLayout='dropdown'
+																				/>
+																			</PopoverContent>
+																		</Popover>
+																		{editingDeadline && (
+																			<Button
+																				type='button'
+																				variant='ghost'
+																				size='sm'
+																				className='shrink-0'
+																				onClick={() =>
+																					setEditingDeadline(undefined)
+																				}
+																				onMouseDown={(e: React.MouseEvent) => {
+																					e.stopPropagation();
+																				}}
+																				onDragStart={(e: React.DragEvent) => {
+																					e.preventDefault();
+																					e.stopPropagation();
+																				}}
+																				aria-label='Supprimer la date limite'
+																			>
+																				×
+																			</Button>
+																		)}
+																	</div>
+																</div>
 															) : (
 																<>
 																	<div
@@ -1843,7 +2599,10 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 																			todo.completed &&
 																				"line-through text-muted-foreground"
 																		)}
-																		onDoubleClick={() => startEdit(todo)}
+																		onDoubleClick={(e) => {
+																			e.stopPropagation();
+																			startEdit(todo);
+																		}}
 																		onMouseDown={(e: React.MouseEvent) => {
 																			e.stopPropagation();
 																		}}
@@ -1855,12 +2614,15 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 																		{todo.title}
 																	</div>
 																	{deadlineStatus && !todo.completed && (
-																		<div className='text-xs text-muted-foreground mt-1 flex items-center gap-1'>
-																			<Calendar className='h-3 w-3' />
-																			<span>{deadlineStatus.text}</span>
-																			{deadlineStatus.status === "overdue" && (
-																				<AlertCircle className='h-3 w-3 text-destructive' />
-																			)}
+																		<div className='text-xs text-muted-foreground mt-1 flex flex-col gap-1'>
+																			<div className='flex items-center gap-1'>
+																				<Calendar className='h-3 w-3' />
+																				<span>{deadlineStatus.text}</span>
+																				{deadlineStatus.status ===
+																					"overdue" && (
+																					<AlertCircle className='h-3 w-3 text-destructive' />
+																				)}
+																			</div>
 																		</div>
 																	)}
 																</>

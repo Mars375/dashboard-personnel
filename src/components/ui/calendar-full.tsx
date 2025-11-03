@@ -97,6 +97,16 @@ export function DatePicker({
 	};
 
 	const handleDayClick = (day: Date) => {
+		// Empêcher la sélection des dates passées
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		const dayToCheck = new Date(day);
+		dayToCheck.setHours(0, 0, 0, 0);
+
+		if (dayToCheck < today) {
+			return; // Ne pas permettre la sélection de dates passées
+		}
+
 		onSelect?.(day);
 	};
 
@@ -116,7 +126,7 @@ export function DatePicker({
 	const isSelected = (day: Date) => selected && isSameDay(day, selected);
 
 	return (
-		<div className={cn("bg-background group/calendar p-3 w-fit", className)}>
+		<div className={cn("group/calendar p-3 w-fit", className)}>
 			{/* Header avec navigation */}
 			<div className='flex items-center justify-between mb-4'>
 				{captionLayout === "dropdown" ||
@@ -204,6 +214,13 @@ export function DatePicker({
 							return <div key={day.toISOString()} className='p-2' />;
 						}
 
+						// Vérifier si la date est dans le passé (tous les jours, même ceux en dehors du mois)
+						const today = new Date();
+						today.setHours(0, 0, 0, 0);
+						const dayToCheck = new Date(day);
+						dayToCheck.setHours(0, 0, 0, 0);
+						const isPast = dayToCheck < today;
+
 						return (
 							<Button
 								key={day.toISOString()}
@@ -212,6 +229,7 @@ export function DatePicker({
 								className={cn(
 									"h-9 w-9 p-0 font-normal",
 									isOutsideMonth && "text-muted-foreground opacity-50",
+									isPast && "opacity-30 cursor-not-allowed line-through",
 									isDaySelected &&
 										"bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
 									isDayToday &&
@@ -219,10 +237,19 @@ export function DatePicker({
 										"bg-primary/30 text-primary-foreground hover:bg-primary/40"
 								)}
 								onClick={() => handleDayClick(day)}
+								disabled={isPast}
 								onMouseDown={(e: React.MouseEvent) => {
+									if (isPast) {
+										e.preventDefault();
+										return;
+									}
 									e.stopPropagation();
 								}}
 								onDragStart={(e: React.DragEvent) => {
+									if (isPast) {
+										e.preventDefault();
+										return;
+									}
 									e.preventDefault();
 									e.stopPropagation();
 								}}
@@ -262,6 +289,14 @@ export interface CalendarProps {
 	className?: string;
 	showOutsideDays?: boolean;
 	captionLayout?: "dropdown" | "dropdown-buttons" | "label";
+
+	// Communication inter-widgets : Todos avec deadlines
+	todosWithDeadlines?: Array<{
+		id: string;
+		title: string;
+		deadline: string;
+		listName?: string;
+	}>;
 }
 
 function formatDateLocal(date: Date): string {
@@ -277,6 +312,7 @@ export function Calendar({
 	selectedDate: controlledSelectedDate,
 	onSelectDate,
 	view: controlledView,
+	todosWithDeadlines,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	onViewChange,
 	events = [],
@@ -366,18 +402,58 @@ export function Calendar({
 		[draggedEventId, onEventUpdate]
 	);
 
-	// Modifiers pour le calendrier (dates avec événements)
+	// Modifiers pour le calendrier (dates avec événements et todos avec deadlines)
 	const modifiers = useMemo(() => {
-		const eventDates = new Set(events.map((e) => e.date));
+		// Créer un Set de toutes les dates qui ont des événements (y compris multi-jours)
+		const eventDates = new Set<string>();
+		events.forEach((event) => {
+			// Parser la date en évitant les problèmes de timezone
+			const [startYear, startMonth, startDay] = event.date
+				.split("-")
+				.map(Number);
+			const startDate = new Date(startYear, startMonth - 1, startDay);
+			startDate.setHours(0, 0, 0, 0);
+
+			if (event.endDate) {
+				// Événement multi-jours : ajouter toutes les dates de la plage
+				const [endYear, endMonth, endDay] = event.endDate
+					.split("-")
+					.map(Number);
+				const endDate = new Date(endYear, endMonth - 1, endDay);
+				endDate.setHours(23, 59, 59, 999);
+
+				for (
+					let d = new Date(startDate);
+					d <= endDate;
+					d.setDate(d.getDate() + 1)
+				) {
+					eventDates.add(formatDateLocal(d));
+				}
+			} else {
+				// Événement d'un seul jour
+				eventDates.add(formatDateLocal(startDate));
+			}
+		});
+
+		const todoDates = new Set(
+			todosWithDeadlines?.map((todo) => {
+				const deadlineDate = new Date(todo.deadline);
+				return formatDateLocal(deadlineDate);
+			}) || []
+		);
+
 		return {
 			hasEvents: (date: Date) => eventDates.has(formatDateLocal(date)),
+			hasTodos: (date: Date) => todoDates.has(formatDateLocal(date)),
 		};
-	}, [events]);
+	}, [events, todosWithDeadlines]);
 
 	const modifiersClassNames = useMemo(
 		() => ({
 			hasEvents:
 				"relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:rounded-full after:bg-primary",
+			hasTodos:
+				"relative before:absolute before:top-1 before:right-1 before:w-1.5 before:h-1.5 before:rounded-full before:bg-orange-500",
 		}),
 		[]
 	);
@@ -501,7 +577,7 @@ export function Calendar({
 		};
 
 		return (
-			<div className={cn("bg-background group/calendar p-3 w-fit", className)}>
+			<div className={cn("group/calendar p-3 w-fit", className)}>
 				{/* Header avec navigation */}
 				<div className='flex items-center justify-between mb-4'>
 					{captionLayout === "dropdown-buttons" && (
@@ -788,8 +864,31 @@ export function Calendar({
 											<motion.div
 												key={event.id}
 												draggable
-												onDragStart={() => handleEventDragStart(event.id)}
-												onDragEnd={handleEventDragEnd}
+												onDragStart={(e: React.DragEvent) => {
+													try {
+														e.stopPropagation();
+														e.dataTransfer.effectAllowed = "move";
+														handleEventDragStart(event.id);
+													} catch (error) {
+														// Ignorer les erreurs d'extensions de navigateur
+														console.warn(
+															"Erreur lors du drag start (peut être causée par une extension):",
+															error
+														);
+													}
+												}}
+												onDragEnd={(e: React.DragEvent) => {
+													try {
+														e.stopPropagation();
+														handleEventDragEnd();
+													} catch (error) {
+														// Ignorer les erreurs d'extensions de navigateur
+														console.warn(
+															"Erreur lors du drag end (peut être causée par une extension):",
+															error
+														);
+													}
+												}}
 												onClick={(e: React.MouseEvent) => {
 													e.stopPropagation();
 													onEventClick?.(event);
@@ -813,7 +912,12 @@ export function Calendar({
 												{event.time && (
 													<span className='font-medium'>{event.time} </span>
 												)}
-												{event.title}
+												<span className='flex-1'>{event.title}</span>
+												{event.sourceCalendar && (
+													<span className='text-[9px] text-muted-foreground px-1 bg-background rounded ml-1'>
+														{event.sourceCalendar}
+													</span>
+												)}
 											</motion.div>
 										))}
 										{dayEvents.length > 3 && (
@@ -975,10 +1079,31 @@ export function Calendar({
 										<motion.div
 											key={event.id}
 											draggable
-											onDragStart={() => {
-												handleEventDragStart(event.id);
+											onDragStart={(e: React.DragEvent) => {
+												try {
+													e.stopPropagation();
+													e.dataTransfer.effectAllowed = "move";
+													handleEventDragStart(event.id);
+												} catch (error) {
+													// Ignorer les erreurs d'extensions de navigateur
+													console.warn(
+														"Erreur lors du drag start (peut être causée par une extension):",
+														error
+													);
+												}
 											}}
-											onDragEnd={handleEventDragEnd}
+											onDragEnd={(e: React.DragEvent) => {
+												try {
+													e.stopPropagation();
+													handleEventDragEnd();
+												} catch (error) {
+													// Ignorer les erreurs d'extensions de navigateur
+													console.warn(
+														"Erreur lors du drag end (peut être causée par une extension):",
+														error
+													);
+												}
+											}}
 											onClick={() => onEventClick?.(event)}
 											className={cn(
 												"absolute left-1 right-1 p-2 rounded-md cursor-move",
@@ -1000,11 +1125,18 @@ export function Calendar({
 											animate={{ opacity: 1, y: 0 }}
 										>
 											<div className='font-medium text-sm'>{event.title}</div>
-											{event.time && (
-												<div className='text-xs text-muted-foreground'>
-													{event.time}
-												</div>
-											)}
+											<div className='flex items-center gap-2 flex-wrap mt-1'>
+												{event.time && (
+													<div className='text-xs text-muted-foreground'>
+														{event.time}
+													</div>
+												)}
+												{event.sourceCalendar && (
+													<span className='text-[9px] text-muted-foreground px-1.5 py-0.5 bg-background rounded border'>
+														{event.sourceCalendar}
+													</span>
+												)}
+											</div>
 										</motion.div>
 									);
 								})}
