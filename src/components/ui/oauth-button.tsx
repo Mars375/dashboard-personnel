@@ -53,7 +53,11 @@ export function OAuthButton({
 			const manager = getOAuthManager();
 			await manager.connect(provider, service);
 			setIsConnected(true);
-			toast.success(`Connexion à ${provider} réussie`);
+			// Un seul toast avec message unifié et sans background
+			toast.success(`${getServiceName()} connecté`, {
+				className: "bg-transparent border-none shadow-none",
+				style: { background: "transparent", border: "none", boxShadow: "none" },
+			});
 			onConnect?.();
 		} catch (error) {
 			toast.error(
@@ -70,7 +74,10 @@ export function OAuthButton({
 			const manager = getOAuthManager();
 			await manager.disconnect(provider);
 			setIsConnected(false);
-			toast.success(`Déconnexion de ${provider} réussie`);
+			toast.success(`${getServiceName()} déconnecté`, {
+				className: "bg-transparent border-none shadow-none",
+				style: { background: "transparent", border: "none", boxShadow: "none" },
+			});
 			onDisconnect?.();
 		} catch (error) {
 			toast.error(

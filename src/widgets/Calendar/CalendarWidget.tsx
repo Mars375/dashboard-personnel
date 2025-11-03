@@ -835,7 +835,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 													},
 												};
 												calendarSyncManager.updateConfig(config);
-												toast.success("Google Calendar connecté");
+												// Ne pas afficher de toast ici - déjà affiché dans OAuthButton
 											}}
 											onDisconnect={() => {
 												// Désactiver le provider après déconnexion

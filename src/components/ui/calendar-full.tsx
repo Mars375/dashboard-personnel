@@ -459,7 +459,9 @@ export function Calendar({
 
 		const getDayModifiers = (day: Date) => {
 			const dayModifiers: string[] = [];
-			const modifiersKeys = Object.keys(modifiers) as Array<keyof typeof modifiers>;
+			const modifiersKeys = Object.keys(modifiers) as Array<
+				keyof typeof modifiers
+			>;
 			modifiersKeys.forEach((key) => {
 				const modifier = modifiers[key];
 				if (Array.isArray(modifier)) {
