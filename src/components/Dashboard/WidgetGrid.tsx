@@ -23,13 +23,32 @@ import {
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-export function WidgetGrid() {
+interface WidgetGridProps {
+	searchQuery?: string;
+}
+
+export function WidgetGrid({ searchQuery = "" }: WidgetGridProps) {
 	const widgets = useDashboardStore((state) => state.widgets);
 	const updateLayout = useDashboardStore((state) => state.updateLayout);
 
+	// Filtrer les widgets selon la recherche
+	const filteredWidgets = useMemo(() => {
+		if (!searchQuery) return widgets;
+		return widgets.filter((widget) => {
+			const def = getWidgetDefinition(widget.type);
+			if (!def) return false;
+			const query = searchQuery.toLowerCase();
+			return (
+				def.name.toLowerCase().includes(query) ||
+				def.description?.toLowerCase().includes(query) ||
+				widget.type.toLowerCase().includes(query)
+			);
+		});
+	}, [widgets, searchQuery]);
+
 	// Convertir widgets en layout pour react-grid-layout
 	const layouts = useMemo(() => {
-		return widgets.map((widget) => {
+		return filteredWidgets.map((widget) => {
 			const widgetDef = getWidgetDefinition(widget.type);
 			return {
 				i: widget.id,
@@ -43,7 +62,7 @@ export function WidgetGrid() {
 				maxH: widget.maxH ?? widgetDef?.maxSize?.h,
 			};
 		});
-	}, [widgets]);
+	}, [filteredWidgets]);
 
 	const handleLayoutChange = (
 		_layout: Layout[],
@@ -99,7 +118,7 @@ export function WidgetGrid() {
 				compactType='vertical'
 				preventCollision={false}
 			>
-				{widgets.map((widget, index) => {
+				{filteredWidgets.map((widget, index) => {
 					const layout = layouts.find((l) => l.i === widget.id);
 					if (!layout) return null;
 
@@ -170,9 +189,13 @@ export function WidgetGrid() {
 
 							{/* Contenu du widget avec padding-top pour laisser l'espace à la barre d'outils */}
 							<motion.div
-								initial={{ opacity: 0, scale: 0.95 }}
-								animate={{ opacity: 1, scale: 1 }}
-								transition={{ duration: 0.3, delay: index * 0.05 }}
+								initial={{ opacity: 0, scale: 0.95, y: 4 }}
+								animate={{ opacity: 1, scale: 1, y: 0 }}
+								transition={{
+									duration: 0.3,
+									delay: index * 0.05,
+									ease: "easeOut",
+								}}
 								className='h-full w-full pt-8'
 							>
 								<WidgetItem layout={layout} />

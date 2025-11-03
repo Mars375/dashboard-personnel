@@ -21,6 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { widgetRegistry } from "@/lib/widgetRegistry";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { useState } from "react";
+import type React from "react";
 
 export function WidgetPicker() {
 	const isOpen = useDashboardStore((state) => state.isPickerOpen);
@@ -81,16 +82,16 @@ export function WidgetPicker() {
 
 	return (
 		<Dialog open={isOpen} onOpenChange={handleDialogClose}>
-			<DialogContent className='sm:max-w-[600px]'>
+			<DialogContent className='sm:max-w-[650px]'>
 				<DialogHeader>
 					<div className='flex items-center justify-between'>
 						<div>
-							<DialogTitle>
+							<DialogTitle className='text-xl'>
 								{multiSelectMode
 									? `Ajouter plusieurs widgets ${selectedWidgets.size > 0 ? `(${selectedWidgets.size})` : ""}`
 									: "Ajouter un widget"}
 							</DialogTitle>
-							<DialogDescription>
+							<DialogDescription className='mt-1.5'>
 								{multiSelectMode
 									? "Sélectionnez plusieurs widgets à ajouter en une fois"
 									: "Choisissez un widget à ajouter à votre dashboard. Les widgets déjà ajoutés sont marqués."}
@@ -100,7 +101,14 @@ export function WidgetPicker() {
 							variant={multiSelectMode ? "default" : "outline"}
 							size='sm'
 							onClick={handleToggleMultiSelect}
-							className='gap-2'
+							className='gap-2 shadow-sm hover:shadow-md transition-shadow'
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
 						>
 							{multiSelectMode ? (
 								<>
@@ -116,16 +124,26 @@ export function WidgetPicker() {
 						</Button>
 					</div>
 				</DialogHeader>
-				<Command className='rounded-lg border shadow-md'>
-					<div className='flex h-9 items-center gap-2 border-b px-3'>
-						<Search className='size-4 shrink-0 opacity-50' />
+				<Command className='rounded-lg border shadow-md bg-card'>
+					<div className='flex h-10 items-center gap-2 border-b px-3 bg-muted/30'>
+						<Search className='size-4 shrink-0 opacity-50' aria-hidden="true" />
 						<CommandPrimitive.Input
 							placeholder='Rechercher un widget...'
 							className='flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50'
+							aria-label="Rechercher un widget"
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
 						/>
 					</div>
-					<CommandList>
-						<CommandEmpty>Aucun widget trouvé.</CommandEmpty>
+					<CommandList className='max-h-[400px]'>
+						<CommandEmpty className='py-8 text-center text-muted-foreground'>
+							Aucun widget trouvé.
+						</CommandEmpty>
 						<CommandGroup heading='Widgets disponibles'>
 							{widgetRegistry.map((widget) => {
 								const Icon = widget.icon;
@@ -138,20 +156,48 @@ export function WidgetPicker() {
 										value={`${widget.id} ${widget.name} ${widget.description}`}
 										onSelect={() => handleSelect(widget.id)}
 										disabled={isAdded}
-										className='flex items-center gap-3 p-3 cursor-pointer'
+										className='flex items-center gap-3 p-3 cursor-pointer hover:bg-accent/50 transition-colors'
+										aria-label={`${widget.name}: ${widget.description}${isAdded ? " (déjà ajouté)" : ""}`}
+										aria-disabled={isAdded}
+										onMouseDown={(e: React.MouseEvent) => {
+											if (!isAdded) {
+												e.stopPropagation();
+											}
+										}}
+										onDragStart={(e: React.DragEvent) => {
+											e.preventDefault();
+											e.stopPropagation();
+										}}
 									>
 										{multiSelectMode && !isAdded && (
 											<Checkbox
 												checked={isSelected}
 												onCheckedChange={() => handleSelect(widget.id)}
 												onClick={(e) => e.stopPropagation()}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
 												className='mr-1'
 											/>
 										)}
-										<Icon className='h-5 w-5 text-muted-foreground' />
-										<div className='flex-1'>
-											<div className='flex items-center gap-2'>
-												<span className='font-medium'>{widget.name}</span>
+										<div className={`flex items-center justify-center h-10 w-10 rounded-lg ${
+											isAdded ? 'bg-muted/50' : 'bg-primary/10'
+										}`}>
+											<Icon className={`h-5 w-5 ${
+												isAdded ? 'text-muted-foreground' : 'text-primary'
+											}`} />
+										</div>
+										<div className='flex-1 min-w-0'>
+											<div className='flex items-center gap-2 flex-wrap'>
+												<span className={`font-medium ${
+													isAdded ? 'text-muted-foreground' : ''
+												}`}>
+													{widget.name}
+												</span>
 												{isAdded && (
 													<Badge variant='secondary' className='text-xs'>
 														Ajouté
@@ -163,7 +209,7 @@ export function WidgetPicker() {
 													</Badge>
 												)}
 											</div>
-											<p className='text-sm text-muted-foreground'>
+											<p className='text-sm text-muted-foreground line-clamp-1'>
 												{widget.description}
 											</p>
 										</div>
@@ -174,6 +220,14 @@ export function WidgetPicker() {
 													e.stopPropagation();
 													handleSelect(widget.id);
 												}}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+												className='shrink-0'
 											>
 												<Plus className='h-4 w-4 mr-1' />
 												Ajouter
@@ -186,11 +240,31 @@ export function WidgetPicker() {
 					</CommandList>
 				</Command>
 				{multiSelectMode && selectedWidgets.size > 0 && (
-					<DialogFooter>
-						<Button variant='outline' onClick={handleToggleMultiSelect}>
+					<DialogFooter className='border-t pt-4'>
+						<Button
+							variant='outline'
+							onClick={handleToggleMultiSelect}
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+						>
 							Annuler
 						</Button>
-						<Button onClick={handleAddSelected} className='gap-2'>
+						<Button
+							onClick={handleAddSelected}
+							className='gap-2 shadow-md hover:shadow-lg transition-shadow'
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+						>
 							<Plus className='h-4 w-4' />
 							Ajouter {selectedWidgets.size} widget
 							{selectedWidgets.size > 1 ? "s" : ""}

@@ -1,15 +1,62 @@
-import { Plus, LayoutDashboard, Sparkles } from "lucide-react";
+import { Plus, LayoutDashboard, Sparkles, Search, Command, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WidgetGrid } from "./WidgetGrid";
 import { WidgetPicker } from "./WidgetPicker";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { getWidgetDefinition } from "@/lib/widgetRegistry";
+import { useTheme } from "@/hooks/useTheme";
 
 export function Dashboard() {
 	const openPicker = useDashboardStore((state) => state.openPicker);
 	const widgets = useDashboardStore((state) => state.widgets);
 	const [isHoveringAdd, setIsHoveringAdd] = useState(false);
+	const [searchQuery, setSearchQuery] = useState("");
+	const { theme, toggleTheme } = useTheme();
+
+	// Raccourcis clavier
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			// Ctrl+K ou Cmd+K pour ouvrir le picker
+			if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+				e.preventDefault();
+				openPicker();
+			}
+			// Ctrl+F ou Cmd+F pour la recherche
+			if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+				e.preventDefault();
+				const searchInput = document.querySelector('input[placeholder="Rechercher un widget..."]') as HTMLInputElement;
+				if (searchInput) {
+					searchInput.focus();
+				}
+			}
+			// Échap pour effacer la recherche
+			if (e.key === "Escape" && searchQuery) {
+				setSearchQuery("");
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [openPicker, searchQuery]);
+
+	// Calculer les statistiques des widgets
+	const widgetStats = widgets.reduce(
+		(acc, widget) => {
+			const def = getWidgetDefinition(widget.type);
+			if (def) {
+				acc[widget.type] = (acc[widget.type] || 0) + 1;
+			}
+			return acc;
+		},
+		{} as Record<string, number>
+	);
+
+	const totalWidgets = widgets.length;
+	const widgetTypesCount = Object.keys(widgetStats).length;
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -29,30 +76,150 @@ export function Dashboard() {
 							transition={{ duration: 0.3, delay: 0.1 }}
 							className="flex items-center gap-3"
 						>
-							<div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10">
+							<motion.div
+								whileHover={{ scale: 1.1, rotate: 5 }}
+								transition={{ type: "spring", stiffness: 400, damping: 17 }}
+								className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10"
+							>
 								<LayoutDashboard className="h-5 w-5 text-primary" />
-							</div>
+							</motion.div>
 							<div>
-								<h1 className="text-2xl font-bold tracking-tight">Mon Dashboard</h1>
-								<p className="text-xs sm:text-sm text-muted-foreground">
-									{widgets.length} widget{widgets.length > 1 ? "s" : ""} configuré
-									{widgets.length > 1 ? "s" : ""}
-								</p>
+								<h1 className="text-2xl font-bold tracking-tight" id="dashboard-title">
+									Mon Dashboard
+								</h1>
+								<div className="flex items-center gap-2 flex-wrap mt-1">
+									<p className="text-xs sm:text-sm text-muted-foreground" aria-live="polite">
+										{totalWidgets} widget{totalWidgets > 1 ? "s" : ""} • {widgetTypesCount} type{widgetTypesCount > 1 ? "s" : ""}
+									</p>
+									{Object.entries(widgetStats).map(([type, count]) => {
+										const def = getWidgetDefinition(type);
+										if (!def) return null;
+										return (
+											<Badge key={type} variant="secondary" className="text-xs">
+												{count}x {def.name}
+											</Badge>
+										);
+									})}
+								</div>
 							</div>
 						</motion.div>
 
-						{/* Bouton ajouter avec animation */}
+						{/* Actions rapides */}
 						<motion.div
 							initial={{ opacity: 0, x: 20 }}
 							animate={{ opacity: 1, x: 0 }}
 							transition={{ duration: 0.3, delay: 0.1 }}
+							className="flex items-center gap-2"
 						>
+							{/* Barre de recherche */}
+							<div className="relative hidden sm:flex">
+								<div className="relative flex items-center bg-background border border-border rounded-md h-10 px-3 gap-2 min-w-[200px]">
+									<Search className="h-4 w-4 text-muted-foreground shrink-0" />
+									<Input
+										placeholder="Rechercher un widget..."
+										value={searchQuery}
+										onChange={(e) => setSearchQuery(e.target.value)}
+										className="border-0 p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+									/>
+									{searchQuery ? (
+										<Button
+											variant="ghost"
+											size="icon"
+											className="h-6 w-6 shrink-0"
+											onClick={() => setSearchQuery("")}
+											onMouseDown={(e: React.MouseEvent) => {
+												e.stopPropagation();
+											}}
+											onDragStart={(e: React.DragEvent) => {
+												e.preventDefault();
+												e.stopPropagation();
+											}}
+										>
+											×
+										</Button>
+									) : (
+										<kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border border-border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground shrink-0">
+											<Command className="h-3 w-3" />
+											F
+										</kbd>
+									)}
+								</div>
+							</div>
+
+							{/* Switch thème ultra-moderne */}
+							<button
+								onClick={toggleTheme}
+								className="relative hidden sm:flex items-center justify-center h-7 w-12 rounded-full bg-muted/40 hover:bg-muted/60 transition-colors duration-200 overflow-hidden group border border-border/50"
+								aria-label="Basculer entre thème clair et sombre"
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+							>
+								{/* Background animé selon le thème */}
+								<motion.div
+									initial={false}
+									animate={{
+										background: theme === "dark"
+											? "linear-gradient(to right, transparent 0%, hsl(var(--primary) / 0.1) 100%)"
+											: "linear-gradient(to right, hsl(var(--primary) / 0.1) 0%, transparent 100%)",
+									}}
+									transition={{ duration: 0.3 }}
+									className="absolute inset-0"
+								/>
+
+								{/* Icône Sun - côté gauche */}
+								<motion.div
+									initial={false}
+									animate={{
+										opacity: theme === "light" ? 1 : 0.3,
+										x: theme === "light" ? 0 : -4,
+									}}
+									transition={{ duration: 0.25, ease: "easeOut" }}
+									className="absolute left-1.5 z-10"
+								>
+									<Sun className="h-3 w-3 text-foreground" />
+								</motion.div>
+
+								{/* Icône Moon - côté droit */}
+								<motion.div
+									initial={false}
+									animate={{
+										opacity: theme === "dark" ? 1 : 0.3,
+										x: theme === "dark" ? 0 : 4,
+									}}
+									transition={{ duration: 0.25, ease: "easeOut" }}
+									className="absolute right-1.5 z-10"
+								>
+									<Moon className="h-3 w-3 text-foreground" />
+								</motion.div>
+
+								{/* Indicateur ultra-compact */}
+								<motion.div
+									initial={false}
+									animate={{
+										x: theme === "dark" ? 22 : 2,
+									}}
+									transition={{
+										type: "spring",
+										stiffness: 700,
+										damping: 40,
+									}}
+									className="absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-background border border-border shadow-sm z-20"
+								/>
+							</button>
+
+							{/* Bouton ajouter avec animation */}
 							<Button
 								onClick={openPicker}
 								onMouseEnter={() => setIsHoveringAdd(true)}
 								onMouseLeave={() => setIsHoveringAdd(false)}
-								className="gap-2 shadow-md hover:shadow-lg transition-all duration-200"
+								className="gap-2 shadow-md hover:shadow-lg transition-all duration-200 pr-2"
 								size="lg"
+								aria-label="Ajouter un widget au dashboard"
 							>
 								<motion.div
 									animate={{
@@ -65,6 +232,11 @@ export function Dashboard() {
 								</motion.div>
 								<span className="hidden sm:inline">Ajouter un widget</span>
 								<span className="sm:hidden">Ajouter</span>
+								{/* Raccourci intégré */}
+								<kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border border-primary-foreground/30 bg-primary-foreground/10 px-1.5 font-mono text-[10px] font-medium text-primary-foreground ml-1 shrink-0">
+									<Command className="h-3 w-3" />
+									K
+								</kbd>
 							</Button>
 						</motion.div>
 					</div>
@@ -73,25 +245,51 @@ export function Dashboard() {
 
 			{/* Contenu principal */}
 			<div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-
 				{/* Grille de widgets */}
-				{widgets.length === 0 ? (
-					<motion.div
-						initial={{ opacity: 0, scale: 0.95 }}
-						animate={{ opacity: 1, scale: 1 }}
-						transition={{ duration: 0.3 }}
-						className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center"
-					>
+				<motion.div
+					key={widgets.length === 0 ? "empty" : "grid"}
+					initial={{ opacity: 0 }}
+					animate={{ opacity: 1 }}
+					exit={{ opacity: 0 }}
+					transition={{ duration: 0.2 }}
+				>
+					{widgets.length === 0 ? (
+						<motion.div
+							initial={{ opacity: 0, scale: 0.95 }}
+							animate={{ opacity: 1, scale: 1 }}
+							transition={{ duration: 0.3 }}
+							className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center"
+						>
 						{/* Icône animée */}
 						<motion.div
-							initial={{ scale: 0 }}
-							animate={{ scale: 1 }}
-							transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+							initial={{ scale: 0, rotate: -180 }}
+							animate={{ scale: 1, rotate: 0 }}
+							transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 15 }}
 							className="relative"
 						>
-							<div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse" />
-							<div className="relative flex items-center justify-center h-24 w-24 rounded-full bg-primary/10 border-2 border-primary/20">
-								<Sparkles className="h-12 w-12 text-primary" />
+							<motion.div
+								animate={{
+									scale: [1, 1.1, 1],
+									opacity: [0.3, 0.5, 0.3],
+								}}
+								transition={{
+									duration: 2,
+									repeat: Infinity,
+									ease: "easeInOut",
+								}}
+								className="absolute inset-0 bg-primary/20 rounded-full blur-2xl"
+							/>
+							<div className="relative flex items-center justify-center h-24 w-24 rounded-full bg-primary/10 border-2 border-primary/20 shadow-lg">
+								<motion.div
+									animate={{ rotate: [0, 360] }}
+									transition={{
+										duration: 20,
+										repeat: Infinity,
+										ease: "linear",
+									}}
+								>
+									<Sparkles className="h-12 w-12 text-primary" />
+								</motion.div>
 							</div>
 						</motion.div>
 
@@ -102,8 +300,10 @@ export function Dashboard() {
 							transition={{ delay: 0.3 }}
 							className="space-y-2 max-w-md"
 						>
-							<h2 className="text-2xl font-semibold">Commencez votre dashboard</h2>
-							<p className="text-muted-foreground">
+							<h2 className="text-2xl font-semibold" id="empty-state-title">
+								Commencez votre dashboard
+							</h2>
+							<p className="text-muted-foreground" aria-describedby="empty-state-title">
 								Ajoutez des widgets pour personnaliser votre tableau de bord et rester
 								organisé.
 							</p>
@@ -114,12 +314,15 @@ export function Dashboard() {
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ delay: 0.4 }}
+							whileHover={{ scale: 1.05 }}
+							whileTap={{ scale: 0.95 }}
 						>
 							<Button
 								onClick={openPicker}
 								variant="default"
 								size="lg"
 								className="gap-2 shadow-lg hover:shadow-xl transition-all duration-200"
+								aria-label="Ajouter votre premier widget"
 							>
 								<Plus className="h-4 w-4" />
 								Ajouter votre premier widget
@@ -135,10 +338,61 @@ export function Dashboard() {
 						>
 							<p>Suggestions : Météo • Tâches • Calendrier</p>
 						</motion.div>
-					</motion.div>
-				) : (
-					<WidgetGrid />
-				)}
+						</motion.div>
+					) : (
+						<motion.div
+							initial={{ opacity: 0, y: 10 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.3 }}
+						>
+							{searchQuery && (
+								<div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+									<Search className="h-4 w-4" />
+									<span>
+										{widgets.filter((widget) => {
+											const def = getWidgetDefinition(widget.type);
+											if (!def) return false;
+											const query = searchQuery.toLowerCase();
+											return (
+												def.name.toLowerCase().includes(query) ||
+												def.description?.toLowerCase().includes(query) ||
+												widget.type.toLowerCase().includes(query)
+											);
+										}).length}{" "}
+										widget{widgets.filter((widget) => {
+											const def = getWidgetDefinition(widget.type);
+											if (!def) return false;
+											const query = searchQuery.toLowerCase();
+											return (
+												def.name.toLowerCase().includes(query) ||
+												def.description?.toLowerCase().includes(query) ||
+												widget.type.toLowerCase().includes(query)
+											);
+										}).length > 1 ? "s" : ""} trouvé{widgets.filter((widget) => {
+											const def = getWidgetDefinition(widget.type);
+											if (!def) return false;
+											const query = searchQuery.toLowerCase();
+											return (
+												def.name.toLowerCase().includes(query) ||
+												def.description?.toLowerCase().includes(query) ||
+												widget.type.toLowerCase().includes(query)
+											);
+										}).length > 1 ? "s" : ""}
+									</span>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => setSearchQuery("")}
+										className="h-6 px-2 text-xs"
+									>
+										Effacer
+									</Button>
+								</div>
+							)}
+							<WidgetGrid searchQuery={searchQuery} />
+						</motion.div>
+					)}
+				</motion.div>
 			</div>
 
 			{/* Dialog Widget Picker */}
