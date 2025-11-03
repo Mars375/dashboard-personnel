@@ -54,12 +54,6 @@ import {
 } from "lucide-react";
 import {
 	format,
-	startOfWeek,
-	endOfWeek,
-	eachDayOfInterval,
-	isSameDay,
-	addDays,
-	subDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
