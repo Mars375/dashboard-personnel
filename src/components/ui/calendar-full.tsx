@@ -86,20 +86,6 @@ export function DatePicker({
 		onMonthChange?.(newMonth);
 	};
 
-	const handlePreviousMonth = (e: React.MouseEvent) => {
-		e.stopPropagation();
-		e.preventDefault();
-		const newMonth = subMonths(currentMonth, 1);
-		handleMonthChange(newMonth);
-	};
-
-	const handleNextMonth = (e: React.MouseEvent) => {
-		e.stopPropagation();
-		e.preventDefault();
-		const newMonth = addMonths(currentMonth, 1);
-		handleMonthChange(newMonth);
-	};
-
 	const handleMonthSelect = (monthIndex: number) => {
 		const newMonth = new Date(currentMonth.getFullYear(), monthIndex, 1);
 		handleMonthChange(newMonth);
@@ -128,13 +114,6 @@ export function DatePicker({
 
 	const isToday = (day: Date) => isSameDay(day, new Date());
 	const isSelected = (day: Date) => selected && isSameDay(day, selected);
-
-	const formatDateLocal = (date: Date): string => {
-		const year = date.getFullYear();
-		const month = String(date.getMonth() + 1).padStart(2, "0");
-		const day = String(date.getDate()).padStart(2, "0");
-		return `${year}-${month}-${day}`;
-	};
 
 	return (
 		<div className={cn("bg-background group/calendar p-3 w-fit", className)}>
