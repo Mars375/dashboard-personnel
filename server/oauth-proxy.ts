@@ -33,9 +33,18 @@ app.post("/api/oauth/exchange", async (req, res) => {
 		const clientSecret = process.env.GOOGLE_CLIENT_SECRET; // Doit être dans .env.local (sans VITE_)
 		const redirectUri = process.env.VITE_GOOGLE_REDIRECT_URI || "http://localhost:5173/oauth/google/callback";
 
-		if (!clientId || !clientSecret) {
+		if (!clientId) {
+			console.error("❌ VITE_GOOGLE_CLIENT_ID manquant dans .env.local");
 			return res.status(500).json({ 
-				error: "Configuration OAuth manquante. Vérifiez GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET dans .env.local" 
+				error: "VITE_GOOGLE_CLIENT_ID manquant. Vérifiez votre fichier .env.local" 
+			});
+		}
+
+		if (!clientSecret) {
+			console.error("❌ GOOGLE_CLIENT_SECRET manquant dans .env.local");
+			console.error("💡 Astuce: Ajoutez GOOGLE_CLIENT_SECRET=votre_secret dans .env.local (SANS préfixe VITE_)");
+			return res.status(500).json({ 
+				error: "GOOGLE_CLIENT_SECRET manquant. Ajoutez-le dans .env.local (sans préfixe VITE_). Voir docs/OAUTH_BACKEND_SETUP.md" 
 			});
 		}
 
@@ -83,5 +92,9 @@ app.post("/api/oauth/exchange", async (req, res) => {
 app.listen(PORT, () => {
 	console.log(`🚀 OAuth Proxy démarré sur http://localhost:${PORT}`);
 	console.log(`📝 Endpoint: http://localhost:${PORT}/api/oauth/exchange`);
+	console.log(`\n📋 Variables d'environnement chargées:`);
+	console.log(`   VITE_GOOGLE_CLIENT_ID: ${process.env.VITE_GOOGLE_CLIENT_ID ? "✅ Présent" : "❌ Manquant"}`);
+	console.log(`   GOOGLE_CLIENT_SECRET: ${process.env.GOOGLE_CLIENT_SECRET ? "✅ Présent" : "❌ Manquant"}`);
+	console.log(`   Fichier .env.local: ${envPath}`);
 });
 
