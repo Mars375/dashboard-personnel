@@ -57,6 +57,8 @@ import {
 	endOfWeek,
 	eachDayOfInterval,
 	isSameDay,
+	addDays,
+	subDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -1490,7 +1492,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 										modifiers={modifiers}
 										modifiersClassNames={modifiersClassNames}
 										className='bg-transparent p-0 w-full'
-										captionLayout='dropdown-buttons'
+										captionLayout='dropdown'
 										required
 										components={{
 											DayButton: ({ day, modifiers, className, ...props }) => {
@@ -1572,6 +1574,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 										onEventClick={(event: CalendarEvent) =>
 											handleEditEvent(event)
 										}
+										setCurrentDate={setCurrentDate}
 										events={events}
 										draggedEventId={draggedEventId}
 										onEventDragStart={handleEventDragStart}
@@ -1589,6 +1592,8 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 										onEventClick={(event: CalendarEvent) =>
 											handleEditEvent(event)
 										}
+										setCurrentDate={setCurrentDate}
+										onSelect={handleSelect}
 										events={events}
 										draggedEventId={draggedEventId}
 										onEventDragStart={handleEventDragStart}
@@ -2011,12 +2016,13 @@ function CalendarEventItem({
 }
 
 // Composant pour la vue semaine
-function WeekView({
+	function WeekView({
 	currentDate,
 	selectedDate,
 	onSelect,
 	getEventsForDate,
 	onEventClick,
+	setCurrentDate,
 	events,
 	draggedEventId,
 	onEventDragStart,
@@ -2028,6 +2034,7 @@ function WeekView({
 	onSelect: (date: Date | undefined) => void;
 	getEventsForDate: (date: Date) => CalendarEvent[];
 	onEventClick: (event: CalendarEvent) => void;
+	setCurrentDate: (date: Date) => void;
 	events: CalendarEvent[];
 	draggedEventId: string | null;
 	onEventDragStart: (eventId: string) => void;
@@ -2048,16 +2055,54 @@ function WeekView({
 		const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
 		const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
+		const handlePreviousWeek = () => {
+			setCurrentDate(subDays(currentDate, 7));
+		};
+
+		const handleNextWeek = () => {
+			setCurrentDate(addDays(currentDate, 7));
+		};
+
 		const weekDaysNames = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
 		return (
 			<div className='space-y-2'>
-				{/* Header sans navigation */}
-				<div className='flex items-center justify-center mb-4'>
+				{/* Header avec navigation */}
+				<div className='flex items-center justify-between mb-4'>
+					<Button
+						variant='ghost'
+						size='icon'
+						onClick={handlePreviousWeek}
+						aria-label='Semaine précédente'
+						onMouseDown={(e: React.MouseEvent) => {
+							e.stopPropagation();
+						}}
+						onDragStart={(e: React.DragEvent) => {
+							e.preventDefault();
+							e.stopPropagation();
+						}}
+					>
+						<ChevronLeft className='h-4 w-4' />
+					</Button>
 					<div className='text-sm font-medium'>
 						{format(weekStart, "d MMM", { locale: fr })} -{" "}
 						{format(weekEnd, "d MMM yyyy", { locale: fr })}
 					</div>
+					<Button
+						variant='ghost'
+						size='icon'
+						onClick={handleNextWeek}
+						aria-label='Semaine suivante'
+						onMouseDown={(e: React.MouseEvent) => {
+							e.stopPropagation();
+						}}
+						onDragStart={(e: React.DragEvent) => {
+							e.preventDefault();
+							e.stopPropagation();
+						}}
+					>
+						<ChevronRight className='h-4 w-4' />
+					</Button>
 				</div>
 
 				{/* Grille de la semaine */}
