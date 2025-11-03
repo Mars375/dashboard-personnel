@@ -1498,7 +1498,20 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 														/>
 													);
 												}
-												return null;
+												// Fallback pour orientation "up" ou "down"
+												return (
+													<ChevronLeft
+														className='h-4 w-4'
+														onMouseDown={(e: React.MouseEvent) => {
+															e.stopPropagation();
+														}}
+														onDragStart={(e: React.DragEvent) => {
+															e.preventDefault();
+															e.stopPropagation();
+														}}
+														{...props}
+													/>
+												);
 											},
 											DayButton: ({ day, modifiers, className, ...props }) => {
 												const handleDragOver = (e: React.DragEvent) => {
