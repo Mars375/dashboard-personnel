@@ -155,7 +155,8 @@ function Calendar({
             <ChevronDownIcon className={cn("size-4", className)} {...props} />
           )
         },
-        ButtonPrevious: ({ ...props }: any) => {
+        // @ts-expect-error - ButtonPrevious is not in types but works at runtime
+        ButtonPrevious: ({ ...props }) => {
           return (
             <button
               {...props}
@@ -175,7 +176,8 @@ function Calendar({
             />
           )
         },
-        ButtonNext: ({ ...props }: any) => {
+        // @ts-expect-error - ButtonNext is not in types but works at runtime
+        ButtonNext: ({ ...props }) => {
           return (
             <button
               {...props}
@@ -206,7 +208,8 @@ function Calendar({
           )
         },
         ...components,
-      } as any}
+        // @ts-expect-error - ButtonPrevious/ButtonNext not in types but work at runtime
+      }}
       {...props}
     />
   )
