@@ -110,7 +110,7 @@ function Calendar({
         range_middle: cn(defaultClassNames.range_middle),
         range_end: cn(defaultClassNames.range_end),
         today: cn(
-          "data-[selected=true]:rounded-none data-[selected=true]:bg-primary data-[selected=true]:border-transparent",
+          "data-[selected=true]:rounded-none data-[selected=true]:border-transparent",
           defaultClassNames.today
         ),
         outside: cn(
