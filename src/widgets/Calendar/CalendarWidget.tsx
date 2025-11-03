@@ -455,16 +455,44 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 					.getAllProviders()
 					.find((p) => p.name === "Google Calendar");
 				let pulledEventsCount = 0;
+				let newEventsCount = 0;
 
 				if (googleProvider && googleProvider.enabled) {
 					const pulledEvents = await googleProvider.pullEvents();
 					pulledEventsCount = pulledEvents.length;
+
+					// Fusionner les événements récupérés avec les événements existants
+					// Éviter les doublons en vérifiant l'ID ou la date + titre
+					const existingEventIds = new Set(events.map((e) => e.id));
+					const newEvents = pulledEvents.filter((event) => {
+						// Si l'événement a un ID Google, vérifier s'il existe déjà
+						if (event.id && existingEventIds.has(event.id)) {
+							return false;
+						}
+						// Sinon, vérifier s'il existe un événement avec la même date et le même titre
+						const exists = events.some(
+							(e) => e.date === event.date && e.title === event.title
+						);
+						return !exists;
+					});
+
+					// Ajouter les nouveaux événements
+					if (newEvents.length > 0) {
+						newEvents.forEach((event) => {
+							addEvent(event);
+						});
+						newEventsCount = newEvents.length;
+					}
 				}
 
 				// Une seule notification combinée
-				if (pulledEventsCount > 0) {
+				if (newEventsCount > 0) {
 					toast.success(
-						`Synchronisation réussie: ${pulledEventsCount} événement(s) récupéré(s) depuis Google Calendar`
+						`Synchronisation réussie: ${newEventsCount} nouvel(le)(s) événement(s) ajouté(s) depuis Google Calendar`
+					);
+				} else if (pulledEventsCount > 0) {
+					toast.success(
+						`Synchronisation réussie: ${pulledEventsCount} événement(s) récupéré(s) (déjà présents)`
 					);
 				} else {
 					toast.success(
