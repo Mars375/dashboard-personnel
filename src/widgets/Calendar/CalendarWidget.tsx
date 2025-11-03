@@ -190,21 +190,6 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 		}
 	});
 
-	const datesWithEvents = Array.from(datesWithEventsSet).map((dateStr) => {
-		const [year, month, day] = dateStr.split("-").map(Number);
-		return new Date(year, month - 1, day);
-	});
-
-	// Ajouter les deadlines des todos
-	const datesWithDeadlines = todosWithDeadlines
-		.map((todo) => {
-			if (todo.deadline) {
-				return new Date(todo.deadline);
-			}
-			return null;
-		})
-		.filter((date): date is Date => date !== null);
-
 	// Modifiers gérés par calendar-full maintenant
 
 	const handleSelect = (date: Date | undefined) => {
