@@ -1098,51 +1098,13 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 					<div className='flex gap-2 flex-1 min-h-0'>
 						{/* Mini-calendrier vertical compact */}
 						<div className='w-[150px] shrink-0 border rounded-lg p-1.5 flex flex-col'>
-							<div className='flex items-center justify-between mb-1'>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-6 w-6'
-									onClick={() => {
-										const prevMonth = new Date(currentDate);
-										prevMonth.setMonth(prevMonth.getMonth() - 1);
-										setCurrentDate(prevMonth);
-									}}
-									onMouseDown={(e: React.MouseEvent) => {
-										e.stopPropagation();
-									}}
-									onDragStart={(e: React.DragEvent) => {
-										e.preventDefault();
-										e.stopPropagation();
-									}}
-								>
-									<ChevronLeft className='h-4 w-4' />
-								</Button>
+							<div className='flex items-center justify-center mb-1'>
 								<div className='text-xs font-medium'>
 									{currentDate.toLocaleDateString("fr-FR", {
 										month: "short",
 										year: "2-digit",
 									})}
 								</div>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-6 w-6'
-									onClick={() => {
-										const nextMonth = new Date(currentDate);
-										nextMonth.setMonth(nextMonth.getMonth() + 1);
-										setCurrentDate(nextMonth);
-									}}
-									onMouseDown={(e: React.MouseEvent) => {
-										e.stopPropagation();
-									}}
-									onDragStart={(e: React.DragEvent) => {
-										e.preventDefault();
-										e.stopPropagation();
-									}}
-								>
-									<ChevronRight className='h-4 w-4' />
-								</Button>
 							</div>
 
 							{/* Grille de calendrier ultra compacte */}
@@ -1495,27 +1457,6 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 										captionLayout='dropdown'
 										required
 										components={{
-											Chevron: ({
-												orientation,
-												...props
-											}: {
-												orientation?: "left" | "right" | "up" | "down";
-											}) => {
-												// Pas de handlers ici car ils interfèrent avec le onClick du bouton parent
-												// Les handlers doivent être sur le bouton, pas sur l'icône
-												if (orientation === "left") {
-													return <ChevronLeft className='h-4 w-4' {...props} />;
-												}
-
-												if (orientation === "right") {
-													return (
-														<ChevronRight className='h-4 w-4' {...props} />
-													);
-												}
-
-												// Fallback pour orientation "up" ou "down"
-												return <ChevronLeft className='h-4 w-4' {...props} />;
-											},
 											DayButton: ({ day, modifiers, className, ...props }) => {
 												const handleDragOver = (e: React.DragEvent) => {
 													if (draggedEventId) {
