@@ -11,35 +11,38 @@ export function OAuthCallback() {
 		const errorDescription = urlParams.get("error_description");
 		const state = urlParams.get("state");
 		
-		// Déterminer le provider depuis l'URL ou le state
+		// Déterminer le provider depuis l'URL
 		let provider = "google";
 		if (window.location.pathname.includes("microsoft")) provider = "microsoft";
 		if (window.location.pathname.includes("notion")) provider = "notion";
 
-		// Envoyer un message au parent (popup ou iframe)
-		const message = error
-			? {
-					type: "OAUTH_ERROR" as const,
-					error,
-					errorDescription,
-					provider,
-			  }
-			: {
-					type: "OAUTH_SUCCESS" as const,
-					code,
-					state,
-					provider,
-			  };
-
+		// Envoyer un message au parent (popup)
 		if (window.opener) {
-			// Popup
+			const message = error
+				? {
+						type: "OAUTH_ERROR" as const,
+						error,
+						errorDescription,
+						provider,
+				  }
+				: {
+						type: "OAUTH_SUCCESS" as const,
+						code,
+						state,
+						provider,
+				  };
+
+			// Envoyer le message au parent
 			window.opener.postMessage(message, window.location.origin);
-			window.close();
+			
+			// Attendre un peu pour s'assurer que le message est envoyé
+			setTimeout(() => {
+				window.close();
+			}, 100);
 		} else {
 			// Fenêtre principale - rediriger vers le dashboard
-			// Dans ce cas, il faudrait gérer le code côté serveur
-			console.log("OAuth callback reçu:", message);
-			// Pour l'instant, rediriger vers le dashboard
+			console.log("OAuth callback reçu dans la fenêtre principale:", { code, error });
+			// Rediriger vers le dashboard
 			window.location.href = "/";
 		}
 	}, []);

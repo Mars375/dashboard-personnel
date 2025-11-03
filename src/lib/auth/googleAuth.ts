@@ -44,28 +44,44 @@ export class GoogleAuth {
 			}
 
 			// Écouter le message du callback
-			const messageHandler = (event: MessageEvent) => {
+			const messageHandler = async (event: MessageEvent) => {
 				// Vérifier l'origine pour la sécurité
 				if (event.origin !== window.location.origin) return;
 
 				if (event.data.type === "OAUTH_SUCCESS") {
-					const tokens: OAuthTokens = {
-						accessToken: event.data.accessToken,
-						refreshToken: event.data.refreshToken,
-						expiresAt: event.data.expiresAt
-							? Date.now() + event.data.expiresAt * 1000
-							: undefined,
-						tokenType: event.data.tokenType || "Bearer",
-						scope: event.data.scope,
-					};
+					const code = event.data.code;
+					
+					if (!code) {
+						window.removeEventListener("message", messageHandler);
+						popup.close();
+						reject(new Error("Code d'autorisation manquant"));
+						return;
+					}
 
-					window.removeEventListener("message", messageHandler);
-					popup.close();
-					resolve(tokens);
+					try {
+						// Échanger le code contre des tokens
+						// NOTE: En production, cela doit être fait côté backend pour des raisons de sécurité
+						// Pour le MVP, on va utiliser un proxy ou une solution alternative
+						const tokens = await this.exchangeCodeForTokensWithProxy(code);
+						
+						window.removeEventListener("message", messageHandler);
+						if (!popup.closed) {
+							popup.close();
+						}
+						resolve(tokens);
+					} catch (error) {
+						window.removeEventListener("message", messageHandler);
+						if (!popup.closed) {
+							popup.close();
+						}
+						reject(new Error(`Erreur lors de l'échange du code: ${error instanceof Error ? error.message : "Erreur inconnue"}`));
+					}
 				} else if (event.data.type === "OAUTH_ERROR") {
 					window.removeEventListener("message", messageHandler);
-					popup.close();
-					reject(new Error(event.data.error || "Erreur d'authentification"));
+					if (!popup.closed) {
+						popup.close();
+					}
+					reject(new Error(event.data.error || event.data.errorDescription || "Erreur d'authentification"));
 				}
 			};
 
@@ -197,16 +213,40 @@ export class GoogleAuth {
 	/**
 	 * Échange un code d'autorisation contre des tokens
 	 * Cette méthode est généralement appelée par le callback OAuth
+	 * 
+	 * NOTE: Pour le MVP, on utilise une approche qui nécessite un backend proxy.
+	 * En production, cette opération doit être faite côté backend pour des raisons de sécurité.
+	 */
+	async exchangeCodeForTokensWithProxy(code: string): Promise<OAuthTokens> {
+		// Option 1: Utiliser un backend proxy si disponible
+		// const response = await fetch("/api/oauth/exchange", {
+		//   method: "POST",
+		//   body: JSON.stringify({ code, provider: "google" }),
+		// });
+
+		// Option 2: Pour le MVP, on peut utiliser une extension Chrome ou un service proxy
+		// Pour l'instant, on va afficher une erreur informative
+
+		// Option 3: Utiliser Google Identity Services (nouvelle API)
+		// Mais pour le moment, on va utiliser une solution de contournement
+
+		// SOLUTION TEMPORAIRE POUR MVP:
+		// On va utiliser le code pour créer une connexion partielle
+		// L'utilisateur devra ensuite compléter la connexion via un backend
+		// Ou on peut utiliser une extension/service proxy
+
+		throw new Error(
+			"L'échange du code OAuth nécessite un backend. Pour tester localement, " +
+			"configurez un proxy backend ou utilisez Google Identity Services. " +
+			"Voir docs/OAUTH_SETUP.md pour plus d'informations."
+		);
+	}
+
+	/**
+	 * Échange un code d'autorisation contre des tokens (méthode originale - nécessite backend)
 	 */
 	async exchangeCodeForTokens(code: string): Promise<OAuthTokens> {
-		// NOTE: En production, cette opération devrait être faite côté backend
-		// car elle nécessite le client_secret qui ne doit pas être exposé côté client
-		// Pour MVP, on peut utiliser un backend proxy ou Firebase Functions
-
-		// Placeholder - À implémenter avec un backend
-		throw new Error(
-			"exchangeCodeForTokens doit être implémenté côté backend pour des raisons de sécurité",
-		);
+		return this.exchangeCodeForTokensWithProxy(code);
 	}
 }
 
