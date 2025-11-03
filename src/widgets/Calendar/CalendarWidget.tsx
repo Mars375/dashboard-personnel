@@ -1586,7 +1586,6 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 									<DayView
 										currentDate={currentDate}
 										selectedDate={selectedDate}
-										onSelect={handleSelect}
 										getEventsForDate={getEventsForDate}
 										onEventClick={(event: CalendarEvent) =>
 											handleEditEvent(event)
@@ -2019,7 +2018,6 @@ function WeekView({
 	onSelect,
 	getEventsForDate,
 	onEventClick,
-	setCurrentDate,
 	events,
 	draggedEventId,
 	onEventDragStart,
@@ -2031,7 +2029,6 @@ function WeekView({
 	onSelect: (date: Date | undefined) => void;
 	getEventsForDate: (date: Date) => CalendarEvent[];
 	onEventClick: (event: CalendarEvent) => void;
-	setCurrentDate: (date: Date) => void;
 	events: CalendarEvent[];
 	draggedEventId: string | null;
 	onEventDragStart: (eventId: string) => void;
@@ -2190,10 +2187,8 @@ function WeekView({
 function DayView({
 	currentDate,
 	selectedDate,
-	onSelect,
 	getEventsForDate,
 	onEventClick,
-	setCurrentDate,
 	events,
 	draggedEventId,
 	onEventDragStart,
@@ -2202,10 +2197,8 @@ function DayView({
 }: {
 	currentDate: Date;
 	selectedDate: Date | undefined;
-	onSelect: (date: Date | undefined) => void;
 	getEventsForDate: (date: Date) => CalendarEvent[];
 	onEventClick: (event: CalendarEvent) => void;
-	setCurrentDate: (date: Date) => void;
 	events: CalendarEvent[];
 	draggedEventId: string | null;
 	onEventDragStart: (eventId: string) => void;
