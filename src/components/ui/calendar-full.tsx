@@ -403,6 +403,13 @@ export function Calendar({
 		[]
 	);
 
+	// État pour la vue mois
+	const [currentMonth, setCurrentMonth] = useState<Date>(currentDate);
+
+	useEffect(() => {
+		setCurrentMonth(currentDate);
+	}, [currentDate]);
+
 	// Vue Mois
 	const renderMonthView = () => {
 		const MONTHS = [
@@ -421,12 +428,6 @@ export function Calendar({
 		];
 
 		const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-
-		const [currentMonth, setCurrentMonth] = useState<Date>(currentDate);
-
-		useEffect(() => {
-			setCurrentMonth(currentDate);
-		}, [currentDate]);
 
 		const handleMonthChange = (newMonth: Date) => {
 			setCurrentMonth(newMonth);
@@ -479,7 +480,8 @@ export function Calendar({
 
 		const getDayModifiers = (day: Date) => {
 			const dayModifiers: string[] = [];
-			Object.keys(modifiers).forEach((key) => {
+			const modifiersKeys = Object.keys(modifiers) as Array<keyof typeof modifiers>;
+			modifiersKeys.forEach((key) => {
 				const modifier = modifiers[key];
 				if (Array.isArray(modifier)) {
 					const dayStr = formatDateLocal(day);
@@ -508,8 +510,9 @@ export function Calendar({
 			}
 
 			dayModifiers.forEach((modifier) => {
-				if (modifiersClassNames[modifier]) {
-					classes.push(modifiersClassNames[modifier]);
+				const classNames = modifiersClassNames as Record<string, string>;
+				if (classNames[modifier]) {
+					classes.push(classNames[modifier]);
 				}
 			});
 
