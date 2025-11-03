@@ -1492,9 +1492,69 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 										modifiers={modifiers}
 										modifiersClassNames={modifiersClassNames}
 										className='bg-transparent p-0 w-full'
-										captionLayout='dropdown'
+										captionLayout='dropdown-buttons'
 										required
 										components={{
+											IconPrevious: () => (
+												<ChevronLeft
+													className='h-4 w-4'
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+												/>
+											),
+											IconNext: () => (
+												<ChevronRight
+													className='h-4 w-4'
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+												/>
+											),
+											ButtonPrevious: ({ ...props }) => (
+												<button
+													{...props}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+														if (props.onMouseDown) {
+															props.onMouseDown(e);
+														}
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+														if (props.onDragStart) {
+															props.onDragStart(e);
+														}
+													}}
+												/>
+											),
+											ButtonNext: ({ ...props }) => (
+												<button
+													{...props}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+														if (props.onMouseDown) {
+															props.onMouseDown(e);
+														}
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+														if (props.onDragStart) {
+															props.onDragStart(e);
+														}
+													}}
+												/>
+											),
 											DayButton: ({ day, modifiers, className, ...props }) => {
 												const handleDragOver = (e: React.DragEvent) => {
 													if (draggedEventId) {
@@ -2016,7 +2076,7 @@ function CalendarEventItem({
 }
 
 // Composant pour la vue semaine
-	function WeekView({
+function WeekView({
 	currentDate,
 	selectedDate,
 	onSelect,
