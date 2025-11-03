@@ -4,6 +4,9 @@ import { useEffect } from "react";
 
 export function OAuthCallback() {
 	useEffect(() => {
+		// Flag pour s'assurer que le message n'est envoyé qu'une seule fois
+		let messageSent = false;
+		
 		// Extraire les paramètres de l'URL
 		const urlParams = new URLSearchParams(window.location.search);
 		const code = urlParams.get("code");
@@ -16,8 +19,10 @@ export function OAuthCallback() {
 		if (window.location.pathname.includes("microsoft")) provider = "microsoft";
 		if (window.location.pathname.includes("notion")) provider = "notion";
 
-		// Envoyer un message au parent (popup)
-		if (window.opener) {
+		// Envoyer un message au parent (popup) - une seule fois
+		if (window.opener && !messageSent) {
+			messageSent = true;
+			
 			const message = error
 				? {
 						type: "OAUTH_ERROR" as const,
@@ -39,7 +44,7 @@ export function OAuthCallback() {
 			setTimeout(() => {
 				window.close();
 			}, 100);
-		} else {
+		} else if (!window.opener) {
 			// Fenêtre principale - rediriger vers le dashboard
 			console.log("OAuth callback reçu dans la fenêtre principale:", { code, error });
 			// Rediriger vers le dashboard

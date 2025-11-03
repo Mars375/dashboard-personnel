@@ -43,17 +43,30 @@ export class GoogleAuth {
 				return;
 			}
 
+			// Flag pour s'assurer que l'échange ne se fait qu'une seule fois
+			let isExchanging = false;
+			
 			// Écouter le message du callback
 			const messageHandler = async (event: MessageEvent) => {
 				// Vérifier l'origine pour la sécurité
 				if (event.origin !== window.location.origin) return;
 
 				if (event.data.type === "OAUTH_SUCCESS") {
+					// Protection contre les appels multiples
+					if (isExchanging) {
+						console.warn("⚠️ Tentative d'échange du code déjà en cours, ignorée");
+						return;
+					}
+					
+					isExchanging = true;
 					const code = event.data.code;
 					
 					if (!code) {
+						isExchanging = false;
 						window.removeEventListener("message", messageHandler);
-						popup.close();
+						if (!popup.closed) {
+							popup.close();
+						}
 						reject(new Error("Code d'autorisation manquant"));
 						return;
 					}
@@ -70,6 +83,7 @@ export class GoogleAuth {
 						}
 						resolve(tokens);
 					} catch (error) {
+						isExchanging = false;
 						window.removeEventListener("message", messageHandler);
 						if (!popup.closed) {
 							popup.close();
@@ -77,6 +91,8 @@ export class GoogleAuth {
 						reject(new Error(`Erreur lors de l'échange du code: ${error instanceof Error ? error.message : "Erreur inconnue"}`));
 					}
 				} else if (event.data.type === "OAUTH_ERROR") {
+					// Réinitialiser le flag même en cas d'erreur
+					isExchanging = false;
 					window.removeEventListener("message", messageHandler);
 					if (!popup.closed) {
 						popup.close();
