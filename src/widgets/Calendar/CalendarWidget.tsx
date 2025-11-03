@@ -1501,45 +1501,18 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 											}: {
 												orientation?: "left" | "right" | "up" | "down";
 											}) => {
-												const handleMouseDown = (e: React.MouseEvent) => {
-													e.stopPropagation();
-												};
-												const handleDragStart = (e: React.DragEvent) => {
-													e.preventDefault();
-													e.stopPropagation();
-												};
-
+												// Pas de handlers ici car ils interfèrent avec le onClick du bouton parent
+												// Les handlers doivent être sur le bouton, pas sur l'icône
 												if (orientation === "left") {
-													return (
-														<ChevronLeft
-															className='h-4 w-4'
-															onMouseDown={handleMouseDown}
-															onDragStart={handleDragStart}
-															{...props}
-														/>
-													);
+													return <ChevronLeft className='h-4 w-4' {...props} />;
 												}
 
 												if (orientation === "right") {
-													return (
-														<ChevronRight
-															className='h-4 w-4'
-															onMouseDown={handleMouseDown}
-															onDragStart={handleDragStart}
-															{...props}
-														/>
-													);
+													return <ChevronRight className='h-4 w-4' {...props} />;
 												}
 
 												// Fallback pour orientation "up" ou "down"
-												return (
-													<ChevronLeft
-														className='h-4 w-4'
-														onMouseDown={handleMouseDown}
-														onDragStart={handleDragStart}
-														{...props}
-													/>
-												);
+												return <ChevronLeft className='h-4 w-4' {...props} />;
 											},
 											DayButton: ({ day, modifiers, className, ...props }) => {
 												const handleDragOver = (e: React.DragEvent) => {
