@@ -21,17 +21,40 @@
 Créez un fichier `.env.local` à la racine du projet :
 
 ```env
+# Client ID (peut être exposé)
 VITE_GOOGLE_CLIENT_ID=votre_google_client_id_ici
 VITE_GOOGLE_REDIRECT_URI=http://localhost:5173/oauth/google/callback
+
+# Client Secret (DOIT rester secret - pas de préfixe VITE_)
+GOOGLE_CLIENT_SECRET=votre_client_secret_ici
 ```
+
+**Important** : Pour obtenir le Client Secret :
+1. Google Cloud Console > APIs & Services > Credentials
+2. Cliquez sur votre OAuth 2.0 Client ID
+3. Copiez le **Client Secret** (pas juste le Client ID)
 
 ### 3. Lancer l'application
 
+**Option A : Lancer les deux serveurs séparément**
+
+**Terminal 1 - Frontend :**
 ```bash
 pnpm dev
 ```
 
-L'application sera accessible sur `http://localhost:5173`
+**Terminal 2 - Backend proxy OAuth :**
+```bash
+pnpm dev:server
+```
+
+**Option B : Lancer les deux en même temps**
+```bash
+pnpm dev:all
+```
+
+L'application sera accessible sur `http://localhost:5173`  
+Le backend proxy sera sur `http://localhost:3001`
 
 ### 4. Tester dans le Calendar Widget
 
@@ -72,7 +95,16 @@ L'application sera accessible sur `http://localhost:5173`
 
 ### Erreur "Invalid client_id"
 - Vérifiez que `VITE_GOOGLE_CLIENT_ID` dans `.env.local` correspond au Client ID de Google Cloud Console
-- **Redémarrez le serveur** après modification de `.env.local`
+- **Redémarrez les serveurs** après modification de `.env.local`
+
+### Erreur "Le backend proxy OAuth n'est pas démarré"
+- Assurez-vous que le backend proxy est lancé : `pnpm dev:server`
+- Vérifiez que le port 3001 n'est pas déjà utilisé
+- Vérifiez les logs du backend pour les erreurs
+
+### Erreur "GOOGLE_CLIENT_SECRET manquant"
+- Vérifiez que `GOOGLE_CLIENT_SECRET` est dans `.env.local` (sans préfixe `VITE_`)
+- Redémarrez le serveur backend après ajout
 
 ### Aucun événement ne s'affiche
 - Vérifiez que vous avez des événements dans votre Google Calendar

@@ -211,35 +211,54 @@ export class GoogleAuth {
 	}
 
 	/**
-	 * Échange un code d'autorisation contre des tokens
-	 * Cette méthode est généralement appelée par le callback OAuth
+	 * Échange un code d'autorisation contre des tokens via le backend proxy
 	 * 
-	 * NOTE: Pour le MVP, on utilise une approche qui nécessite un backend proxy.
+	 * NOTE: Pour le développement local, utilise le proxy sur localhost:3001
 	 * En production, cette opération doit être faite côté backend pour des raisons de sécurité.
 	 */
 	async exchangeCodeForTokensWithProxy(code: string): Promise<OAuthTokens> {
-		// Option 1: Utiliser un backend proxy si disponible
-		// const response = await fetch("/api/oauth/exchange", {
-		//   method: "POST",
-		//   body: JSON.stringify({ code, provider: "google" }),
-		// });
+		// URL du proxy backend (développement local)
+		const proxyUrl = import.meta.env.VITE_OAUTH_PROXY_URL || "http://localhost:3001";
+		
+		try {
+			const response = await fetch(`${proxyUrl}/api/oauth/exchange`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ 
+					code, 
+					provider: "google" 
+				}),
+			});
 
-		// Option 2: Pour le MVP, on peut utiliser une extension Chrome ou un service proxy
-		// Pour l'instant, on va afficher une erreur informative
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || "Erreur lors de l'échange du code");
+			}
 
-		// Option 3: Utiliser Google Identity Services (nouvelle API)
-		// Mais pour le moment, on va utiliser une solution de contournement
+			const data = await response.json();
 
-		// SOLUTION TEMPORAIRE POUR MVP:
-		// On va utiliser le code pour créer une connexion partielle
-		// L'utilisateur devra ensuite compléter la connexion via un backend
-		// Ou on peut utiliser une extension/service proxy
-
-		throw new Error(
-			"L'échange du code OAuth nécessite un backend. Pour tester localement, " +
-			"configurez un proxy backend ou utilisez Google Identity Services. " +
-			"Voir docs/OAUTH_SETUP.md pour plus d'informations."
-		);
+			return {
+				accessToken: data.access_token,
+				refreshToken: data.refresh_token,
+				expiresAt: data.expires_in
+					? Date.now() + data.expires_in * 1000
+					: undefined,
+				tokenType: data.token_type || "Bearer",
+				scope: data.scope,
+			};
+		} catch (error) {
+			// Si le proxy n'est pas disponible, donner une erreur informative
+			if (error instanceof TypeError && error.message.includes("fetch")) {
+				throw new Error(
+					"Le backend proxy OAuth n'est pas démarré. " +
+					"Lancez `pnpm dev:server` dans un terminal séparé. " +
+					"Voir docs/OAUTH_SETUP.md pour plus d'informations."
+				);
+			}
+			throw error;
+		}
 	}
 
 	/**
