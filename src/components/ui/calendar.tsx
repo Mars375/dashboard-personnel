@@ -1,6 +1,19 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getYear, getMonth } from "date-fns";
+import {
+	format,
+	startOfMonth,
+	endOfMonth,
+	startOfWeek,
+	endOfWeek,
+	eachDayOfInterval,
+	isSameMonth,
+	isSameDay,
+	addMonths,
+	subMonths,
+	getYear,
+	getMonth,
+} from "date-fns";
 import { fr } from "date-fns/locale";
 
 import { cn } from "@/lib/utils";
@@ -165,18 +178,13 @@ export function Calendar({
 	};
 
 	return (
-		<div
-			className={cn(
-				"bg-background group/calendar p-3 w-fit",
-				className
-			)}
-		>
+		<div className={cn("bg-background group/calendar p-3 w-fit", className)}>
 			{/* Header avec navigation */}
-			<div className="flex items-center justify-between mb-4">
+			<div className='flex items-center justify-between mb-4'>
 				{captionLayout === "dropdown-buttons" && (
 					<Button
-						variant="ghost"
-						size="icon"
+						variant='ghost'
+						size='icon'
 						onClick={handlePreviousMonth}
 						onMouseDown={(e: React.MouseEvent) => {
 							e.stopPropagation();
@@ -185,20 +193,21 @@ export function Calendar({
 							e.preventDefault();
 							e.stopPropagation();
 						}}
-						aria-label="Mois précédent"
+						aria-label='Mois précédent'
 					>
-						<ChevronLeft className="h-4 w-4" />
+						<ChevronLeft className='h-4 w-4' />
 					</Button>
 				)}
 
-				{captionLayout === "dropdown" || captionLayout === "dropdown-buttons" ? (
-					<div className="flex items-center gap-1.5">
+				{captionLayout === "dropdown" ||
+				captionLayout === "dropdown-buttons" ? (
+					<div className='flex items-center gap-1.5'>
 						<Select
 							value={currentMonthIndex.toString()}
 							onValueChange={(value) => handleMonthSelect(Number(value))}
 						>
 							<SelectTrigger
-								className="w-[100px] h-8 text-sm"
+								className='w-[100px] h-8 text-sm'
 								onMouseDown={(e: React.MouseEvent) => {
 									e.stopPropagation();
 								}}
@@ -223,7 +232,7 @@ export function Calendar({
 							onValueChange={(value) => handleYearSelect(Number(value))}
 						>
 							<SelectTrigger
-								className="w-[80px] h-8 text-sm"
+								className='w-[80px] h-8 text-sm'
 								onMouseDown={(e: React.MouseEvent) => {
 									e.stopPropagation();
 								}}
@@ -244,15 +253,15 @@ export function Calendar({
 						</Select>
 					</div>
 				) : (
-					<div className="text-sm font-medium">
+					<div className='text-sm font-medium'>
 						{format(currentMonth, "MMMM yyyy", { locale: fr })}
 					</div>
 				)}
 
 				{captionLayout === "dropdown-buttons" && (
 					<Button
-						variant="ghost"
-						size="icon"
+						variant='ghost'
+						size='icon'
 						onClick={handleNextMonth}
 						onMouseDown={(e: React.MouseEvent) => {
 							e.stopPropagation();
@@ -261,21 +270,21 @@ export function Calendar({
 							e.preventDefault();
 							e.stopPropagation();
 						}}
-						aria-label="Mois suivant"
+						aria-label='Mois suivant'
 					>
-						<ChevronRight className="h-4 w-4" />
+						<ChevronRight className='h-4 w-4' />
 					</Button>
 				)}
 			</div>
 
 			{/* Grille du calendrier */}
-			<div className="w-full">
+			<div className='w-full'>
 				{/* En-têtes des jours */}
-				<div className="grid grid-cols-7 gap-1 mb-1">
+				<div className='grid grid-cols-7 gap-1 mb-1'>
 					{WEEKDAYS.map((day) => (
 						<div
 							key={day}
-							className="text-muted-foreground text-center text-sm font-normal p-2"
+							className='text-muted-foreground text-center text-sm font-normal p-2'
 						>
 							{day}
 						</div>
@@ -283,7 +292,7 @@ export function Calendar({
 				</div>
 
 				{/* Jours */}
-				<div className="grid grid-cols-7 gap-1">
+				<div className='grid grid-cols-7 gap-1'>
 					{days.map((day) => {
 						const isOutsideMonth = !isSameMonth(day, currentMonth);
 						const isDaySelected = isSelected(day);
@@ -291,14 +300,14 @@ export function Calendar({
 						const dayClassName = getDayClassName(day);
 
 						if (!showOutsideDays && isOutsideMonth) {
-							return <div key={day.toISOString()} className="p-2" />;
+							return <div key={day.toISOString()} className='p-2' />;
 						}
 
 						return (
 							<Button
 								key={day.toISOString()}
-								variant="ghost"
-								size="icon"
+								variant='ghost'
+								size='icon'
 								className={cn(
 									"h-9 w-9 p-0 font-normal",
 									isOutsideMonth && "text-muted-foreground opacity-50",
