@@ -57,8 +57,6 @@ import {
 	endOfWeek,
 	eachDayOfInterval,
 	isSameDay,
-	addDays,
-	subDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -1593,7 +1591,6 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 										onEventClick={(event: CalendarEvent) =>
 											handleEditEvent(event)
 										}
-										setCurrentDate={setCurrentDate}
 										events={events}
 										draggedEventId={draggedEventId}
 										onEventDragStart={handleEventDragStart}
