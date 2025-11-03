@@ -1176,15 +1176,11 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 									return (
 										<Button
 											key={i}
-											variant={
-												isSelected ? "default" : isToday ? "outline" : "ghost"
-											}
+											variant={isSelected ? "default" : "ghost"}
 											size='sm'
 											className={`h-5 w-5 p-0 text-[9px] font-normal relative ${
 												!isCurrentMonth ? "text-muted-foreground/30" : ""
-											} ${
-												isToday && !isSelected ? "border-primary border" : ""
-											}`}
+											} ${isToday && !isSelected ? "bg-accent/50" : ""}`}
 											onClick={() => dayDate && handleSelect(dayDate)}
 											onMouseDown={(e: React.MouseEvent) => {
 												e.stopPropagation();
