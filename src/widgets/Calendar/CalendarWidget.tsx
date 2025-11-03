@@ -1033,7 +1033,6 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 											</PopoverTrigger>
 											<PopoverContent className='w-auto p-0' align='start'>
 												<CalendarComponent
-													mode='single'
 													selected={newEventDate}
 													onSelect={setNewEventDate}
 													initialFocus
@@ -1655,7 +1654,6 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 															align='start'
 														>
 															<CalendarComponent
-																mode='single'
 																selected={newEventDate}
 																onSelect={setNewEventDate}
 																initialFocus

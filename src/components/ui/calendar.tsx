@@ -119,11 +119,28 @@ export function Calendar({
 	const getDayModifiers = (day: Date) => {
 		const dayModifiers: string[] = [];
 		Object.keys(modifiers).forEach((key) => {
-			if (modifiers[key](day)) {
-				dayModifiers.push(key);
+			const modifier = modifiers[key];
+			if (Array.isArray(modifier)) {
+				// Si c'est un tableau de dates, vérifier si la date est dans le tableau
+				const dayStr = formatDateLocal(day);
+				if (modifier.some((d) => formatDateLocal(d) === dayStr)) {
+					dayModifiers.push(key);
+				}
+			} else if (typeof modifier === "function") {
+				// Si c'est une fonction, l'appeler
+				if (modifier(day)) {
+					dayModifiers.push(key);
+				}
 			}
 		});
 		return dayModifiers;
+	};
+
+	const formatDateLocal = (date: Date): string => {
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, "0");
+		const day = String(date.getDate()).padStart(2, "0");
+		return `${year}-${month}-${day}`;
 	};
 
 	const getDayClassName = (day: Date) => {
