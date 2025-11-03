@@ -155,6 +155,46 @@ function Calendar({
             <ChevronDownIcon className={cn("size-4", className)} {...props} />
           )
         },
+        ButtonPrevious: ({ ...props }) => {
+          return (
+            <button
+              {...props}
+              onMouseDown={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (props.onMouseDown) {
+                  props.onMouseDown(e);
+                }
+              }}
+              onDragStart={(e: React.DragEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (props.onDragStart) {
+                  props.onDragStart(e);
+                }
+              }}
+            />
+          )
+        },
+        ButtonNext: ({ ...props }) => {
+          return (
+            <button
+              {...props}
+              onMouseDown={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (props.onMouseDown) {
+                  props.onMouseDown(e);
+                }
+              }}
+              onDragStart={(e: React.DragEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (props.onDragStart) {
+                  props.onDragStart(e);
+                }
+              }}
+            />
+          )
+        },
         DayButton: CalendarDayButton,
         WeekNumber: ({ children, ...props }) => {
           return (
