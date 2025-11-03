@@ -1484,7 +1484,6 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 							{view === "month" && (
 								<div className='w-full max-w-[350px]'>
 									<CalendarComponent
-										mode='single'
 										selected={selectedDate}
 										onSelect={handleSelect}
 										month={currentDate}
@@ -1492,8 +1491,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 										modifiers={modifiers}
 										modifiersClassNames={modifiersClassNames}
 										className='bg-transparent p-0 w-full'
-										captionLayout='dropdown'
-										required
+										captionLayout='dropdown-buttons'
 									/>
 								</div>
 							)}
