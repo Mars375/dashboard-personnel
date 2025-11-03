@@ -1572,7 +1572,6 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 										onEventClick={(event: CalendarEvent) =>
 											handleEditEvent(event)
 										}
-										setCurrentDate={setCurrentDate}
 										events={events}
 										draggedEventId={draggedEventId}
 										onEventDragStart={handleEventDragStart}
