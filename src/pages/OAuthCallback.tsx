@@ -1,0 +1,58 @@
+// Page de callback OAuth pour gérer les redirections OAuth
+
+import { useEffect } from "react";
+
+export function OAuthCallback() {
+	useEffect(() => {
+		// Extraire les paramètres de l'URL
+		const urlParams = new URLSearchParams(window.location.search);
+		const code = urlParams.get("code");
+		const error = urlParams.get("error");
+		const errorDescription = urlParams.get("error_description");
+		const state = urlParams.get("state");
+		
+		// Déterminer le provider depuis l'URL ou le state
+		let provider = "google";
+		if (window.location.pathname.includes("microsoft")) provider = "microsoft";
+		if (window.location.pathname.includes("notion")) provider = "notion";
+
+		// Envoyer un message au parent (popup ou iframe)
+		const message = error
+			? {
+					type: "OAUTH_ERROR" as const,
+					error,
+					errorDescription,
+					provider,
+			  }
+			: {
+					type: "OAUTH_SUCCESS" as const,
+					code,
+					state,
+					provider,
+			  };
+
+		if (window.opener) {
+			// Popup
+			window.opener.postMessage(message, window.location.origin);
+			window.close();
+		} else {
+			// Fenêtre principale - rediriger vers le dashboard
+			// Dans ce cas, il faudrait gérer le code côté serveur
+			console.log("OAuth callback reçu:", message);
+			// Pour l'instant, rediriger vers le dashboard
+			window.location.href = "/";
+		}
+	}, []);
+
+	return (
+		<div className="flex items-center justify-center min-h-screen">
+			<div className="text-center">
+				<h1 className="text-2xl font-bold mb-4">Authentification en cours...</h1>
+				<p className="text-muted-foreground">
+					Vous allez être redirigé automatiquement.
+				</p>
+			</div>
+		</div>
+	);
+}
+
