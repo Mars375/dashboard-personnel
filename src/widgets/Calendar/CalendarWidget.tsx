@@ -1176,15 +1176,13 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 									return (
 										<Button
 											key={i}
-											variant={
-												isSelected ? "default" : isToday ? "default" : "ghost"
-											}
+											variant={isSelected ? "default" : "ghost"}
 											size='sm'
 											className={`h-5 w-5 p-0 text-[9px] font-normal relative ${
 												!isCurrentMonth ? "text-muted-foreground/30" : ""
 											} ${
 												isToday && !isSelected
-													? "bg-primary/30 text-primary-foreground"
+													? "bg-primary/30 text-primary-foreground hover:bg-primary/40"
 													: ""
 											}`}
 											onClick={() => dayDate && handleSelect(dayDate)}
