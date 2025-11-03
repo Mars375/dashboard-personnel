@@ -47,8 +47,6 @@ import {
 	RefreshCw,
 	Search,
 	Repeat,
-	ChevronLeft,
-	ChevronRight,
 	Trash2,
 } from "lucide-react";
 import {
