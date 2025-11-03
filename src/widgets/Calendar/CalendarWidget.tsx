@@ -1153,9 +1153,6 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 												dayNumber
 										  )
 										: null;
-									const today = new Date();
-									const isToday =
-										dayDate && dayDate.toDateString() === today.toDateString();
 									const isSelected =
 										dayDate &&
 										selectedDate &&
@@ -1545,10 +1542,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 															size='icon'
 															className={cn(
 																className,
-																"data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground",
-																modifiers.today &&
-																	!modifiers.selected &&
-																	"bg-accent/50"
+																"data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground"
 															)}
 															data-day={day.date.toLocaleDateString()}
 															data-selected-single={
