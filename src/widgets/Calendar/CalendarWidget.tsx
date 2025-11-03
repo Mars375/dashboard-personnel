@@ -1180,7 +1180,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 											size='sm'
 											className={`h-5 w-5 p-0 text-[9px] font-normal relative ${
 												!isCurrentMonth ? "text-muted-foreground/30" : ""
-											} ${isToday && !isSelected ? "bg-accent/50" : ""}`}
+											}`}
 											onClick={() => dayDate && handleSelect(dayDate)}
 											onMouseDown={(e: React.MouseEvent) => {
 												e.stopPropagation();
@@ -1546,7 +1546,9 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 															className={cn(
 																className,
 																"data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground",
-																modifiers.today && !modifiers.selected && "bg-accent/50"
+																modifiers.today &&
+																	!modifiers.selected &&
+																	"bg-accent/50"
 															)}
 															data-day={day.date.toLocaleDateString()}
 															data-selected-single={
