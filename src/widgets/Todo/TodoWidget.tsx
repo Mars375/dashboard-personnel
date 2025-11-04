@@ -482,24 +482,39 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				console.log(`📋 ${missingGoogleLists.length} liste(s) Google Tasks trouvée(s) sans correspondance locale`);
 				
 				for (const googleList of missingGoogleLists) {
-					// Créer la liste locale
-					const listName = googleList.title || "Mes Tâches";
-					console.log(`➕ Création de la liste locale: "${listName}"`);
+					// Déterminer le nom de la liste locale à créer
+					// Pour @default, utiliser le titre de la liste Google Tasks (généralement "Mes Tâches")
+					const listName = googleList.id === "@default" 
+						? (googleList.title || "Mes Tâches")
+						: googleList.title;
+					
+					console.log(`➕ Création de la liste locale: "${listName}" (depuis Google Tasks: ${googleList.title})`);
 					addList(listName);
 					
-					// Attendre un peu pour que la liste soit créée
-					await new Promise((resolve) => setTimeout(resolve, 100));
+					// Attendre un peu pour que la liste soit créée et que le store soit mis à jour
+					await new Promise((resolve) => setTimeout(resolve, 200));
 					
 					// Récupérer les tâches de cette liste Google Tasks
-					// Si c'est @default, utiliser "Mes Tâches" comme nom
-					const googleListName = googleList.id === "@default" ? "Mes Tâches" : googleList.title;
-					const pulledTodosFromList = await googleTasksProvider.pullTodos(googleListName);
+					// Pour @default, on doit utiliser getOrCreateDefaultTaskList, sinon utiliser le nom
+					let pulledTodosFromList: Todo[];
+					if (googleList.id === "@default") {
+						// Pour @default, on utilise une méthode spéciale qui gère @default
+						// On passe undefined pour utiliser la liste par défaut
+						pulledTodosFromList = await googleTasksProvider.pullTodos();
+					} else {
+						// Pour les autres listes, utiliser le nom
+						pulledTodosFromList = await googleTasksProvider.pullTodos(listName);
+					}
 					
 					// Basculer vers la nouvelle liste pour y ajouter les tâches
-					const newLists = useTodoStore.getState().lists;
-					const newList = newLists.find((l) => l.name === listName);
+					// Récupérer les listes à jour depuis le store
+					const updatedLists = useTodoStore.getState().lists;
+					const newList = updatedLists.find((l) => l.name === listName);
 					if (newList) {
 						setCurrentList(newList.id);
+						
+						// Attendre un peu pour que le changement de liste soit effectué
+						await new Promise((resolve) => setTimeout(resolve, 100));
 						
 						// Ajouter les tâches dans la nouvelle liste
 						for (const pulledTodo of pulledTodosFromList) {
@@ -514,6 +529,8 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 						}
 						
 						console.log(`✅ ${pulledTodosFromList.length} tâche(s) ajoutée(s) à la liste "${listName}"`);
+					} else {
+						console.warn(`⚠️ Liste "${listName}" non trouvée après création`);
 					}
 				}
 				
