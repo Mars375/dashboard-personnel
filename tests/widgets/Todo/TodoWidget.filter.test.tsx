@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -34,6 +34,49 @@ vi.mock("@/components/ui/chart", () => ({
 	ChartContainer: ({ children }: any) => <div>{children}</div>,
 	ChartTooltip: ({ children }: any) => <div>{children}</div>,
 	ChartTooltipContent: ({ children }: any) => <div>{children}</div>,
+}), { virtual: true });
+vi.mock("@/components/ui/popover", () => ({
+	Popover: ({ children, open, onOpenChange }: any) => {
+		const [isOpen, setIsOpen] = React.useState(open || false);
+		React.useEffect(() => {
+			if (onOpenChange && open !== undefined) {
+				setIsOpen(open);
+			}
+		}, [open, onOpenChange]);
+		return (
+			<div>
+				{React.Children.map(children, (child: any) => {
+					if (child?.props?.asChild) {
+						// PopoverTrigger
+						return React.cloneElement(child.props.children, {
+							onClick: () => {
+								setIsOpen(!isOpen);
+								if (onOpenChange) onOpenChange(!isOpen);
+							},
+						});
+					}
+					if (isOpen && child?.type?.name !== "PopoverTrigger") {
+						// PopoverContent when open
+						return child;
+					}
+					return null;
+				})}
+			</div>
+		);
+	},
+	PopoverTrigger: ({ children, asChild, ...props }: any) => {
+		if (asChild && React.isValidElement(children)) {
+			return React.cloneElement(children, {
+				...props,
+				onClick: (e: any) => {
+					if (children.props.onClick) children.props.onClick(e);
+					if (props.onClick) props.onClick(e);
+				},
+			});
+		}
+		return <div onClick={props.onClick}>{children}</div>;
+	},
+	PopoverContent: ({ children }: any) => <div>{children}</div>,
 }), { virtual: true });
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }), { virtual: true });
 vi.mock("framer-motion", () => ({ motion: { div: (props: any) => <div {...props} /> } }), { virtual: true });

@@ -41,33 +41,38 @@ const mockAddList = vi.fn();
 const mockSetCurrentList = vi.fn();
 const mockAddTodo = vi.fn();
 
+// Make lists mutable so tests can update them
+let mockLists = [
+	{ id: "list-1", name: "Pro", createdAt: Date.now() },
+	{ id: "list-2", name: "Perso", createdAt: Date.now() },
+];
+
+const mockUseTodos = vi.fn(() => ({
+	todos: [],
+	currentListId: "list-1",
+	lists: mockLists,
+	setCurrentList: mockSetCurrentList,
+	addList: mockAddList,
+	addTodo: mockAddTodo,
+	editTodo: vi.fn(),
+	deleteTodo: vi.fn(),
+	toggleTodo: vi.fn(),
+	togglePriority: vi.fn(),
+	setDeadline: vi.fn(),
+	updateTodoId: vi.fn(),
+	filteredTodos: vi.fn(() => []),
+	activeCount: 0,
+	completedCount: 0,
+	priorityCount: 0,
+	overdueCount: 0,
+	undo: vi.fn(),
+	redo: vi.fn(),
+	canUndo: false,
+	canRedo: false,
+}));
+
 vi.mock("@/hooks/useTodos", () => ({
-	useTodos: () => ({
-		todos: [],
-		currentListId: "list-1",
-		lists: [
-			{ id: "list-1", name: "Pro", createdAt: Date.now() },
-			{ id: "list-2", name: "Perso", createdAt: Date.now() },
-		],
-		setCurrentList: mockSetCurrentList,
-		addList: mockAddList,
-		addTodo: mockAddTodo,
-		editTodo: vi.fn(),
-		deleteTodo: vi.fn(),
-		toggleTodo: vi.fn(),
-		togglePriority: vi.fn(),
-		setDeadline: vi.fn(),
-		updateTodoId: vi.fn(),
-		filteredTodos: vi.fn(() => []),
-		activeCount: 0,
-		completedCount: 0,
-		priorityCount: 0,
-		overdueCount: 0,
-		undo: vi.fn(),
-		redo: vi.fn(),
-		canUndo: false,
-		canRedo: false,
-	}),
+	useTodos: () => mockUseTodos(),
 }));
 
 // Mock useTodoStore
@@ -168,6 +173,11 @@ describe("TodoWidget - Lists Synchronization", () => {
 		mockAddList.mockImplementation(() => {});
 		mockSetCurrentList.mockImplementation(() => {});
 		mockAddTodo.mockImplementation(() => {});
+		// Reset lists to default
+		mockLists = [
+			{ id: "list-1", name: "Pro", createdAt: Date.now() },
+			{ id: "list-2", name: "Perso", createdAt: Date.now() },
+		];
 	});
 
 	it("should create missing local lists from Google Tasks during sync", async () => {
@@ -227,20 +237,9 @@ describe("TodoWidget - Lists Synchronization", () => {
 			.mockResolvedValueOnce(tasksFromGoogle) // Pull from new list
 			.mockResolvedValueOnce([]); // Sync current list
 
-		// Mock useTodoStore to return the new list after creation
-		let lists = [
-			{ id: "list-1", name: "Pro", createdAt: Date.now() },
-			{ id: "list-2", name: "Perso", createdAt: Date.now() },
-		];
-
-		vi.mocked(require("@/store/todoStore").useTodoStore.getState).mockReturnValue({
-			present: [],
-			lists,
-		});
-
-		// Mock addList to update the lists
-		mockAddList.mockImplementation(() => {
-			lists.push({ id: "new-list-id", name: "Mes Tâches", createdAt: Date.now() });
+		// Mock addList to update the mockLists
+		mockAddList.mockImplementation((name: string) => {
+			mockLists.push({ id: `new-list-${Date.now()}`, name, createdAt: Date.now() });
 		});
 
 		render(<TodoWidget />);
@@ -255,8 +254,13 @@ describe("TodoWidget - Lists Synchronization", () => {
 	});
 
 	it("should not create duplicate lists if list already exists", async () => {
-		// Mock: Google Tasks has lists that already exist locally
-		mockGetMissingLocalLists.mockResolvedValueOnce([]);
+		// Mock: Google Tasks has "Mes Tâches" list
+		mockGetMissingLocalLists.mockResolvedValueOnce([
+			{ id: "@default", title: "Mes Tâches" },
+		]);
+
+		// Update mockLists to include "Mes Tâches" before rendering
+		mockLists.push({ id: "list-3", name: "Mes Tâches", createdAt: Date.now() });
 
 		render(<TodoWidget />);
 
@@ -264,7 +268,7 @@ describe("TodoWidget - Lists Synchronization", () => {
 			expect(mockGetMissingLocalLists).toHaveBeenCalled();
 		}, { timeout: 3000 });
 
-		// Should not create any new lists
+		// Should not create any new lists since "Mes Tâches" already exists
 		expect(mockAddList).not.toHaveBeenCalled();
 	});
 
@@ -272,13 +276,13 @@ describe("TodoWidget - Lists Synchronization", () => {
 		const idMap = new Map([["local-id-1", "google-task-1"]]);
 		mockPushTodos.mockResolvedValueOnce(idMap);
 
-		render(<TodoWidget />);
+		render(<TodoWidget size="medium" />);
 
-		// Simulate adding a todo (this would trigger pushTodos with list name)
-		// We can't easily test this without more complex setup, but the test structure is here
+		// Wait for the component to be rendered
 		await waitFor(() => {
-			// The component should be rendered
-			expect(screen.getByText(/tâche/i)).toBeInTheDocument();
+			// The component should be rendered - check for a more specific element
+			const input = screen.getByPlaceholderText("Ajouter une tâche...");
+			expect(input).toBeInTheDocument();
 		}, { timeout: 1000 });
 	});
 });
