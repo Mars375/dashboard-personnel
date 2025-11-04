@@ -687,15 +687,23 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 	/**
 	 * Pousse les tâches vers Google Tasks
+	 * @param todos Tâches à synchroniser
+	 * @param localListName Nom de la liste locale pour laquelle synchroniser les tâches
 	 * @returns Map des IDs locaux vers les IDs Google créés (pour les nouvelles tâches)
 	 */
-	async pushTodos(todos: Todo[], listId?: string): Promise<Map<string, string>> {
+	async pushTodos(todos: Todo[], localListName?: string): Promise<Map<string, string>> {
 		const idMap = new Map<string, string>();
 		if (!this.enabled) {
 			throw new Error("Google Tasks sync is disabled");
 		}
 
-		const taskListId = listId || (await this.getOrCreateDefaultTaskList());
+		// Si une liste locale est spécifiée, utiliser la liste Google Tasks correspondante
+		// Sinon, utiliser la liste par défaut (pour compatibilité)
+		const taskListId = localListName 
+			? await this.getOrCreateTaskList(localListName)
+			: (await this.getOrCreateDefaultTaskList());
+		
+		console.log(`📋 Utilisation de la liste Google Tasks "${localListName || 'default'}" (ID: ${taskListId})`);
 		const accessToken = await this.getAccessToken();
 
 		for (const todo of todos) {
