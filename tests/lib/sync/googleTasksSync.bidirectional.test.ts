@@ -62,6 +62,13 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 			};
 
 			// Push: create task in Google
+			// Note: getAllTaskLists -> test @default -> POST create task
+			// The response.json() can only be called once, so we need to create a new response object
+			const createTaskResponse = {
+				ok: true,
+				json: vi.fn().mockResolvedValue(mockCreatedTask),
+			};
+			
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
@@ -71,10 +78,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 					ok: true,
 					json: async () => ({ items: [] }),
 				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: async () => mockCreatedTask,
-				});
+				.mockResolvedValueOnce(createTaskResponse);
 
 			const idMap = await provider.pushTodos([localTodo]);
 			expect(idMap.size).toBe(1);
@@ -120,9 +124,9 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				nextPageToken: undefined,
 			};
 
-			// Initial task in Google
+			// Initial task in Google (ID without "google-" prefix)
 			const initialTask = {
-				id: "google-task-789",
+				id: "task-789", // Google returns ID without "google-" prefix
 				title: "Original Task",
 				status: "needsAction",
 			};
@@ -145,6 +149,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 			const initialTodos = await provider.pullTodos();
 			expect(initialTodos.length).toBeGreaterThan(0);
 			expect(initialTodos[0].title).toBe("Original Task");
+			expect(initialTodos[0].id).toBe("google-task-789"); // pullTodos adds "google-" prefix
 
 			// Task updated in Google (simulate external update)
 			const updatedTask = {
