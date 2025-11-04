@@ -136,6 +136,7 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			(global.fetch as any)
@@ -146,6 +147,10 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 				.mockResolvedValueOnce({
 					ok: true,
 					json: async () => ({ items: [] }),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({ id: "task-1", title: "Default Title", status: "needsAction" }),
 				});
 
 			// Should handle empty title gracefully (provider should skip or use default)

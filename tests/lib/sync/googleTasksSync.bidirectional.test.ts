@@ -56,7 +56,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 			};
 
 			const mockCreatedTask = {
-				id: "google-task-456",
+				id: "task-456", // Google returns ID without "google-" prefix
 				title: "New Local Task",
 				status: "needsAction",
 			};
@@ -78,14 +78,14 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 
 			const idMap = await provider.pushTodos([localTodo]);
 			expect(idMap.size).toBe(1);
-			expect(idMap.get("local-id-123")).toBe("google-google-task-456");
+			expect(idMap.get("local-id-123")).toBe("google-task-456"); // Code adds "google-" prefix
 
 			// Pull: retrieve task from Google
-			// Note: The ID returned from Google is "google-task-456", but pullTodos adds "google-" prefix
+			// Note: Google returns ID without "google-" prefix, pullTodos adds "google-" prefix
 			const mockTasksResponse = {
 				items: [
 					{
-						id: "google-task-456",
+						id: "task-456", // Google returns ID without prefix
 						title: "New Local Task",
 						status: "needsAction",
 					},
@@ -109,8 +109,8 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 
 			const pulledTodos = await provider.pullTodos();
 			expect(pulledTodos.length).toBe(1);
-			// The ID will be "google-google-task-456" because pullTodos adds "google-" prefix to Google IDs
-			expect(pulledTodos[0].id).toBe("google-google-task-456");
+			// The ID will be "google-task-456" because pullTodos adds "google-" prefix to Google IDs
+			expect(pulledTodos[0].id).toBe("google-task-456");
 			expect(pulledTodos[0].title).toBe("New Local Task");
 		});
 
@@ -148,7 +148,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 
 			// Task updated in Google (simulate external update)
 			const updatedTask = {
-				id: "google-task-789",
+				id: "task-789", // Google returns ID without "google-" prefix
 				title: "Updated Task",
 				status: "completed",
 			};
@@ -181,7 +181,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 
 			// Task exists initially
 			const existingTask = {
-				id: "google-task-999",
+				id: "task-999", // Google returns ID without "google-" prefix
 				title: "Task to Delete",
 				status: "needsAction",
 			};

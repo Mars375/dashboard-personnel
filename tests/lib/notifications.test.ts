@@ -185,10 +185,10 @@ describe("notifications", () => {
 		});
 
 		it("should sort by daysUntil", () => {
-			const now = Date.now();
-			const today = new Date(now);
+			// Use a fixed date early in the day to ensure "today" is still in the future
+			const baseDate = new Date("2024-12-15T00:00:00Z");
+			const today = new Date(baseDate);
 			today.setHours(0, 0, 0, 0);
-			const todayTime = today.getTime();
 			const todayStr = today.toISOString().split("T")[0];
 
 			const in3Days = new Date(today);
@@ -196,19 +196,26 @@ describe("notifications", () => {
 			in3Days.setHours(0, 0, 0, 0);
 			const in3DaysStr = in3Days.toISOString().split("T")[0];
 
-			const todos = [
-				createTodo("1", in3DaysStr), // 3 days
-				createTodo("2", todayStr), // 0 days
-			];
+			// Mock Date.now() to return our fixed date time (at midnight)
+			const originalNow = Date.now;
+			Date.now = vi.fn(() => baseDate.getTime());
 
-			const upcoming = getTodosWithUpcomingDeadlines(todos, [0, 3]);
-			
-			// If both are found, they should be sorted
-			if (upcoming.length >= 2) {
+			try {
+				const todos = [
+					createTodo("1", in3DaysStr), // 3 days
+					createTodo("2", todayStr), // 0 days (today at midnight, same as baseDate)
+				];
+
+				const upcoming = getTodosWithUpcomingDeadlines(todos, [0, 3]);
+				
+				// Both should be found since we're using [0, 3] which matches today and in 3 days
+				expect(upcoming.length).toBe(2);
 				expect(upcoming[0].daysUntil).toBeLessThanOrEqual(upcoming[1].daysUntil);
-			} else {
-				// At least one should be found
-				expect(upcoming.length).toBeGreaterThanOrEqual(1);
+				// The first one should be today (0 days), second should be in 3 days
+				expect(upcoming[0].daysUntil).toBe(0);
+				expect(upcoming[1].daysUntil).toBe(3);
+			} finally {
+				Date.now = originalNow;
 			}
 		});
 	});
