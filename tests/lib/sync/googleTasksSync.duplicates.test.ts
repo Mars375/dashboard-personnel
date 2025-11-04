@@ -77,19 +77,17 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 			expect(todos1[0].id).toBe("google-task-1");
 
 			// Second pull - same task should not create duplicates
-			// Note: taskListId is cached, but we still need getAllTaskLists -> test @default -> pullTodos
+			// Note: taskListId is cached from first call, so we only need:
+			// 1. Test if cached list is still valid (fetch @default/tasks?maxResults=1)
+			// 2. pullTodos (fetch @default/tasks?...)
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: async () => ({ items: [] }), // Test cached list validity
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }), // Test @default access
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: async () => mockTasksResponse,
+					json: async () => mockTasksResponse, // pullTodos
 				});
 
 			const todos2 = await provider.pullTodos();
