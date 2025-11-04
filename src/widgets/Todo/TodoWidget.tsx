@@ -253,19 +253,24 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 			const todoTitle = input.value.trim();
 			const isPriority = false; // Par défaut, sera géré si l'utilisateur ajoute la priorité plus tard
 
+			// Ajouter la tâche localement
 			addTodo(todoTitle, deadlineStr);
 
-			// Synchroniser avec Google Tasks si connecté (après ajout)
+			// Créer immédiatement dans Google Tasks si connecté (sans attendre la synchronisation)
 			if (googleTasksProvider && googleTasksProvider.enabled) {
 				// Utiliser setTimeout pour laisser le temps à addTodo de mettre à jour todos
 				setTimeout(async () => {
 					try {
-						// Trouver la tâche qui vient d'être ajoutée (utiliser le hook useTodos pour avoir la valeur à jour)
+						// Trouver la tâche qui vient d'être ajoutée (la plus récente avec ce titre)
 						const allTodos = todos;
-						const newTodo = allTodos.find(
-							(t) => t.title === todoTitle && !t.completed && !t.id.startsWith("google-")
-						);
+						const newTodo = allTodos
+							.filter(
+								(t) => t.title === todoTitle && !t.completed && !t.id.startsWith("google-")
+							)
+							.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]; // La plus récente
+						
 						if (newTodo) {
+							console.log(`🚀 Création immédiate dans Google Tasks: "${newTodo.title}"`);
 							// Ne pas passer currentListId, le provider utilisera @default
 							const idMap = await googleTasksProvider.pushTodos([newTodo]);
 							// Mettre à jour l'ID local avec l'ID Google si créé
@@ -273,14 +278,17 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 								const googleId = idMap.get(newTodo.id)!;
 								updateTodoId(newTodo.id, googleId);
 								console.log(`🔄 ID de tâche mis à jour: ${newTodo.id} → ${googleId}`);
+								toast.success("Tâche créée dans Google Tasks", {
+									description: `"${newTodo.title}" a été synchronisée`,
+								});
 							}
 						}
 					} catch (error) {
 						console.error(
-							"Erreur lors de la synchronisation avec Google Tasks:",
+							"Erreur lors de la création dans Google Tasks:",
 							error
 						);
-						toast.error("Erreur lors de la synchronisation", {
+						toast.error("Erreur lors de la création dans Google Tasks", {
 							description: error instanceof Error ? error.message : "Erreur inconnue",
 						});
 					}
@@ -364,6 +372,35 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 			} catch (error) {
 				console.error(
 					"Erreur lors de la synchronisation avec Google Tasks:",
+					error
+				);
+				toast.error("Erreur lors de la synchronisation", {
+					description: error instanceof Error ? error.message : "Erreur inconnue",
+				});
+			}
+		}
+	};
+
+	// Fonction pour gérer le toggle de priorité
+	const handleTogglePriority = async (todo: Todo) => {
+		togglePriority(todo.id);
+
+		// Synchroniser avec Google Tasks si connecté
+		if (googleTasksProvider && googleTasksProvider.enabled) {
+			try {
+				// Attendre que le state soit mis à jour, puis récupérer la tâche mise à jour
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				const updatedTodo = todos.find((t) => t.id === todo.id);
+				if (updatedTodo) {
+					// Ne pas passer currentListId, le provider utilisera @default
+					await googleTasksProvider.pushTodos([updatedTodo]);
+					console.log(
+						`⭐ Priorité ${updatedTodo.priority ? "activée" : "désactivée"} pour "${updatedTodo.title}"`
+					);
+				}
+			} catch (error) {
+				console.error(
+					"Erreur lors de la synchronisation de la priorité avec Google Tasks:",
 					error
 				);
 				toast.error("Erreur lors de la synchronisation", {
@@ -2091,7 +2128,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 																	className='h-5 w-5'
 																	onClick={(e) => {
 																		e.stopPropagation();
-																		togglePriority(todo.id);
+																		handleTogglePriority(todo);
 																	}}
 																	onMouseDown={(e: React.MouseEvent) => {
 																		e.stopPropagation();
@@ -2686,7 +2723,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 																className='h-8 w-8'
 																onClick={(e) => {
 																	e.stopPropagation();
-																	togglePriority(todo.id);
+																	handleTogglePriority(todo);
 																}}
 																onMouseDown={(e: React.MouseEvent) => {
 																	e.stopPropagation();

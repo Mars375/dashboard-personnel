@@ -377,13 +377,35 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			}
 		}
 
-		// Google Tasks n'a pas de champ "priority" natif, on peut utiliser les notes ou un système de tags
-		// Pour l'instant, on ne mappe pas la priorité
-		const priority = false;
+		// Extraire la priorité depuis les notes (format JSON) ou le préfixe ⭐ dans le titre
+		let priority = false;
+		let title = googleTask.title || "Sans titre";
+		
+		// Vérifier d'abord le préfixe visuel dans le titre
+		if (title.startsWith("⭐")) {
+			priority = true;
+			// Retirer le préfixe du titre pour l'affichage local
+			title = title.replace(/^⭐\s*/, "");
+		}
+		
+		// Vérifier aussi dans les notes (pour compatibilité)
+		if (googleTask.notes) {
+			try {
+				const metadata = JSON.parse(googleTask.notes);
+				if (metadata && typeof metadata.priority === "boolean") {
+					priority = metadata.priority;
+				}
+			} catch {
+				// Si les notes ne sont pas du JSON, vérifier si elles contiennent la priorité
+				if (googleTask.notes.includes('"priority":true') || googleTask.notes.includes("priority:true")) {
+					priority = true;
+				}
+			}
+		}
 
 		return {
 			id: googleTask.id || crypto.randomUUID(),
-			title: googleTask.title || "Sans titre",
+			title,
 			completed: googleTask.status === "completed",
 			priority,
 			createdAt: googleTask.updated
@@ -397,8 +419,18 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 	 * Convertit un Todo local en tâche Google
 	 */
 	private convertToGoogleTask(todo: Todo): Partial<GoogleTask> {
+		// Ajouter un préfixe visuel pour les tâches prioritaires (⭐)
+		// Cela permet de voir la priorité directement dans Google Tasks
+		let title = todo.title || "";
+		if (todo.priority && !title.startsWith("⭐")) {
+			title = `⭐ ${title}`;
+		} else if (!todo.priority && title.startsWith("⭐")) {
+			// Retirer le préfixe si la priorité est désactivée
+			title = title.replace(/^⭐\s*/, "");
+		}
+
 		const googleTask: Partial<GoogleTask> = {
-			title: todo.title || "", // Titre requis, ne peut pas être vide
+			title, // Titre requis, ne peut pas être vide
 			status: todo.completed ? "completed" : "needsAction",
 		};
 
@@ -427,6 +459,53 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 		// Si la tâche est complétée, ajouter la date de complétion au format RFC 3339
 		if (todo.completed) {
 			googleTask.completed = new Date().toISOString();
+		}
+
+		// Stocker la priorité dans les notes (format JSON pour pouvoir stocker d'autres métadonnées)
+		// Google Tasks n'a pas de champ natif pour la priorité, on utilise notes comme métadonnées
+		// Note: cette information sera stockée dans les notes de Google Tasks, mais ne sera pas visible
+		// comme "suivi" dans l'interface Google Tasks. C'est une limitation de l'API.
+		// On pourrait aussi ajouter un préfixe "⭐" au titre pour une meilleure visibilité
+		if (todo.priority) {
+			try {
+				// Si on a déjà des notes existantes, essayer de les parser et ajouter la priorité
+				// Sinon, créer un nouveau JSON
+				let metadata: any = {};
+				if (googleTask.notes) {
+					try {
+						metadata = JSON.parse(googleTask.notes);
+					} catch {
+						// Si les notes ne sont pas du JSON, on les garde comme texte
+						metadata = { text: googleTask.notes, priority: true };
+					}
+				}
+				metadata.priority = true;
+				googleTask.notes = JSON.stringify(metadata);
+			} catch {
+				// Si erreur, on peut aussi utiliser un préfixe dans le titre
+				console.warn("Impossible de stocker la priorité dans les notes");
+			}
+		} else {
+			// Si pas prioritaire, retirer la priorité des métadonnées mais garder le reste
+			if (googleTask.notes) {
+				try {
+					const metadata = JSON.parse(googleTask.notes);
+					if (metadata && typeof metadata === "object") {
+						delete metadata.priority;
+						// Si il reste seulement "text", on peut utiliser le texte directement
+						if (Object.keys(metadata).length === 1 && metadata.text) {
+							googleTask.notes = metadata.text;
+						} else if (Object.keys(metadata).length > 0) {
+							googleTask.notes = JSON.stringify(metadata);
+						} else {
+							// Plus de métadonnées, on peut supprimer les notes
+							delete googleTask.notes;
+						}
+					}
+				} catch {
+					// Si les notes ne sont pas du JSON, on les garde comme elles sont
+				}
+			}
 		}
 
 		return googleTask;
@@ -574,12 +653,17 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					if (googleTask.title) {
 						taskToCreate.title = googleTask.title;
 					}
-					if (googleTask.status) {
+					// Ne pas inclure status si c'est 'needsAction' (valeur par défaut)
+					// Google Tasks API retourne une erreur 400 si on inclut status: 'needsAction' lors de la création
+					if (googleTask.status && googleTask.status !== "needsAction") {
 						taskToCreate.status = googleTask.status;
 					}
 					if (googleTask.due) {
+						// Google Tasks attend le format YYYY-MM-DD pour les dates complètes
+						// S'assurer que le format est correct
 						taskToCreate.due = googleTask.due;
 					}
+					// Ne pas inclure completed si false (valeur par défaut)
 					if (googleTask.completed) {
 						taskToCreate.completed = googleTask.completed;
 					}
