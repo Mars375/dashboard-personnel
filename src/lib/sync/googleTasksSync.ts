@@ -602,6 +602,8 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 		const taskListId = localListName 
 			? await this.getOrCreateTaskList(localListName)
 			: (await this.getOrCreateDefaultTaskList());
+		
+		console.log(`📋 Utilisation de la liste Google Tasks "${localListName || 'default'}" (ID: ${taskListId})`);
 		const accessToken = await this.getAccessToken();
 		const todos: Todo[] = [];
 		let pageToken: string | undefined;
