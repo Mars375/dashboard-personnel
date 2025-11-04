@@ -39,8 +39,9 @@ interface GoogleTasksResponse {
 export class GoogleTasksSyncProvider implements SyncProvider {
 	name = "Google Tasks";
 	enabled: boolean;
-	private taskListId: string | null = null; // ID de la liste de tâches par défaut
-	private readonly STORAGE_KEY = "googleTasks_taskListId"; // Clé pour persister le taskListId
+	private taskListId: string | null = null; // ID de la liste de tâches par défaut (pour compatibilité)
+	private readonly STORAGE_KEY = "googleTasks_taskListId"; // Clé pour persister le taskListId par défaut
+	private readonly LIST_MAPPING_KEY = "googleTasks_listMapping"; // Clé pour mapper listes locales -> Google Tasks
 	private readonly MAX_RETRIES = 3; // Nombre maximum de tentatives en cas d'erreur
 	private readonly RETRY_DELAY = 1000; // Délai entre les tentatives (ms)
 
@@ -463,14 +464,144 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 	}
 
 	/**
-	 * Synchronise les tâches (pull depuis Google Tasks)
+	 * Obtient ou crée une liste Google Tasks correspondant à une liste locale
+	 * @param localListName Nom de la liste locale (ex: "Pro", "Perso", "Projets")
+	 * @returns ID de la liste Google Tasks
 	 */
-	async pullTodos(listId?: string): Promise<Todo[]> {
+	async getOrCreateTaskList(localListName: string): Promise<string> {
 		if (!this.enabled) {
 			throw new Error("Google Tasks sync is disabled");
 		}
 
-		const taskListId = listId || (await this.getOrCreateDefaultTaskList());
+		// Charger le mapping des listes
+		const listMapping = this.loadListMapping();
+		
+		// Vérifier si on a déjà un mapping pour cette liste
+		if (listMapping[localListName]) {
+			const googleListId = listMapping[localListName];
+			// Vérifier si la liste existe encore
+			try {
+				const accessToken = await this.getAccessToken();
+				const testResponse = await fetch(
+					`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
+						googleListId
+					)}/tasks?maxResults=1`,
+					{
+						headers: {
+							Authorization: `Bearer ${accessToken}`,
+						},
+					}
+				);
+
+				if (testResponse.ok) {
+					console.log(`✅ Liste Google Tasks "${localListName}" trouvée (ID: ${googleListId})`);
+					return googleListId;
+				} else if (testResponse.status === 404) {
+					console.warn(`⚠️ Liste Google Tasks "${localListName}" n'existe plus, recréation...`);
+					// La liste n'existe plus, on va la recréer
+					delete listMapping[localListName];
+					this.saveListMapping(listMapping);
+				}
+			} catch (error) {
+				console.warn(`⚠️ Erreur lors de la vérification de la liste "${localListName}", recréation...`, error);
+				delete listMapping[localListName];
+				this.saveListMapping(listMapping);
+			}
+		}
+
+		// La liste n'existe pas ou n'est plus valide, chercher ou créer
+		try {
+			const accessToken = await this.getAccessToken();
+			const allLists = await this.getAllTaskLists();
+			
+			// Chercher une liste existante avec le même nom
+			const existingList = allLists.find((list) => list.title === localListName);
+			
+			if (existingList) {
+				console.log(`✅ Liste Google Tasks "${localListName}" existante trouvée (ID: ${existingList.id})`);
+				// Sauvegarder le mapping
+				listMapping[localListName] = existingList.id;
+				this.saveListMapping(listMapping);
+				return existingList.id;
+			}
+
+			// Créer une nouvelle liste
+			console.log(`📝 Création d'une nouvelle liste Google Tasks: "${localListName}"`);
+			const response = await fetch(
+				"https://www.googleapis.com/tasks/v1/users/@me/lists",
+				{
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${accessToken}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						title: localListName,
+					}),
+				}
+			);
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(
+					`Erreur lors de la création de la liste: ${response.statusText} - ${JSON.stringify(errorData)}`
+				);
+			}
+
+			const newList = (await response.json()) as GoogleTaskList;
+			console.log(`✅ Nouvelle liste Google Tasks créée: "${newList.title}" (ID: ${newList.id})`);
+			
+			// Sauvegarder le mapping
+			listMapping[localListName] = newList.id;
+			this.saveListMapping(listMapping);
+			
+			return newList.id;
+		} catch (error) {
+			console.error(`Erreur lors de la récupération/création de la liste "${localListName}":`, error);
+			throw error;
+		}
+	}
+
+	/**
+	 * Charge le mapping des listes locales vers Google Tasks
+	 */
+	private loadListMapping(): Record<string, string> {
+		try {
+			const stored = localStorage.getItem(this.LIST_MAPPING_KEY);
+			if (stored) {
+				return JSON.parse(stored);
+			}
+		} catch {
+			// Ignore errors
+		}
+		return {};
+	}
+
+	/**
+	 * Sauvegarde le mapping des listes locales vers Google Tasks
+	 */
+	private saveListMapping(mapping: Record<string, string>): void {
+		try {
+			localStorage.setItem(this.LIST_MAPPING_KEY, JSON.stringify(mapping));
+		} catch {
+			// Ignore errors
+		}
+	}
+
+	/**
+	 * Synchronise les tâches (pull depuis Google Tasks)
+	 * @param localListName Nom de la liste locale pour laquelle récupérer les tâches
+	 */
+	async pullTodos(localListName?: string): Promise<Todo[]> {
+		if (!this.enabled) {
+			throw new Error("Google Tasks sync is disabled");
+		}
+
+		// Si une liste locale est spécifiée, utiliser la liste Google Tasks correspondante
+		// Sinon, utiliser la liste par défaut (pour compatibilité)
+		const taskListId = localListName 
+			? await this.getOrCreateTaskList(localListName)
+			: (await this.getOrCreateDefaultTaskList());
 		const accessToken = await this.getAccessToken();
 		const todos: Todo[] = [];
 		let pageToken: string | undefined;

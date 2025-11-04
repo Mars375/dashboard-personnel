@@ -291,8 +291,10 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 						
 						if (newTodo) {
 							console.log(`🚀 Synchronisation immédiate dans Google Tasks: "${newTodo.title}"`);
-							// Ne pas passer currentListId, le provider utilisera @default
-							const idMap = await googleTasksProvider.pushTodos([newTodo]);
+							// Récupérer le nom de la liste actuelle pour synchroniser dans la bonne liste Google Tasks
+							const currentList = lists.find((l) => l.id === currentListId);
+							const listName = currentList?.name;
+							const idMap = await googleTasksProvider.pushTodos([newTodo], listName);
 							// Mettre à jour l'ID local avec l'ID Google si créé
 							if (idMap.has(newTodo.id)) {
 								const googleId = idMap.get(newTodo.id)!;
@@ -316,7 +318,10 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 								(t) => !t.id.startsWith("google-")
 							);
 							if (localOnlyTodos.length > 0) {
-								const idMap = await googleTasksProvider.pushTodos(localOnlyTodos);
+								// Récupérer le nom de la liste actuelle pour synchroniser dans la bonne liste Google Tasks
+								const currentList = lists.find((l) => l.id === currentListId);
+								const listName = currentList?.name;
+								const idMap = await googleTasksProvider.pushTodos(localOnlyTodos, listName);
 								for (const [localId, googleId] of idMap.entries()) {
 									updateTodoId(localId, googleId);
 								}
@@ -374,14 +379,16 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 					await new Promise((resolve) => setTimeout(resolve, 100));
 					const updatedTodo = todos.find((t) => t.id === id);
 					if (updatedTodo) {
-						// Créer une copie avec les valeurs mises à jour pour s'assurer qu'on envoie les bonnes valeurs
-						const todoToSync: Todo = {
-							...updatedTodo,
-							title: editingValue.trim(),
-							deadline: deadlineStr,
-						};
-						// Ne pas passer currentListId, le provider utilisera @default
-						await googleTasksProvider.pushTodos([todoToSync]);
+					// Créer une copie avec les valeurs mises à jour pour s'assurer qu'on envoie les bonnes valeurs
+					const todoToSync: Todo = {
+						...updatedTodo,
+						title: editingValue.trim(),
+						deadline: deadlineStr,
+					};
+					// Récupérer le nom de la liste actuelle pour synchroniser dans la bonne liste Google Tasks
+					const currentList = lists.find((l) => l.id === currentListId);
+					const listName = currentList?.name;
+					await googleTasksProvider.pushTodos([todoToSync], listName);
 						console.log(`✅ Tâche "${todoToSync.title}" mise à jour dans Google Tasks`);
 					}
 				} catch (error) {
@@ -423,8 +430,10 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 						...updatedTodo,
 						completed: newCompleted,
 					};
-					// Ne pas passer currentListId, le provider utilisera @default
-					await googleTasksProvider.pushTodos([todoToSync]);
+					// Récupérer le nom de la liste actuelle pour synchroniser dans la bonne liste Google Tasks
+					const currentList = lists.find((l) => l.id === currentListId);
+					const listName = currentList?.name;
+					await googleTasksProvider.pushTodos([todoToSync], listName);
 					console.log(
 						`✅ Tâche "${todoToSync.title}" ${newCompleted ? "complétée" : "réactivée"} dans Google Tasks`
 					);
@@ -465,9 +474,11 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 
 		setIsSyncing(true);
 		try {
-			// Pull: récupérer les tâches depuis Google Tasks (utiliser la liste par défaut, pas currentListId)
-			// Le provider gère automatiquement la liste par défaut Google Tasks
-			const pulledTodos = await googleTasksProvider.pullTodos(); // Pas de listId = utilise @default
+			// Pull: récupérer les tâches depuis Google Tasks pour la liste actuelle
+			// Récupérer le nom de la liste actuelle pour synchroniser depuis la bonne liste Google Tasks
+			const currentList = lists.find((l) => l.id === currentListId);
+			const listName = currentList?.name;
+			const pulledTodos = await googleTasksProvider.pullTodos(listName);
 
 			console.log(
 				`📥 ${pulledTodos.length} tâche(s) récupérée(s) depuis Google Tasks`
@@ -590,7 +601,10 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				console.log(
 					`📤 Push de ${localOnlyTodos.length} tâche(s) locale(s) vers Google Tasks`
 				);
-				const idMap = await googleTasksProvider.pushTodos(localOnlyTodos);
+				// Récupérer le nom de la liste actuelle pour synchroniser dans la bonne liste Google Tasks
+				const currentList = lists.find((l) => l.id === currentListId);
+				const listName = currentList?.name;
+				const idMap = await googleTasksProvider.pushTodos(localOnlyTodos, listName);
 				// Mettre à jour les IDs locaux avec les IDs Google créés
 				for (const [localId, googleId] of idMap.entries()) {
 					updateTodoId(localId, googleId);
@@ -860,9 +874,12 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 			// Synchroniser la suppression avec Google Tasks si connecté
 			if (googleTasksProvider && googleTasksProvider.enabled && todo) {
 				try {
-					// Si la tâche a un ID Google, supprimer directement (sans listId = utilise @default)
+					// Si la tâche a un ID Google, supprimer directement depuis la bonne liste Google Tasks
 					if (todo.id.startsWith("google-")) {
-						await googleTasksProvider.deleteTask(todo.id);
+						// Récupérer le nom de la liste actuelle pour supprimer de la bonne liste Google Tasks
+						const currentList = lists.find((l) => l.id === currentListId);
+						const listName = currentList?.name;
+						await googleTasksProvider.deleteTask(todo.id, listName);
 						console.log(`✅ Tâche "${todo.title}" supprimée de Google Tasks`);
 					}
 				} catch (error) {
