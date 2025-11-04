@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { useCalendar } from "@/hooks/useCalendar";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
 	Plus,
 	CalendarIcon,
@@ -568,7 +568,14 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 		}
 	};
 
-	const handleSync = async () => {
+	// Utiliser un ref pour éviter les appels multiples simultanés
+	const isSyncingRef = useRef(false);
+	
+	const handleSync = useCallback(async () => {
+		if (isSyncingRef.current) {
+			return; // Éviter les appels multiples simultanés
+		}
+		isSyncingRef.current = true;
 		setIsSyncing(true);
 		try {
 			// Vérifier si Google Calendar est connecté
@@ -604,16 +611,16 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 					const pulledEvents = await googleProvider.pullEvents();
 					pulledEventsCount = pulledEvents.length;
 
-					// Fusionner les événements récupérés avec les événements existants
-					// Éviter les doublons en vérifiant l'ID ou la date + titre
-					const existingEventIds = new Set(events.map((e) => e.id));
+					// Utiliser les événements actuels directement (pas depuis les dépendances)
+					const currentEvents = events;
+					const existingEventIds = new Set(currentEvents.map((e) => e.id));
 					const newEvents = pulledEvents.filter((event) => {
 						// Si l'événement a un ID Google, vérifier s'il existe déjà
 						if (event.id && existingEventIds.has(event.id)) {
 							return false;
 						}
 						// Sinon, vérifier s'il existe un événement avec la même date et le même titre
-						const exists = events.some(
+						const exists = currentEvents.some(
 							(e) => e.date === event.date && e.title === event.title
 						);
 						return !exists;
@@ -655,9 +662,92 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 			});
 			console.error("Erreur lors de la synchronisation:", error);
 		} finally {
+			isSyncingRef.current = false;
 			setIsSyncing(false);
 		}
-	};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []); // Pas de dépendances - utiliser refs pour éviter la boucle
+
+	// Initialiser la synchronisation Google Calendar si Google est connecté
+	const providerInitializedRef = useRef(false);
+	const hasSyncedInitiallyRef = useRef(false);
+	const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+	
+	useEffect(() => {
+		const oauthManager = getOAuthManager();
+
+		const checkConnection = () => {
+			const connected = oauthManager.isConnected("google");
+
+			if (connected && !providerInitializedRef.current) {
+				// Activer le provider si connecté (une seule fois)
+				const config = {
+					providers: {
+						googleCalendar: {
+							enabled: true,
+							calendarId: "primary",
+						},
+					},
+				};
+				calendarSyncManager.updateConfig(config);
+				providerInitializedRef.current = true;
+				console.log("✅ Google Calendar provider initialisé");
+				
+				// Synchroniser une seule fois après initialisation
+				if (!hasSyncedInitiallyRef.current) {
+					hasSyncedInitiallyRef.current = true;
+					setTimeout(async () => {
+						if (!isSyncingRef.current) {
+							try {
+								console.log("🔄 Synchronisation initiale Google Calendar...");
+								await handleSync();
+							} catch (error) {
+								console.error("Erreur lors de la synchronisation initiale:", error);
+							}
+						}
+					}, 2000);
+					
+					// Puis synchroniser toutes les 5 minutes
+					if (syncIntervalRef.current) {
+						clearInterval(syncIntervalRef.current);
+					}
+					syncIntervalRef.current = setInterval(async () => {
+						if (oauthManager.isConnected("google") && !isSyncingRef.current) {
+							console.log("🔄 Synchronisation automatique Google Calendar...");
+							try {
+								await handleSync();
+							} catch (error) {
+								console.error("Erreur lors de la synchronisation périodique:", error);
+							}
+						}
+					}, 5 * 60 * 1000); // 5 minutes
+				}
+			} else if (!connected && providerInitializedRef.current) {
+				providerInitializedRef.current = false;
+				hasSyncedInitiallyRef.current = false;
+				if (syncIntervalRef.current) {
+					clearInterval(syncIntervalRef.current);
+					syncIntervalRef.current = null;
+				}
+			}
+		};
+
+		// Vérifier immédiatement
+		checkConnection();
+
+		// Vérifier périodiquement la connexion (toutes les 2 secondes)
+		const connectionInterval = setInterval(checkConnection, 2000);
+
+		return () => {
+			clearInterval(connectionInterval);
+			if (syncIntervalRef.current) {
+				clearInterval(syncIntervalRef.current);
+				syncIntervalRef.current = null;
+			}
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []); // Pas de dépendances pour éviter la boucle
+
 
 	// Drag & drop pour CalendarEventItem (liste d'événements)
 	const handleEventDragStart = (eventId: string) => {

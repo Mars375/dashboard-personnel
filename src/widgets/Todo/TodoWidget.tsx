@@ -94,6 +94,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 		editTodo,
 		togglePriority,
 		setDeadline,
+		updateTodoId,
 		filteredTodos,
 		activeCount,
 		completedCount,
@@ -258,20 +259,29 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				// Utiliser setTimeout pour laisser le temps à addTodo de mettre à jour todos
 				setTimeout(async () => {
 					try {
-						// Trouver la tâche qui vient d'être ajoutée
+						// Trouver la tâche qui vient d'être ajoutée (utiliser le hook useTodos pour avoir la valeur à jour)
 						const allTodos = todos;
 						const newTodo = allTodos.find(
-							(t) => t.title === todoTitle && !t.completed
+							(t) => t.title === todoTitle && !t.completed && !t.id.startsWith("google-")
 						);
 						if (newTodo) {
 							// Ne pas passer currentListId, le provider utilisera @default
-							await googleTasksProvider.pushTodos([newTodo]);
+							const idMap = await googleTasksProvider.pushTodos([newTodo]);
+							// Mettre à jour l'ID local avec l'ID Google si créé
+							if (idMap.has(newTodo.id)) {
+								const googleId = idMap.get(newTodo.id)!;
+								updateTodoId(newTodo.id, googleId);
+								console.log(`🔄 ID de tâche mis à jour: ${newTodo.id} → ${googleId}`);
+							}
 						}
 					} catch (error) {
 						console.error(
 							"Erreur lors de la synchronisation avec Google Tasks:",
 							error
 						);
+						toast.error("Erreur lors de la synchronisation", {
+							description: error instanceof Error ? error.message : "Erreur inconnue",
+						});
 					}
 				}, 100);
 			}
@@ -343,18 +353,21 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 		// Synchroniser avec Google Tasks si connecté
 		if (googleTasksProvider && googleTasksProvider.enabled) {
 			try {
-				const updatedTodos = todos.map((t) =>
-					t.id === todo.id ? { ...t, completed: !t.completed } : t
-				);
-				// Ne pas passer currentListId, le provider utilisera @default
-				await googleTasksProvider.pushTodos(
-					updatedTodos.filter((t) => t.id === todo.id)
-				);
+				// Attendre que le state soit mis à jour, puis récupérer la tâche mise à jour
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				const updatedTodo = todos.find((t) => t.id === todo.id);
+				if (updatedTodo) {
+					// Ne pas passer currentListId, le provider utilisera @default
+					await googleTasksProvider.pushTodos([updatedTodo]);
+				}
 			} catch (error) {
 				console.error(
 					"Erreur lors de la synchronisation avec Google Tasks:",
 					error
 				);
+				toast.error("Erreur lors de la synchronisation", {
+					description: error instanceof Error ? error.message : "Erreur inconnue",
+				});
 			}
 		}
 	};
@@ -449,7 +462,12 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				console.log(
 					`📤 Push de ${localOnlyTodos.length} tâche(s) locale(s) vers Google Tasks`
 				);
-				await googleTasksProvider.pushTodos(localOnlyTodos);
+				const idMap = await googleTasksProvider.pushTodos(localOnlyTodos);
+				// Mettre à jour les IDs locaux avec les IDs Google créés
+				for (const [localId, googleId] of idMap.entries()) {
+					updateTodoId(localId, googleId);
+					console.log(`🔄 ID de tâche mis à jour: ${localId} → ${googleId}`);
+				}
 			} else {
 				console.log(`✅ Aucune tâche locale à synchroniser`);
 			}
@@ -490,14 +508,14 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 	]);
 
 	// Initialiser le provider Google Tasks si Google est connecté
+	const providerInitializedRef = useRef(false);
 	useEffect(() => {
 		const oauthManager = getOAuthManager();
-		let hasSyncedInitially = false; // Flag pour éviter les synchronisations multiples initiales
 
 		const checkConnection = () => {
 			const connected = oauthManager.isConnected("google");
 
-			if (connected && !googleTasksProvider) {
+			if (connected && !providerInitializedRef.current) {
 				// Créer le provider si connecté et qu'on n'en a pas encore
 				const config: SyncConfig = {
 					provider: "google-tasks",
@@ -506,25 +524,13 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				};
 				const provider = new GoogleTasksSyncProvider(config);
 				setGoogleTasksProvider(provider);
-
-				// Synchroniser automatiquement une seule fois après connexion
-				if (!hasSyncedInitially) {
-					hasSyncedInitially = true;
-					setTimeout(async () => {
-						try {
-							await handleSync();
-						} catch (error) {
-							console.error(
-								"Erreur lors de la synchronisation automatique:",
-								error
-							);
-						}
-					}, 1500);
-				}
-			} else if (!connected && googleTasksProvider) {
+				providerInitializedRef.current = true;
+				console.log("✅ Google Tasks provider initialisé");
+			} else if (!connected && providerInitializedRef.current) {
 				// Supprimer le provider si déconnecté
 				setGoogleTasksProvider(null);
-				hasSyncedInitially = false;
+				providerInitializedRef.current = false;
+				console.log("❌ Google Tasks provider supprimé");
 			}
 		};
 
@@ -535,48 +541,68 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 		const connectionInterval = setInterval(checkConnection, 2000);
 
 		return () => clearInterval(connectionInterval);
-		// Ne pas mettre googleTasksProvider dans les dépendances pour éviter la boucle
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	// Synchronisation périodique automatique (toutes les 5 minutes si connecté)
+	const hasSyncedInitiallyTasksRef = useRef(false);
+	const syncIntervalTasksRef = useRef<NodeJS.Timeout | null>(null);
+	
 	useEffect(() => {
 		if (!googleTasksProvider || !googleTasksProvider.enabled) {
+			hasSyncedInitiallyTasksRef.current = false;
 			return;
 		}
 
-		// Synchroniser immédiatement si le provider vient d'être créé
-		const initialSync = setTimeout(async () => {
-			try {
-				await handleSync();
-			} catch (error) {
-				console.error("Erreur lors de la synchronisation périodique:", error);
-			}
-		}, 2000);
-
-		// Puis synchroniser toutes les 5 minutes
-		const syncInterval = setInterval(
-			async () => {
-				if (googleTasksProvider && googleTasksProvider.enabled && !isSyncing) {
+		// Synchroniser une seule fois après création du provider
+		if (!hasSyncedInitiallyTasksRef.current) {
+			hasSyncedInitiallyTasksRef.current = true;
+			
+			const initialSync = setTimeout(async () => {
+				if (!isSyncing) {
 					try {
-						console.log("🔄 Synchronisation automatique Google Tasks...");
 						await handleSync();
 					} catch (error) {
-						console.error(
-							"Erreur lors de la synchronisation périodique:",
-							error
-						);
+						console.error("Erreur lors de la synchronisation initiale:", error);
 					}
 				}
-			},
-			5 * 60 * 1000
-		); // 5 minutes
+			}, 2000);
+
+			// Puis synchroniser toutes les 5 minutes
+			syncIntervalTasksRef.current = setInterval(
+				async () => {
+					if (googleTasksProvider && googleTasksProvider.enabled && !isSyncing) {
+						try {
+							console.log("🔄 Synchronisation automatique Google Tasks...");
+							await handleSync();
+						} catch (error) {
+							console.error(
+								"Erreur lors de la synchronisation périodique:",
+								error
+							);
+						}
+					}
+				},
+				5 * 60 * 1000
+			); // 5 minutes
+
+			return () => {
+				clearTimeout(initialSync);
+				if (syncIntervalTasksRef.current) {
+					clearInterval(syncIntervalTasksRef.current);
+					syncIntervalTasksRef.current = null;
+				}
+			};
+		}
 
 		return () => {
-			clearTimeout(initialSync);
-			clearInterval(syncInterval);
+			if (syncIntervalTasksRef.current) {
+				clearInterval(syncIntervalTasksRef.current);
+				syncIntervalTasksRef.current = null;
+			}
 		};
-	}, [googleTasksProvider, isSyncing]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [googleTasksProvider]); // Seulement quand le provider change
 
 	const exportTodos = () => {
 		const dataStr = JSON.stringify(todos, null, 2);
@@ -1199,6 +1225,41 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 									</DropdownMenuContent>
 								</DropdownMenu>
 								<ButtonGroup aria-label='Actions essentielles'>
+									{googleTasksProvider && googleTasksProvider.enabled && (
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													variant='ghost'
+													size='icon'
+													className='h-7 w-7'
+													onClick={handleSync}
+													disabled={isSyncing}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+													aria-label='Synchroniser avec Google Tasks'
+												>
+													<RefreshCw
+														className={cn(
+															"h-3.5 w-3.5",
+															isSyncing && "animate-spin"
+														)}
+													/>
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>
+												<p>
+													{isSyncing
+														? "Synchronisation en cours..."
+														: "Synchroniser avec Google Tasks"}
+												</p>
+											</TooltipContent>
+										</Tooltip>
+									)}
 									<Tooltip>
 										<TooltipTrigger asChild>
 											<Button

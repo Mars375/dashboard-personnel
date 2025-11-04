@@ -29,6 +29,7 @@ interface TodoStore extends TodoHistory {
 	editTodo: (id: string, title: string) => void;
 	togglePriority: (id: string) => void;
 	setDeadline: (id: string, deadline?: string) => void;
+	updateTodoId: (oldId: string, newId: string) => void;
 	// History actions
 	undo: () => void;
 	redo: () => void;
@@ -234,6 +235,22 @@ export const useTodoStore = create<TodoStore>((set, get) => {
 			const { present, past, currentListId } = get();
 			const newTodos = present.map((todo) =>
 				todo.id === id ? { ...todo, deadline } : todo
+			);
+			const newPast = [...past, present].slice(-MAX_HISTORY);
+
+			set({
+				past: newPast,
+				present: newTodos,
+				future: [],
+			});
+
+			saveTodos(currentListId, newTodos);
+		},
+
+		updateTodoId: (oldId: string, newId: string) => {
+			const { present, past, currentListId } = get();
+			const newTodos = present.map((todo) =>
+				todo.id === oldId ? { ...todo, id: newId } : todo
 			);
 			const newPast = [...past, present].slice(-MAX_HISTORY);
 

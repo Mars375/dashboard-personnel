@@ -39,12 +39,12 @@ interface GoogleTasksResponse {
 export class GoogleTasksSyncProvider implements SyncProvider {
 	name = "Google Tasks";
 	enabled: boolean;
-	private config: SyncConfig;
 	private taskListId: string | null = null; // ID de la liste de tâches par défaut
 	private readonly STORAGE_KEY = "googleTasks_taskListId"; // Clé pour persister le taskListId
+	private readonly MAX_RETRIES = 3; // Nombre maximum de tentatives en cas d'erreur
+	private readonly RETRY_DELAY = 1000; // Délai entre les tentatives (ms)
 
 	constructor(config: SyncConfig) {
-		this.config = config;
 		this.enabled = config.enabled;
 		// Charger le taskListId depuis localStorage si disponible
 		try {
@@ -60,6 +60,41 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				"Impossible de charger taskListId depuis localStorage:",
 				error
 			);
+		}
+	}
+
+	/**
+	 * Fonction utilitaire pour retry automatique en cas d'erreur réseau
+	 */
+	private async retryWithBackoff<T>(
+		fn: () => Promise<T>,
+		retries = this.MAX_RETRIES
+	): Promise<T> {
+		try {
+			return await fn();
+		} catch (error) {
+			if (retries > 0) {
+				// Vérifier si c'est une erreur réseau ou temporaire
+				const isRetryable =
+					error instanceof Error &&
+					(error.message.includes("network") ||
+						error.message.includes("timeout") ||
+						error.message.includes("fetch") ||
+						error.message.includes("500") ||
+						error.message.includes("503") ||
+						error.message.includes("429"));
+
+				if (isRetryable) {
+					console.log(
+						`🔄 Tentative de retry (${this.MAX_RETRIES - retries + 1}/${this.MAX_RETRIES})...`
+					);
+					await new Promise((resolve) =>
+						setTimeout(resolve, this.RETRY_DELAY * (this.MAX_RETRIES - retries + 1))
+					);
+					return this.retryWithBackoff(fn, retries - 1);
+				}
+			}
+			throw error;
 		}
 	}
 
@@ -82,16 +117,18 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 	}
 
 	/**
-	 * Récupère un token d'accès valide
+	 * Récupère un token d'accès valide avec retry
 	 */
 	private async getAccessToken(): Promise<string> {
-		const manager = getOAuthManager();
-		if (!manager.isConnected("google")) {
-			throw new Error(
-				"Non connecté à Google. Veuillez vous connecter d'abord."
-			);
-		}
-		return await manager.getValidAccessToken("google");
+		return this.retryWithBackoff(async () => {
+			const manager = getOAuthManager();
+			if (!manager.isConnected("google")) {
+				throw new Error(
+					"Non connecté à Google. Veuillez vous connecter d'abord."
+				);
+			}
+			return await manager.getValidAccessToken("google");
+		});
 	}
 
 	/**
@@ -420,16 +457,18 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			}
 
 			try {
-				const response = await fetch(
-					`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
-						taskListId
-					)}/tasks?${params.toString()}`,
-					{
-						headers: {
-							Authorization: `Bearer ${accessToken}`,
-						},
-					}
-				);
+				const response = await this.retryWithBackoff(async () => {
+					return await fetch(
+						`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
+							taskListId
+						)}/tasks?${params.toString()}`,
+						{
+							headers: {
+								Authorization: `Bearer ${accessToken}`,
+							},
+						}
+					);
+				});
 
 				if (!response.ok) {
 					if (response.status === 404) {
@@ -485,8 +524,10 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 	/**
 	 * Pousse les tâches vers Google Tasks
+	 * @returns Map des IDs locaux vers les IDs Google créés (pour les nouvelles tâches)
 	 */
-	async pushTodos(todos: Todo[], listId?: string): Promise<void> {
+	async pushTodos(todos: Todo[], listId?: string): Promise<Map<string, string>> {
+		const idMap = new Map<string, string>();
 		if (!this.enabled) {
 			throw new Error("Google Tasks sync is disabled");
 		}
@@ -502,22 +543,24 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				if (todo.id && todo.id.startsWith("google-")) {
 					const googleTaskId = todo.id.replace("google-", "");
 
-					const response = await fetch(
-						`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
-							taskListId
-						)}/tasks/${googleTaskId}`,
-						{
-							method: "PATCH",
-							headers: {
-								Authorization: `Bearer ${accessToken}`,
-								"Content-Type": "application/json",
-							},
-							body: JSON.stringify(googleTask),
-						}
-					);
+					const response = await this.retryWithBackoff(async () => {
+						return await fetch(
+							`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
+								taskListId
+							)}/tasks/${googleTaskId}`,
+							{
+								method: "PATCH",
+								headers: {
+									Authorization: `Bearer ${accessToken}`,
+									"Content-Type": "application/json",
+								},
+								body: JSON.stringify(googleTask),
+							}
+						);
+					});
 
 					if (!response.ok && response.status !== 404) {
-						const error = await response.json();
+						const error = await response.json().catch(() => ({}));
 						throw new Error(
 							`Erreur lors de la mise à jour: ${
 								error.error?.message || response.statusText
@@ -549,19 +592,21 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 						taskToCreate
 					);
 
-					const response = await fetch(
-						`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
-							taskListId
-						)}/tasks`,
-						{
-							method: "POST",
-							headers: {
-								Authorization: `Bearer ${accessToken}`,
-								"Content-Type": "application/json",
-							},
-							body: JSON.stringify(taskToCreate),
-						}
-					);
+					const response = await this.retryWithBackoff(async () => {
+						return await fetch(
+							`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
+								taskListId
+							)}/tasks`,
+							{
+								method: "POST",
+								headers: {
+									Authorization: `Bearer ${accessToken}`,
+									"Content-Type": "application/json",
+								},
+								body: JSON.stringify(taskToCreate),
+							}
+						);
+					});
 
 					if (!response.ok) {
 						const errorData = await response.json().catch(() => ({}));
@@ -571,14 +616,15 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 						throw new Error(`Erreur lors de la création: ${errorMessage}`);
 					}
 
-					// Si la création réussit, récupérer la tâche créée
+					// Si la création réussit, récupérer la tâche créée et stocker l'ID
 					try {
 						const createdTask = (await response.json()) as GoogleTask;
 						if (createdTask.id) {
 							console.log(
 								`✅ Tâche créée dans Google Tasks avec l'ID: ${createdTask.id}`
 							);
-							// L'ID sera mis à jour lors de la prochaine synchronisation
+							// Stocker le mapping de l'ID local vers l'ID Google
+							idMap.set(todo.id, `google-${createdTask.id}`);
 						}
 					} catch (parseError) {
 						console.warn(
@@ -592,6 +638,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				// Continuer avec les autres tâches
 			}
 		}
+		return idMap;
 	}
 
 	/**
@@ -611,20 +658,22 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			: taskId;
 
 		try {
-			const response = await fetch(
-				`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
-					taskListId
-				)}/tasks/${googleTaskId}`,
-				{
-					method: "DELETE",
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
-					},
-				}
-			);
+			const response = await this.retryWithBackoff(async () => {
+				return await fetch(
+					`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
+						taskListId
+					)}/tasks/${googleTaskId}`,
+					{
+						method: "DELETE",
+						headers: {
+							Authorization: `Bearer ${accessToken}`,
+						},
+					}
+				);
+			});
 
 			if (!response.ok && response.status !== 404) {
-				const error = await response.json();
+				const error = await response.json().catch(() => ({}));
 				throw new Error(
 					`Erreur lors de la suppression: ${
 						error.error?.message || response.statusText
