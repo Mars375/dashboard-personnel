@@ -475,7 +475,10 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 		setIsSyncing(true);
 		try {
 			// 1. D'abord, synchroniser les listes : créer les listes locales manquantes depuis Google Tasks
-			const localListNames = lists.map((l) => l.name);
+			// Utiliser une fonction pour récupérer les listes à jour à chaque fois
+			const getCurrentLists = () => useTodoStore.getState().lists;
+			let currentLocalLists = getCurrentLists();
+			let localListNames = currentLocalLists.map((l) => l.name);
 			const missingGoogleLists = await googleTasksProvider.getMissingLocalLists(localListNames);
 			
 			if (missingGoogleLists.length > 0) {
@@ -487,6 +490,15 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 					const listName = googleList.id === "@default" 
 						? (googleList.title || "Mes Tâches")
 						: googleList.title;
+					
+					// Vérifier à nouveau si la liste n'existe pas déjà (au cas où elle aurait été créée entre temps)
+					currentLocalLists = getCurrentLists();
+					const listAlreadyExists = currentLocalLists.some((l) => l.name === listName);
+					
+					if (listAlreadyExists) {
+						console.log(`ℹ️ Liste "${listName}" existe déjà, ignorée`);
+						continue;
+					}
 					
 					console.log(`➕ Création de la liste locale: "${listName}" (depuis Google Tasks: ${googleList.title})`);
 					addList(listName);
@@ -508,13 +520,14 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 					
 					// Basculer vers la nouvelle liste pour y ajouter les tâches
 					// Récupérer les listes à jour depuis le store
-					const updatedLists = useTodoStore.getState().lists;
-					const newList = updatedLists.find((l) => l.name === listName);
+					currentLocalLists = getCurrentLists();
+					const newList = currentLocalLists.find((l) => l.name === listName);
 					if (newList) {
+						const previousListId = currentListId; // Sauvegarder la liste actuelle
 						setCurrentList(newList.id);
 						
 						// Attendre un peu pour que le changement de liste soit effectué
-						await new Promise((resolve) => setTimeout(resolve, 100));
+						await new Promise((resolve) => setTimeout(resolve, 150));
 						
 						// Ajouter les tâches dans la nouvelle liste
 						for (const pulledTodo of pulledTodosFromList) {
@@ -529,13 +542,14 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 						}
 						
 						console.log(`✅ ${pulledTodosFromList.length} tâche(s) ajoutée(s) à la liste "${listName}"`);
+						
+						// Revenir à la liste précédente après avoir ajouté les tâches
+						setCurrentList(previousListId);
+						await new Promise((resolve) => setTimeout(resolve, 100));
 					} else {
 						console.warn(`⚠️ Liste "${listName}" non trouvée après création`);
 					}
 				}
-				
-				// Revenir à la liste actuelle
-				setCurrentList(currentListId);
 			}
 
 			// 2. Ensuite, synchroniser les tâches de la liste actuelle
