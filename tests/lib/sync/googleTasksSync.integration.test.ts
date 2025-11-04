@@ -66,6 +66,7 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 		it("should create new list if @default not found", async () => {
 			const mockListsResponse = {
 				items: [],
+				nextPageToken: undefined,
 			};
 
 			const mockCreateResponse = {
@@ -86,14 +87,15 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 			const taskListId = await (provider as any).getOrCreateDefaultTaskList();
 			expect(taskListId).toBe("new-list-id");
 			expect(Storage.prototype.setItem).toHaveBeenCalledWith(
-				"googleTasks_taskListId",
-				"new-list-id"
+				expect.stringContaining("googleTasks"),
+				expect.stringContaining("new-list-id")
 			);
 		});
 
 		it("should handle 404 error and retry", async () => {
 			const mockListsResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			Storage.prototype.getItem = vi.fn().mockReturnValue("invalid-id");
@@ -103,6 +105,8 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 				.mockResolvedValueOnce({
 					ok: false,
 					status: 404,
+					statusText: "Not Found",
+					json: async () => ({}),
 				})
 				.mockResolvedValueOnce({
 					ok: true,

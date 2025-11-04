@@ -43,6 +43,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 		it("should not add duplicate tasks when pulling multiple times", async () => {
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			const mockTasksResponse = {
@@ -53,6 +54,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 						status: "needsAction",
 					},
 				],
+				nextPageToken: undefined,
 			};
 
 			// First pull

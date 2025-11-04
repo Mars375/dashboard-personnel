@@ -47,6 +47,7 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 		it("should retry on network timeout", async () => {
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			// First call fails with timeout, second succeeds
@@ -68,6 +69,7 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 		it("should handle rate limiting (429)", async () => {
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			// First call returns 429, second succeeds
@@ -76,6 +78,7 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 					ok: false,
 					status: 429,
 					statusText: "Too Many Requests",
+					json: async () => ({}),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
@@ -94,10 +97,12 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 		it("should handle empty task list", async () => {
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			const mockTasksResponse = {
 				items: [],
+				nextPageToken: undefined,
 			};
 
 			(global.fetch as any)
@@ -161,11 +166,13 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			const mockCreatedTask = {
 				id: "google-task-id-456",
 				title: longTitle.substring(0, 1024), // Google Tasks limit
+				status: "needsAction",
 			};
 
 			(global.fetch as any)
@@ -184,6 +191,7 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 
 			const idMap = await provider.pushTodos([todo]);
 			expect(idMap.size).toBeGreaterThan(0);
+			expect(idMap.has("local-id-123")).toBe(true);
 		});
 	});
 
@@ -235,6 +243,13 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
+			};
+
+			const mockCreatedTask = {
+				id: "task-1",
+				title: "Task with past deadline",
+				status: "needsAction",
 			};
 
 			(global.fetch as any)
@@ -248,11 +263,12 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ id: "task-1", title: "Task with past deadline" }),
+					json: async () => mockCreatedTask,
 				});
 
 			const idMap = await provider.pushTodos([todo]);
 			expect(idMap.size).toBeGreaterThan(0);
+			expect(idMap.has("local-id-123")).toBe(true);
 		});
 	});
 
@@ -277,6 +293,7 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			(global.fetch as any)
@@ -290,11 +307,11 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ id: "task-1", title: "Task 1" }),
+					json: async () => ({ id: "task-1", title: "Task 1", status: "needsAction" }),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ id: "task-2", title: "Task 2" }),
+					json: async () => ({ id: "task-2", title: "Task 2", status: "needsAction" }),
 				});
 
 			const idMap = await provider.pushTodos(todos);

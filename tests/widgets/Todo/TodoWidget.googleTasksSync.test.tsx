@@ -20,15 +20,20 @@ vi.mock("@/lib/auth/oauthManager", () => ({
 const mockPullTodos = vi.fn().mockResolvedValue([]);
 const mockPushTodos = vi.fn().mockResolvedValue(new Map());
 const mockDeleteTask = vi.fn().mockResolvedValue(undefined);
+const mockGetMissingLocalLists = vi.fn().mockResolvedValue([]);
 
 vi.mock("@/lib/sync/googleTasksSync", () => ({
-	GoogleTasksSyncProvider: vi.fn().mockImplementation(() => ({
-		name: "Google Tasks",
-		enabled: true,
-		pullTodos: mockPullTodos,
-		pushTodos: mockPushTodos,
-		deleteTask: mockDeleteTask,
-	})),
+	GoogleTasksSyncProvider: class MockGoogleTasksSyncProvider {
+		name = "Google Tasks";
+		enabled = true;
+		pullTodos = mockPullTodos;
+		pushTodos = mockPushTodos;
+		deleteTask = mockDeleteTask;
+		getMissingLocalLists = mockGetMissingLocalLists;
+		constructor(config: any) {
+			// Mock constructor
+		}
+	},
 }));
 
 // Mock all UI components
@@ -101,7 +106,7 @@ const mockUseTodos = {
 	togglePriority: vi.fn(),
 	setDeadline: vi.fn(),
 	updateTodoId: vi.fn(),
-	filteredTodos: mockTodos,
+	filteredTodos: vi.fn((filter: string, searchQuery?: string) => mockTodos),
 	activeCount: 1,
 	completedCount: 0,
 	priorityCount: 0,

@@ -23,14 +23,17 @@ const mockDeleteTask = vi.fn().mockResolvedValue(undefined);
 const mockGetMissingLocalLists = vi.fn().mockResolvedValue([]);
 
 vi.mock("@/lib/sync/googleTasksSync", () => ({
-	GoogleTasksSyncProvider: vi.fn().mockImplementation(() => ({
-		name: "Google Tasks",
-		enabled: true,
-		pullTodos: mockPullTodos,
-		pushTodos: mockPushTodos,
-		deleteTask: mockDeleteTask,
-		getMissingLocalLists: mockGetMissingLocalLists,
-	})),
+	GoogleTasksSyncProvider: class MockGoogleTasksSyncProvider {
+		name = "Google Tasks";
+		enabled = true;
+		pullTodos = mockPullTodos;
+		pushTodos = mockPushTodos;
+		deleteTask = mockDeleteTask;
+		getMissingLocalLists = mockGetMissingLocalLists;
+		constructor(config: any) {
+			// Mock constructor
+		}
+	},
 }));
 
 // Mock useTodos hook
@@ -55,7 +58,7 @@ vi.mock("@/hooks/useTodos", () => ({
 		togglePriority: vi.fn(),
 		setDeadline: vi.fn(),
 		updateTodoId: vi.fn(),
-		filteredTodos: [],
+		filteredTodos: vi.fn(() => []),
 		activeCount: 0,
 		completedCount: 0,
 		priorityCount: 0,
