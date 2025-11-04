@@ -377,31 +377,11 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			}
 		}
 
-		// Extraire la priorité depuis les notes (format JSON) ou le préfixe ⭐ dans le titre
-		let priority = false;
-		let title = googleTask.title || "Sans titre";
-		
-		// Vérifier d'abord le préfixe visuel dans le titre
-		if (title.startsWith("⭐")) {
-			priority = true;
-			// Retirer le préfixe du titre pour l'affichage local
-			title = title.replace(/^⭐\s*/, "");
-		}
-		
-		// Vérifier aussi dans les notes (pour compatibilité)
-		if (googleTask.notes) {
-			try {
-				const metadata = JSON.parse(googleTask.notes);
-				if (metadata && typeof metadata.priority === "boolean") {
-					priority = metadata.priority;
-				}
-			} catch {
-				// Si les notes ne sont pas du JSON, vérifier si elles contiennent la priorité
-				if (googleTask.notes.includes('"priority":true') || googleTask.notes.includes("priority:true")) {
-					priority = true;
-				}
-			}
-		}
+		// La priorité n'est pas synchronisée avec Google Tasks
+		// Les tâches importées depuis Google Tasks n'ont pas de priorité par défaut
+		// (l'utilisateur peut la définir manuellement en local)
+		const priority = false;
+		const title = googleTask.title || "Sans titre";
 
 		return {
 			id: googleTask.id || crypto.randomUUID(),
