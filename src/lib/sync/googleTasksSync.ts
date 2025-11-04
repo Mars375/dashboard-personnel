@@ -421,6 +421,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 	private convertToGoogleTask(todo: Todo): Partial<GoogleTask> {
 		// Ajouter un préfixe visuel pour les tâches prioritaires (⭐)
 		// Cela permet de voir la priorité directement dans Google Tasks
+		// Google Tasks n'a pas de champ "followed" natif, mais on peut utiliser le titre
 		let title = todo.title || "";
 		if (todo.priority && !title.startsWith("⭐")) {
 			title = `⭐ ${title}`;
@@ -482,10 +483,8 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 		}
 
 		// Stocker la priorité dans les notes (format JSON pour pouvoir stocker d'autres métadonnées)
-		// Google Tasks n'a pas de champ natif pour la priorité, on utilise notes comme métadonnées
-		// Note: cette information sera stockée dans les notes de Google Tasks, mais ne sera pas visible
-		// comme "suivi" dans l'interface Google Tasks. C'est une limitation de l'API.
-		// On pourrait aussi ajouter un préfixe "⭐" au titre pour une meilleure visibilité
+		// Le préfixe ⭐ est déjà ajouté au titre ci-dessus
+		// On stocke aussi la priorité dans les notes pour la récupération lors du pull
 		if (todo.priority) {
 			try {
 				// Si on a déjà des notes existantes, essayer de les parser et ajouter la priorité
@@ -502,7 +501,6 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				metadata.priority = true;
 				googleTask.notes = JSON.stringify(metadata);
 			} catch {
-				// Si erreur, on peut aussi utiliser un préfixe dans le titre
 				console.warn("Impossible de stocker la priorité dans les notes");
 			}
 		} else {
@@ -647,6 +645,53 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				if (todo.id && todo.id.startsWith("google-")) {
 					const googleTaskId = todo.id.replace("google-", "");
 
+					// Nettoyer l'objet googleTask pour n'inclure que les champs valides pour PATCH
+					const taskToUpdate: Partial<GoogleTask> = {};
+					
+					if (googleTask.title) {
+						taskToUpdate.title = googleTask.title;
+					}
+					
+					if (googleTask.status === "completed") {
+						taskToUpdate.status = "completed";
+						if (googleTask.completed) {
+							taskToUpdate.completed = googleTask.completed;
+						}
+					} else if (googleTask.status === "needsAction" || !todo.completed) {
+						// Si la tâche n'est pas complétée, on doit envoyer status: "needsAction"
+						// pour "décompléter" une tâche qui était complétée
+						taskToUpdate.status = "needsAction";
+					}
+					
+					if (googleTask.due) {
+						// S'assurer que le format est RFC 3339
+						const isRFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/.test(googleTask.due);
+						if (isRFC3339) {
+							taskToUpdate.due = googleTask.due;
+						} else {
+							try {
+								let date: Date;
+								if (googleTask.due.match(/^\d{4}-\d{2}-\d{2}$/)) {
+									const [year, month, day] = googleTask.due.split("-").map(Number);
+									date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+								} else {
+									date = parseISO(googleTask.due);
+								}
+								if (!isNaN(date.getTime())) {
+									taskToUpdate.due = date.toISOString();
+								}
+							} catch {
+								console.warn(`⚠️ Format de date invalide pour PATCH: ${googleTask.due}`);
+							}
+						}
+					}
+					
+					if (googleTask.notes !== undefined) {
+						taskToUpdate.notes = googleTask.notes;
+					}
+
+					console.log(`🔄 Mise à jour de la tâche ${googleTaskId}:`, JSON.stringify(taskToUpdate, null, 2));
+
 					const response = await this.retryWithBackoff(async () => {
 						return await fetch(
 							`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
@@ -658,18 +703,23 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 									Authorization: `Bearer ${accessToken}`,
 									"Content-Type": "application/json",
 								},
-								body: JSON.stringify(googleTask),
+								body: JSON.stringify(taskToUpdate),
 							}
 						);
 					});
 
 					if (!response.ok && response.status !== 404) {
 						const error = await response.json().catch(() => ({}));
+						console.error(`❌ Erreur lors de la mise à jour (${response.status}):`, error);
 						throw new Error(
 							`Erreur lors de la mise à jour: ${
 								error.error?.message || response.statusText
 							}`
 						);
+					}
+					
+					if (response.ok) {
+						console.log(`✅ Tâche ${googleTaskId} mise à jour avec succès`);
 					}
 				} else {
 					// Sinon, créer une nouvelle tâche
@@ -825,15 +875,15 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			throw new Error("Google Tasks sync is disabled");
 		}
 
-		const taskListId = listId || (await this.getOrCreateDefaultTaskList());
-		const accessToken = await this.getAccessToken();
-
-		// Extraire l'ID Google si c'est un ID préfixé
-		const googleTaskId = taskId.startsWith("google-")
-			? taskId.replace("google-", "")
-			: taskId;
-
 		try {
+			const taskListId = listId || (await this.getOrCreateDefaultTaskList());
+			const accessToken = await this.getAccessToken();
+
+			// Extraire l'ID Google si c'est un ID préfixé
+			const googleTaskId = taskId.startsWith("google-")
+				? taskId.replace("google-", "")
+				: taskId;
+
 			const response = await this.retryWithBackoff(async () => {
 				return await fetch(
 					`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
@@ -850,15 +900,23 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 			if (!response.ok && response.status !== 404) {
 				const error = await response.json().catch(() => ({}));
+				const errorMessage = error.error?.message || response.statusText;
+				console.error(
+					`❌ Erreur lors de la suppression de la tâche Google Tasks (${response.status}):`,
+					error
+				);
 				throw new Error(
-					`Erreur lors de la suppression: ${
-						error.error?.message || response.statusText
-					}`
+					`Erreur lors de la suppression: ${errorMessage}`
 				);
 			}
 		} catch (error) {
+			// Si c'est une erreur d'authentification (token invalide), on la propage avec un message clair
+			if (error instanceof Error && error.message.includes("Token invalide")) {
+				throw error;
+			}
+			// Pour les autres erreurs (réseau, etc.), on log mais on ne bloque pas la suppression locale
 			console.error(
-				"Erreur lors de la suppression de la tâche Google Tasks:",
+				"⚠️ Erreur lors de la suppression de la tâche Google Tasks (suppression locale effectuée):",
 				error
 			);
 			throw error;

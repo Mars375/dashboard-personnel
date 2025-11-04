@@ -156,7 +156,20 @@ export class GoogleAuth {
 			});
 
 			if (!response.ok) {
-				throw new Error("Erreur lors du rafraîchissement du token");
+				const errorData = await response.json().catch(() => ({}));
+				const errorMessage = errorData.error?.message || errorData.error_description || response.statusText;
+				console.error(`❌ Erreur lors du rafraîchissement du token (${response.status}):`, errorData);
+				
+				// Si le refresh token est invalide ou expiré, on peut vouloir forcer une nouvelle authentification
+				if (response.status === 400 || response.status === 401) {
+					throw new Error(
+						`Token invalide ou expiré. Veuillez vous reconnecter. Détails: ${errorMessage}`
+					);
+				}
+				
+				throw new Error(
+					`Erreur lors du rafraîchissement du token: ${errorMessage}`
+				);
 			}
 
 			const data = await response.json();
@@ -171,6 +184,9 @@ export class GoogleAuth {
 				scope: data.scope,
 			};
 		} catch (error) {
+			if (error instanceof Error && error.message.includes("Token invalide")) {
+				throw error;
+			}
 			throw new Error(
 				`Erreur lors du rafraîchissement du token: ${error instanceof Error ? error.message : "Unknown error"}`,
 			);

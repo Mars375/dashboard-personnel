@@ -328,24 +328,33 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				  )}`
 				: undefined;
 
-			const todo = todos.find((t) => t.id === id);
-			const previousDeadline = todo?.deadline;
-
 			setDeadline(id, deadlineStr);
 
 			// Synchroniser avec Google Tasks si connecté
 			if (googleTasksProvider && googleTasksProvider.enabled) {
 				try {
+					// Attendre que le state soit mis à jour (editTodo et setDeadline sont asynchrones)
+					await new Promise((resolve) => setTimeout(resolve, 100));
 					const updatedTodo = todos.find((t) => t.id === id);
 					if (updatedTodo) {
+						// Créer une copie avec les valeurs mises à jour pour s'assurer qu'on envoie les bonnes valeurs
+						const todoToSync: Todo = {
+							...updatedTodo,
+							title: editingValue.trim(),
+							deadline: deadlineStr,
+						};
 						// Ne pas passer currentListId, le provider utilisera @default
-						await googleTasksProvider.pushTodos([updatedTodo]);
+						await googleTasksProvider.pushTodos([todoToSync]);
+						console.log(`✅ Tâche "${todoToSync.title}" mise à jour dans Google Tasks`);
 					}
 				} catch (error) {
 					console.error(
 						"Erreur lors de la synchronisation avec Google Tasks:",
 						error
 					);
+					toast.error("Erreur lors de la synchronisation", {
+						description: error instanceof Error ? error.message : "Erreur inconnue",
+					});
 				}
 			}
 		}
@@ -362,17 +371,26 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 
 	// Fonction pour gérer le toggle d'une tâche
 	const handleToggleTodo = async (todo: Todo) => {
+		const newCompleted = !todo.completed;
 		toggleTodo(todo.id);
 
 		// Synchroniser avec Google Tasks si connecté
 		if (googleTasksProvider && googleTasksProvider.enabled) {
 			try {
 				// Attendre que le state soit mis à jour, puis récupérer la tâche mise à jour
-				await new Promise((resolve) => setTimeout(resolve, 50));
+				await new Promise((resolve) => setTimeout(resolve, 100));
 				const updatedTodo = todos.find((t) => t.id === todo.id);
 				if (updatedTodo) {
+					// Créer une copie avec le statut complété mis à jour
+					const todoToSync: Todo = {
+						...updatedTodo,
+						completed: newCompleted,
+					};
 					// Ne pas passer currentListId, le provider utilisera @default
-					await googleTasksProvider.pushTodos([updatedTodo]);
+					await googleTasksProvider.pushTodos([todoToSync]);
+					console.log(
+						`✅ Tâche "${todoToSync.title}" ${newCompleted ? "complétée" : "réactivée"} dans Google Tasks`
+					);
 				}
 			} catch (error) {
 				console.error(
@@ -388,19 +406,31 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 
 	// Fonction pour gérer le toggle de priorité
 	const handleTogglePriority = async (todo: Todo) => {
+		const newPriority = !todo.priority;
 		togglePriority(todo.id);
 
 		// Synchroniser avec Google Tasks si connecté
 		if (googleTasksProvider && googleTasksProvider.enabled) {
 			try {
 				// Attendre que le state soit mis à jour, puis récupérer la tâche mise à jour
-				await new Promise((resolve) => setTimeout(resolve, 50));
+				await new Promise((resolve) => setTimeout(resolve, 100));
 				const updatedTodo = todos.find((t) => t.id === todo.id);
 				if (updatedTodo) {
+					// Créer une copie avec la priorité mise à jour pour s'assurer qu'on envoie la bonne valeur
+					const todoToSync: Todo = {
+						...updatedTodo,
+						priority: newPriority,
+					};
 					// Ne pas passer currentListId, le provider utilisera @default
-					await googleTasksProvider.pushTodos([updatedTodo]);
+					await googleTasksProvider.pushTodos([todoToSync]);
 					console.log(
-						`⭐ Priorité ${updatedTodo.priority ? "activée" : "désactivée"} pour "${updatedTodo.title}"`
+						`⭐ Priorité ${newPriority ? "activée" : "désactivée"} pour "${todoToSync.title}"`
+					);
+					toast.success(
+						`Priorité ${newPriority ? "activée" : "désactivée"}`,
+						{
+							description: `"${todoToSync.title}" ${newPriority ? "marquée comme suivie" : "non suivie"} dans Google Tasks`,
+						}
 					);
 				}
 			} catch (error) {
@@ -830,15 +860,32 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 					// Si la tâche a un ID Google, supprimer directement (sans listId = utilise @default)
 					if (todo.id.startsWith("google-")) {
 						await googleTasksProvider.deleteTask(todo.id);
+						console.log(`✅ Tâche "${todo.title}" supprimée de Google Tasks`);
 					}
 				} catch (error) {
-					console.error(
-						"Erreur lors de la suppression sur Google Tasks:",
-						error
-					);
+					// Si c'est une erreur d'authentification, informer l'utilisateur
+					const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
+					if (errorMessage.includes("Token invalide") || errorMessage.includes("expiré")) {
+						console.error(
+							"Erreur d'authentification lors de la suppression sur Google Tasks:",
+							error
+						);
+						toast.warning("Tâche supprimée localement", {
+							description: "La suppression sur Google Tasks a échoué (token expiré). Veuillez vous reconnecter.",
+						});
+					} else {
+						console.error(
+							"Erreur lors de la suppression sur Google Tasks:",
+							error
+						);
+						toast.warning("Tâche supprimée localement", {
+							description: "La suppression sur Google Tasks a échoué, mais la tâche a été supprimée localement.",
+						});
+					}
 				}
 			}
 
+			// Toujours supprimer localement, même si Google Tasks échoue
 			deleteTodo(todoToDelete);
 			toast.success("Tâche supprimée");
 			setTodoToDelete(null);
