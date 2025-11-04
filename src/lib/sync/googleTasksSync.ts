@@ -436,23 +436,36 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 		// Convertir la deadline en format Google Tasks
 		if (todo.deadline) {
-			// Google Tasks accepte soit RFC 3339, soit date seule (YYYY-MM-DD)
-			// Pour les deadlines, on utilise le format date seule (YYYY-MM-DD)
-			// S'assurer que le format est correct (YYYY-MM-DD)
-			const deadlineMatch = todo.deadline.match(/^\d{4}-\d{2}-\d{2}$/);
-			if (deadlineMatch) {
-				googleTask.due = todo.deadline;
-			} else {
-				// Si le format n'est pas correct, essayer de le convertir
-				try {
-					const date = parseISO(todo.deadline);
-					googleTask.due = format(date, "yyyy-MM-dd");
-				} catch {
-					console.warn(
-						`Format de deadline invalide pour "${todo.title}": ${todo.deadline}`
-					);
-					// Ne pas inclure due si le format est invalide
+			// Google Tasks accepte le format RFC 3339 ou date seule (YYYY-MM-DD)
+			// Pour éviter les erreurs, on utilise le format RFC 3339 avec minuit UTC
+			try {
+				let date: Date;
+				const deadlineMatch = todo.deadline.match(/^\d{4}-\d{2}-\d{2}$/);
+				if (deadlineMatch) {
+					// Format YYYY-MM-DD, créer une date à minuit UTC
+					const [year, month, day] = todo.deadline.split("-").map(Number);
+					date = new Date(Date.UTC(year, month - 1, day));
+				} else {
+					// Format déjà parsable, utiliser parseISO
+					date = parseISO(todo.deadline);
 				}
+				
+				// Convertir en RFC 3339 (YYYY-MM-DDTHH:mm:ss.sssZ)
+				// Pour une date complète, utiliser minuit UTC
+				if (isNaN(date.getTime())) {
+					console.warn(
+						`Date invalide pour "${todo.title}": ${todo.deadline}`
+					);
+				} else {
+					// Format RFC 3339 avec minuit UTC pour une date complète
+					googleTask.due = date.toISOString().split("T")[0]; // YYYY-MM-DD (format accepté par Google Tasks)
+				}
+			} catch (error) {
+				console.warn(
+					`Erreur lors de la conversion de la deadline pour "${todo.title}": ${todo.deadline}`,
+					error
+				);
+				// Ne pas inclure due si le format est invalide
 			}
 		}
 
@@ -650,30 +663,49 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					// Sinon, créer une nouvelle tâche
 					// Nettoyer l'objet googleTask pour n'inclure que les champs valides
 					const taskToCreate: Partial<GoogleTask> = {};
-					if (googleTask.title) {
-						taskToCreate.title = googleTask.title;
+					
+					// Titre (requis)
+					if (googleTask.title && googleTask.title.trim()) {
+						taskToCreate.title = googleTask.title.trim();
+					} else {
+						console.warn("⚠️ Tentative de créer une tâche sans titre, ignorée");
+						continue; // Passer à la tâche suivante
 					}
-					// Ne pas inclure status si c'est 'needsAction' (valeur par défaut)
+					
+					// Ne PAS inclure status si c'est 'needsAction' (valeur par défaut)
 					// Google Tasks API retourne une erreur 400 si on inclut status: 'needsAction' lors de la création
-					if (googleTask.status && googleTask.status !== "needsAction") {
-						taskToCreate.status = googleTask.status;
+					// On n'inclut status QUE si c'est "completed"
+					if (googleTask.status === "completed") {
+						taskToCreate.status = "completed";
 					}
+					// Sinon, on ne met pas status du tout (needsAction est la valeur par défaut)
+					
+					// Date d'échéance (optionnelle)
 					if (googleTask.due) {
-						// Google Tasks attend le format YYYY-MM-DD pour les dates complètes
-						// S'assurer que le format est correct
-						taskToCreate.due = googleTask.due;
+						// Vérifier que le format est bien YYYY-MM-DD
+						const dueMatch = googleTask.due.match(/^\d{4}-\d{2}-\d{2}$/);
+						if (dueMatch) {
+							taskToCreate.due = googleTask.due;
+						} else {
+							console.warn(
+								`⚠️ Format de date invalide, ignoré: ${googleTask.due}`
+							);
+						}
 					}
-					// Ne pas inclure completed si false (valeur par défaut)
+					
+					// Date de complétion (seulement si complétée)
 					if (googleTask.completed) {
 						taskToCreate.completed = googleTask.completed;
 					}
+					
+					// Notes (optionnelles)
 					if (googleTask.notes) {
 						taskToCreate.notes = googleTask.notes;
 					}
 
 					console.log(
 						`📤 Création d'une tâche dans Google Tasks:`,
-						taskToCreate
+						JSON.stringify(taskToCreate, null, 2)
 					);
 
 					const response = await this.retryWithBackoff(async () => {
@@ -697,6 +729,10 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 						const errorMessage =
 							errorData.error?.message || response.statusText;
 						console.error(`❌ Erreur lors de la création:`, errorData);
+						console.error(`📋 Payload envoyé:`, JSON.stringify(taskToCreate, null, 2));
+						if (errorData.error?.errors) {
+							console.error(`📋 Détails des erreurs:`, errorData.error.errors);
+						}
 						throw new Error(`Erreur lors de la création: ${errorMessage}`);
 					}
 
