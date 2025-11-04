@@ -171,7 +171,7 @@ describe("TodoWidget - Filter", () => {
 
 	it("filters by priority tasks", async () => {
 		const user = userEvent.setup();
-		render(<TodoWidget />);
+		render(<TodoWidget size="full" />); // Use full size to show priority filter
 
 		const priorityButton = screen.getByText("Prioritaires");
 		await user.click(priorityButton);
@@ -181,7 +181,17 @@ describe("TodoWidget - Filter", () => {
 
 	it("searches todos by title", async () => {
 		const user = userEvent.setup();
-		render(<TodoWidget />);
+		render(<TodoWidget size="medium" />); // Use medium size to show search
+
+		// The search input is in a Popover, so we need to click the search button first
+		const searchButton = screen.getByLabelText("Rechercher");
+		await user.click(searchButton);
+
+		// Wait for the popover to open and find the input
+		await waitFor(() => {
+			const searchInput = screen.getByPlaceholderText("Rechercher...");
+			expect(searchInput).toBeInTheDocument();
+		});
 
 		const searchInput = screen.getByPlaceholderText("Rechercher...");
 		await user.type(searchInput, "Active");
