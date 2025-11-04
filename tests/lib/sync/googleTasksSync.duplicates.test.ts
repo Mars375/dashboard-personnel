@@ -100,6 +100,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 		it("should handle tasks with same ID but different content", async () => {
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			const mockTasksResponse1 = {
@@ -110,6 +111,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 						status: "needsAction",
 					},
 				],
+				nextPageToken: undefined,
 			};
 
 			const mockTasksResponse2 = {
@@ -120,6 +122,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 						status: "completed",
 					},
 				],
+				nextPageToken: undefined,
 			};
 
 			// First pull
@@ -138,6 +141,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 				});
 
 			const todos1 = await provider.pullTodos();
+			expect(todos1.length).toBeGreaterThan(0);
 			expect(todos1[0].title).toBe("Task 1");
 			expect(todos1[0].completed).toBe(false);
 
@@ -157,6 +161,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 				});
 
 			const todos2 = await provider.pullTodos();
+			expect(todos2.length).toBeGreaterThan(0);
 			expect(todos2[0].title).toBe("Task 1 Updated");
 			expect(todos2[0].completed).toBe(true);
 		});

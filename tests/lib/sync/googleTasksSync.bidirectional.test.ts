@@ -43,6 +43,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 		it("should sync new local task to Google Tasks and back", async () => {
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			// Create local task
@@ -88,6 +89,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 						status: "needsAction",
 					},
 				],
+				nextPageToken: undefined,
 			};
 
 			(global.fetch as any)
@@ -113,6 +115,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 		it("should sync task updated in Google Tasks back to local", async () => {
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			// Initial task in Google
@@ -134,10 +137,11 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [initialTask] }),
+					json: async () => ({ items: [initialTask], nextPageToken: undefined }),
 				});
 
 			const initialTodos = await provider.pullTodos();
+			expect(initialTodos.length).toBeGreaterThan(0);
 			expect(initialTodos[0].title).toBe("Original Task");
 
 			// Task updated in Google (simulate external update)
@@ -159,7 +163,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [updatedTask] }),
+					json: async () => ({ items: [updatedTask], nextPageToken: undefined }),
 				});
 
 			const updatedTodos = await provider.pullTodos();
@@ -170,6 +174,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 		it("should handle task deleted in Google Tasks", async () => {
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			// Task exists initially
@@ -190,7 +195,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [existingTask] }),
+					json: async () => ({ items: [existingTask], nextPageToken: undefined }),
 				});
 
 			const todosBefore = await provider.pullTodos();
@@ -208,7 +213,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }), // Task no longer exists
+					json: async () => ({ items: [], nextPageToken: undefined }), // Task no longer exists
 				});
 
 			const todosAfter = await provider.pullTodos();
