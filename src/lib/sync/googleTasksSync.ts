@@ -431,8 +431,15 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 		const googleTask: Partial<GoogleTask> = {
 			title, // Titre requis, ne peut pas être vide
-			status: todo.completed ? "completed" : "needsAction",
+			// Ne PAS définir status ici par défaut - on le gère dans pushTodos
+			// status sera défini seulement si la tâche est complétée
 		};
+		
+		// Définir status seulement si la tâche est complétée
+		// Pour les nouvelles tâches, on n'inclura pas status (valeur par défaut: needsAction)
+		if (todo.completed) {
+			googleTask.status = "completed";
+		}
 
 		// Convertir la deadline en format Google Tasks
 		if (todo.deadline) {
@@ -630,6 +637,11 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 		for (const todo of todos) {
 			try {
 				const googleTask = this.convertToGoogleTask(todo);
+				
+				// Debug: log googleTask avant nettoyage (pour débogage seulement)
+				if (process.env.NODE_ENV === "development") {
+					console.log(`🔍 googleTask avant nettoyage:`, googleTask);
+				}
 
 				// Si la tâche a un ID Google, mettre à jour
 				if (todo.id && todo.id.startsWith("google-")) {
@@ -675,10 +687,12 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					// Ne PAS inclure status si c'est 'needsAction' (valeur par défaut)
 					// Google Tasks API retourne une erreur 400 si on inclut status: 'needsAction' lors de la création
 					// On n'inclut status QUE si c'est "completed"
+					// IMPORTANT: googleTask.status peut être undefined maintenant (car on ne le définit plus par défaut)
 					if (googleTask.status === "completed") {
 						taskToCreate.status = "completed";
 					}
-					// Sinon, on ne met pas status du tout (needsAction est la valeur par défaut)
+					// Sinon, on ne met PAS status du tout (needsAction est la valeur par défaut de Google Tasks)
+					// Si googleTask.status est undefined ou 'needsAction', on ne l'inclut pas
 					
 					// Date d'échéance (optionnelle)
 					if (googleTask.due) {
@@ -703,12 +717,19 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 						taskToCreate.notes = googleTask.notes;
 					}
 
+					// Log détaillé pour débogage
 					console.log(
-						`📤 Création d'une tâche dans Google Tasks:`,
+						`📤 Création d'une tâche dans Google Tasks (taskToCreate nettoyé):`,
 						JSON.stringify(taskToCreate, null, 2)
+					);
+					console.log(
+						`📤 Payload qui sera envoyé (stringified):`,
+						JSON.stringify(taskToCreate)
 					);
 
 					const response = await this.retryWithBackoff(async () => {
+						const payload = JSON.stringify(taskToCreate);
+						console.log(`📤 Envoi POST avec payload:`, payload);
 						return await fetch(
 							`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
 								taskListId
@@ -719,7 +740,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 									Authorization: `Bearer ${accessToken}`,
 									"Content-Type": "application/json",
 								},
-								body: JSON.stringify(taskToCreate),
+								body: payload,
 							}
 						);
 					});
