@@ -443,8 +443,8 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 		// Convertir la deadline en format Google Tasks
 		// Selon la doc: "Date prévue pour la tâche (sous forme de code temporel RFC 3339)"
-		// "Seules les informations de date sont enregistrées. La partie heure du code temporel est ignorée"
-		// Format accepté: YYYY-MM-DD ou RFC 3339 complet
+		// Format requis: RFC 3339 complet (YYYY-MM-DDTHH:mm:ss.sssZ)
+		// Même si seule la date est utilisée, l'API peut exiger le format complet
 		if (todo.deadline) {
 			try {
 				let date: Date;
@@ -452,7 +452,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				if (deadlineMatch) {
 					// Format YYYY-MM-DD, créer une date à minuit UTC
 					const [year, month, day] = todo.deadline.split("-").map(Number);
-					date = new Date(Date.UTC(year, month - 1, day));
+					date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
 				} else {
 					// Format déjà parsable, utiliser parseISO
 					date = parseISO(todo.deadline);
@@ -463,9 +463,9 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 						`Date invalide pour "${todo.title}": ${todo.deadline}`
 					);
 				} else {
-					// Utiliser le format YYYY-MM-DD (la doc dit que l'heure est ignorée)
-					// Format simplifié pour éviter les problèmes de timezone
-					googleTask.due = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+					// Utiliser le format RFC 3339 complet (YYYY-MM-DDTHH:mm:ss.sssZ)
+					// Même si seule la date est utilisée, l'API peut exiger ce format
+					googleTask.due = date.toISOString();
 				}
 			} catch (error) {
 				console.warn(
@@ -695,19 +695,27 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					// Si googleTask.status est undefined ou 'needsAction', on ne l'inclut pas
 					
 					// Date d'échéance (optionnelle)
-					// Selon la doc Google: format RFC 3339, mais seules les infos de date sont utilisées
-					// Format YYYY-MM-DD est accepté
+					// Selon la doc Google: format RFC 3339 complet requis
+					// Format: YYYY-MM-DDTHH:mm:ss.sssZ
 					if (googleTask.due) {
-						// Vérifier que le format est bien YYYY-MM-DD
-						const dueMatch = googleTask.due.match(/^\d{4}-\d{2}-\d{2}$/);
-						if (dueMatch) {
+						// Vérifier que le format est RFC 3339 (doit contenir T et Z ou timezone)
+						const isRFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/.test(googleTask.due);
+						if (isRFC3339) {
 							taskToCreate.due = googleTask.due;
 						} else {
-							// Essayer de parser et reformater
+							// Essayer de convertir en RFC 3339
 							try {
-								const date = parseISO(googleTask.due);
+								let date: Date;
+								if (googleTask.due.match(/^\d{4}-\d{2}-\d{2}$/)) {
+									// Format YYYY-MM-DD, créer une date à minuit UTC
+									const [year, month, day] = googleTask.due.split("-").map(Number);
+									date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+								} else {
+									date = parseISO(googleTask.due);
+								}
+								
 								if (!isNaN(date.getTime())) {
-									taskToCreate.due = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+									taskToCreate.due = date.toISOString();
 								} else {
 									console.warn(
 										`⚠️ Format de date invalide, ignoré: ${googleTask.due}`
