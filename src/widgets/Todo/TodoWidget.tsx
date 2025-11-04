@@ -261,14 +261,24 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				// Utiliser setTimeout pour laisser le temps à addTodo de mettre à jour todos
 				setTimeout(async () => {
 					try {
-						// Trouver la tâche qui vient d'être ajoutée (la plus récente avec ce titre)
-						// et qui n'a pas encore d'ID Google
-						const allTodos = todos;
-						const newTodo = allTodos
+						// Récupérer les todos à jour (plusieurs tentatives si nécessaire)
+						let allTodos = todos;
+						let newTodo = allTodos
 							.filter(
 								(t) => t.title === todoTitle && !t.completed && !t.id.startsWith("google-")
 							)
 							.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]; // La plus récente
+						
+						// Si pas trouvé, réessayer après un court délai
+						if (!newTodo) {
+							await new Promise((resolve) => setTimeout(resolve, 100));
+							allTodos = todos;
+							newTodo = allTodos
+								.filter(
+									(t) => t.title === todoTitle && !t.completed && !t.id.startsWith("google-")
+								)
+								.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
+						}
 						
 						if (newTodo) {
 							console.log(`🚀 Création immédiate dans Google Tasks: "${newTodo.title}"`);
@@ -286,7 +296,8 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 								console.warn(`⚠️ Aucun ID Google retourné pour la tâche "${newTodo.title}"`);
 							}
 						} else {
-							console.warn(`⚠️ Tâche non trouvée ou déjà synchronisée: "${todoTitle}"`);
+							// La tâche n'a pas été trouvée, elle sera synchronisée lors de la prochaine sync automatique
+							console.log(`ℹ️ Tâche "${todoTitle}" sera synchronisée lors de la prochaine synchronisation automatique`);
 						}
 					} catch (error) {
 						console.error(
@@ -297,7 +308,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 							description: error instanceof Error ? error.message : "Erreur inconnue",
 						});
 					}
-				}, 150); // Augmenter légèrement le délai pour s'assurer que todos est à jour
+				}, 200); // Augmenter le délai pour s'assurer que todos est à jour
 			}
 
 			input.value = "";
@@ -405,44 +416,10 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 	};
 
 	// Fonction pour gérer le toggle de priorité
-	const handleTogglePriority = async (todo: Todo) => {
-		const newPriority = !todo.priority;
+	// La priorité est uniquement locale, pas synchronisée avec Google Tasks
+	// (l'API Google Tasks ne supporte pas le statut "suivi")
+	const handleTogglePriority = (todo: Todo) => {
 		togglePriority(todo.id);
-
-		// Synchroniser avec Google Tasks si connecté
-		if (googleTasksProvider && googleTasksProvider.enabled) {
-			try {
-				// Attendre que le state soit mis à jour, puis récupérer la tâche mise à jour
-				await new Promise((resolve) => setTimeout(resolve, 100));
-				const updatedTodo = todos.find((t) => t.id === todo.id);
-				if (updatedTodo) {
-					// Créer une copie avec la priorité mise à jour pour s'assurer qu'on envoie la bonne valeur
-					const todoToSync: Todo = {
-						...updatedTodo,
-						priority: newPriority,
-					};
-					// Ne pas passer currentListId, le provider utilisera @default
-					await googleTasksProvider.pushTodos([todoToSync]);
-					console.log(
-						`⭐ Priorité ${newPriority ? "activée" : "désactivée"} pour "${todoToSync.title}"`
-					);
-					toast.success(
-						`Priorité ${newPriority ? "activée" : "désactivée"}`,
-						{
-							description: `"${todoToSync.title}" ${newPriority ? "marquée comme suivie" : "non suivie"} dans Google Tasks`,
-						}
-					);
-				}
-			} catch (error) {
-				console.error(
-					"Erreur lors de la synchronisation de la priorité avec Google Tasks:",
-					error
-				);
-				toast.error("Erreur lors de la synchronisation", {
-					description: error instanceof Error ? error.message : "Erreur inconnue",
-				});
-			}
-		}
 	};
 
 	// Fonction de synchronisation avec Google Tasks (définie AVANT le useEffect qui l'utilise)

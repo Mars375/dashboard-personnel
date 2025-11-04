@@ -419,16 +419,10 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 	 * Convertit un Todo local en tâche Google
 	 */
 	private convertToGoogleTask(todo: Todo): Partial<GoogleTask> {
-		// Ajouter un préfixe visuel pour les tâches prioritaires (⭐)
-		// Cela permet de voir la priorité directement dans Google Tasks
-		// Google Tasks n'a pas de champ "followed" natif, mais on peut utiliser le titre
-		let title = todo.title || "";
-		if (todo.priority && !title.startsWith("⭐")) {
-			title = `⭐ ${title}`;
-		} else if (!todo.priority && title.startsWith("⭐")) {
-			// Retirer le préfixe si la priorité est désactivée
-			title = title.replace(/^⭐\s*/, "");
-		}
+		// La priorité n'est pas synchronisée avec Google Tasks
+		// (l'API Google Tasks ne supporte pas le statut "suivi")
+		// On utilise le titre tel quel, sans préfixe ⭐
+		const title = todo.title || "";
 
 		const googleTask: Partial<GoogleTask> = {
 			title, // Titre requis, ne peut pas être vide
@@ -482,49 +476,8 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			googleTask.completed = new Date().toISOString();
 		}
 
-		// Stocker la priorité dans les notes (format JSON pour pouvoir stocker d'autres métadonnées)
-		// Le préfixe ⭐ est déjà ajouté au titre ci-dessus
-		// On stocke aussi la priorité dans les notes pour la récupération lors du pull
-		if (todo.priority) {
-			try {
-				// Si on a déjà des notes existantes, essayer de les parser et ajouter la priorité
-				// Sinon, créer un nouveau JSON
-				let metadata: any = {};
-				if (googleTask.notes) {
-					try {
-						metadata = JSON.parse(googleTask.notes);
-					} catch {
-						// Si les notes ne sont pas du JSON, on les garde comme texte
-						metadata = { text: googleTask.notes, priority: true };
-					}
-				}
-				metadata.priority = true;
-				googleTask.notes = JSON.stringify(metadata);
-			} catch {
-				console.warn("Impossible de stocker la priorité dans les notes");
-			}
-		} else {
-			// Si pas prioritaire, retirer la priorité des métadonnées mais garder le reste
-			if (googleTask.notes) {
-				try {
-					const metadata = JSON.parse(googleTask.notes);
-					if (metadata && typeof metadata === "object") {
-						delete metadata.priority;
-						// Si il reste seulement "text", on peut utiliser le texte directement
-						if (Object.keys(metadata).length === 1 && metadata.text) {
-							googleTask.notes = metadata.text;
-						} else if (Object.keys(metadata).length > 0) {
-							googleTask.notes = JSON.stringify(metadata);
-						} else {
-							// Plus de métadonnées, on peut supprimer les notes
-							delete googleTask.notes;
-						}
-					}
-				} catch {
-					// Si les notes ne sont pas du JSON, on les garde comme elles sont
-				}
-			}
-		}
+		// La priorité n'est pas synchronisée avec Google Tasks
+		// Les notes sont laissées telles quelles (pas de métadonnées de priorité)
 
 		return googleTask;
 	}
