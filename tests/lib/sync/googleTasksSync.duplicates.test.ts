@@ -179,11 +179,13 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			const mockCreatedTask = {
 				id: "google-task-id-456",
 				title: "New Task",
+				status: "needsAction",
 			};
 
 			(global.fetch as any)
@@ -217,6 +219,13 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
+			};
+
+			const mockUpdatedTask = {
+				id: "task-id-456",
+				title: "Existing Task",
+				status: "needsAction",
 			};
 
 			(global.fetch as any)
@@ -230,7 +239,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					status: 200,
+					json: async () => mockUpdatedTask,
 				});
 
 			const idMap = await provider.pushTodos([todo]);

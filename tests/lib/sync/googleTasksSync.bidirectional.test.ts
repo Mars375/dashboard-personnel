@@ -225,6 +225,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 		it("should handle task modified in both local and Google", async () => {
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			// Local modification
@@ -255,7 +256,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					status: 200, // Update successful
+					json: async () => googleTask, // Update successful
 				});
 
 			const idMap = await provider.pushTodos([localTodo]);
@@ -273,10 +274,11 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [googleTask] }),
+					json: async () => ({ items: [googleTask], nextPageToken: undefined }),
 				});
 
 			const pulledTodos = await provider.pullTodos();
+			expect(pulledTodos.length).toBeGreaterThan(0);
 			expect(pulledTodos[0].title).toBe("Google Change");
 			expect(pulledTodos[0].completed).toBe(true);
 		});
