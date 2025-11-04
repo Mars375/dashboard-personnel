@@ -442,9 +442,10 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 		}
 
 		// Convertir la deadline en format Google Tasks
+		// Selon la doc: "Date prévue pour la tâche (sous forme de code temporel RFC 3339)"
+		// "Seules les informations de date sont enregistrées. La partie heure du code temporel est ignorée"
+		// Format accepté: YYYY-MM-DD ou RFC 3339 complet
 		if (todo.deadline) {
-			// Google Tasks accepte le format RFC 3339 ou date seule (YYYY-MM-DD)
-			// Pour éviter les erreurs, on utilise le format RFC 3339 avec minuit UTC
 			try {
 				let date: Date;
 				const deadlineMatch = todo.deadline.match(/^\d{4}-\d{2}-\d{2}$/);
@@ -457,15 +458,14 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					date = parseISO(todo.deadline);
 				}
 				
-				// Convertir en RFC 3339 (YYYY-MM-DDTHH:mm:ss.sssZ)
-				// Pour une date complète, utiliser minuit UTC
 				if (isNaN(date.getTime())) {
 					console.warn(
 						`Date invalide pour "${todo.title}": ${todo.deadline}`
 					);
 				} else {
-					// Format RFC 3339 avec minuit UTC pour une date complète
-					googleTask.due = date.toISOString().split("T")[0]; // YYYY-MM-DD (format accepté par Google Tasks)
+					// Utiliser le format YYYY-MM-DD (la doc dit que l'heure est ignorée)
+					// Format simplifié pour éviter les problèmes de timezone
+					googleTask.due = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 				}
 			} catch (error) {
 				console.warn(
@@ -695,15 +695,29 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					// Si googleTask.status est undefined ou 'needsAction', on ne l'inclut pas
 					
 					// Date d'échéance (optionnelle)
+					// Selon la doc Google: format RFC 3339, mais seules les infos de date sont utilisées
+					// Format YYYY-MM-DD est accepté
 					if (googleTask.due) {
 						// Vérifier que le format est bien YYYY-MM-DD
 						const dueMatch = googleTask.due.match(/^\d{4}-\d{2}-\d{2}$/);
 						if (dueMatch) {
 							taskToCreate.due = googleTask.due;
 						} else {
-							console.warn(
-								`⚠️ Format de date invalide, ignoré: ${googleTask.due}`
-							);
+							// Essayer de parser et reformater
+							try {
+								const date = parseISO(googleTask.due);
+								if (!isNaN(date.getTime())) {
+									taskToCreate.due = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+								} else {
+									console.warn(
+										`⚠️ Format de date invalide, ignoré: ${googleTask.due}`
+									);
+								}
+							} catch {
+								console.warn(
+									`⚠️ Format de date invalide, ignoré: ${googleTask.due}`
+								);
+							}
 						}
 					}
 					
@@ -717,6 +731,13 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 						taskToCreate.notes = googleTask.notes;
 					}
 
+					// Vérification finale : ne JAMAIS inclure status si c'est needsAction
+					// Selon la doc Google Tasks: lors de la création (insert), on n'envoie que title et notes
+					// Le status est géré automatiquement par Google Tasks (valeur par défaut: needsAction)
+					if (taskToCreate.status === "needsAction" || (!taskToCreate.status && googleTask.status === "needsAction")) {
+						delete taskToCreate.status;
+					}
+					
 					// Log détaillé pour débogage
 					console.log(
 						`📤 Création d'une tâche dans Google Tasks (taskToCreate nettoyé):`,
@@ -726,10 +747,16 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 						`📤 Payload qui sera envoyé (stringified):`,
 						JSON.stringify(taskToCreate)
 					);
+					
+					// Vérification finale : s'assurer qu'on n'envoie pas status si undefined ou needsAction
+					const finalPayload = JSON.parse(JSON.stringify(taskToCreate));
+					if (finalPayload.status === "needsAction" || finalPayload.status === undefined) {
+						delete finalPayload.status;
+					}
 
 					const response = await this.retryWithBackoff(async () => {
-						const payload = JSON.stringify(taskToCreate);
-						console.log(`📤 Envoi POST avec payload:`, payload);
+						const payload = JSON.stringify(finalPayload);
+						console.log(`📤 Envoi POST avec payload final:`, payload);
 						return await fetch(
 							`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
 								taskListId
