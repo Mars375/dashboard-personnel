@@ -262,6 +262,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				setTimeout(async () => {
 					try {
 						// Trouver la tâche qui vient d'être ajoutée (la plus récente avec ce titre)
+						// et qui n'a pas encore d'ID Google
 						const allTodos = todos;
 						const newTodo = allTodos
 							.filter(
@@ -281,7 +282,11 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 								toast.success("Tâche créée dans Google Tasks", {
 									description: `"${newTodo.title}" a été synchronisée`,
 								});
+							} else {
+								console.warn(`⚠️ Aucun ID Google retourné pour la tâche "${newTodo.title}"`);
 							}
+						} else {
+							console.warn(`⚠️ Tâche non trouvée ou déjà synchronisée: "${todoTitle}"`);
 						}
 					} catch (error) {
 						console.error(
@@ -292,7 +297,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 							description: error instanceof Error ? error.message : "Erreur inconnue",
 						});
 					}
-				}, 100);
+				}, 150); // Augmenter légèrement le délai pour s'assurer que todos est à jour
 			}
 
 			input.value = "";
@@ -501,13 +506,51 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 
 			// Push: envoyer seulement les tâches locales qui n'existent pas encore dans Google Tasks
 			// (celles qui n'ont pas d'ID Google, donc pas de préfixe "google-")
-			await new Promise((resolve) => setTimeout(resolve, 100)); // Attendre que les todos soient mis à jour
-			const updatedTodos = todos; // Récupérer les todos mis à jour
-
+			// IMPORTANT: Attendre que les todos soient mis à jour après le pull
+			await new Promise((resolve) => setTimeout(resolve, 200)); // Attendre un peu plus pour que les todos soient mis à jour
+			
+			// Récupérer les todos mis à jour depuis le store (pour avoir les IDs à jour)
+			const updatedTodos = todos; 
+			
 			// Ne push que les tâches locales qui n'ont pas encore été synchronisées avec Google Tasks
 			// (pas de préfixe "google-" dans l'ID)
+			// ET qui n'ont pas déjà été créées dans Google Tasks (vérifier via pulledTodos)
+			const pulledTodoIds = new Set(pulledTodos.map(t => t.id));
+			const pulledTodoTitles = new Set(pulledTodos.map(t => t.title.toLowerCase().trim()));
+			
 			const localOnlyTodos = updatedTodos.filter(
-				(todo) => !todo.id.startsWith("google-")
+				(todo) => {
+					// Ne pas inclure si déjà synchronisé avec Google (ID commence par "google-")
+					if (todo.id.startsWith("google-")) {
+						return false;
+					}
+					
+					// Ne pas inclure si cette tâche existe déjà dans Google Tasks (via pull)
+					// Comparer par ID Google potentiel et par titre (pour éviter les doublons)
+					const potentialGoogleId = `google-${todo.id}`;
+					if (pulledTodoIds.has(potentialGoogleId)) {
+						return false;
+					}
+					
+					// Vérifier aussi par titre pour éviter les doublons si l'ID a changé
+					// (mais seulement si la tâche a une deadline similaire pour éviter les faux positifs)
+					const todoTitleLower = todo.title.toLowerCase().trim();
+					if (pulledTodoTitles.has(todoTitleLower)) {
+						// Vérifier si une tâche avec le même titre existe déjà dans pulledTodos
+						const existingPulledTodo = pulledTodos.find(
+							p => p.title.toLowerCase().trim() === todoTitleLower
+						);
+						if (existingPulledTodo) {
+							// Si les deadlines correspondent (ou toutes les deux absentes), considérer comme doublon
+							if (todo.deadline === existingPulledTodo.deadline) {
+								console.log(`⚠️ Tâche "${todo.title}" existe déjà dans Google Tasks, ignorée`);
+								return false;
+							}
+						}
+					}
+					
+					return true;
+				}
 			);
 
 			if (localOnlyTodos.length > 0) {
