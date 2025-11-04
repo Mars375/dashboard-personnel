@@ -589,6 +589,41 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 	}
 
 	/**
+	 * Récupère toutes les listes Google Tasks et retourne celles qui n'ont pas de correspondance locale
+	 * @param localListNames Noms des listes locales existantes
+	 * @returns Liste des noms de listes Google Tasks qui n'existent pas localement
+	 */
+	async getMissingLocalLists(localListNames: string[]): Promise<GoogleTaskList[]> {
+		if (!this.enabled) {
+			throw new Error("Google Tasks sync is disabled");
+		}
+
+		try {
+			const allGoogleLists = await this.getAllTaskLists();
+			const localListNamesSet = new Set(localListNames);
+			
+			// Filtrer les listes Google Tasks qui n'ont pas de correspondance locale
+			// Ignorer la liste "@default" car elle est gérée séparément
+			const missingLists = allGoogleLists.filter(
+				(googleList) => {
+					// Ignorer @default qui est géré par getOrCreateDefaultTaskList
+					if (googleList.id === "@default") {
+						// Pour @default, on utilise le titre "Mes Tâches" ou similaire
+						const defaultListName = googleList.title || "Mes Tâches";
+						return !localListNamesSet.has(defaultListName);
+					}
+					return !localListNamesSet.has(googleList.title);
+				}
+			);
+
+			return missingLists;
+		} catch (error) {
+			console.error("Erreur lors de la récupération des listes manquantes:", error);
+			throw error;
+		}
+	}
+
+	/**
 	 * Synchronise les tâches (pull depuis Google Tasks)
 	 * @param localListName Nom de la liste locale pour laquelle récupérer les tâches
 	 */

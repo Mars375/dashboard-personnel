@@ -474,6 +474,54 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 
 		setIsSyncing(true);
 		try {
+			// 1. D'abord, synchroniser les listes : créer les listes locales manquantes depuis Google Tasks
+			const localListNames = lists.map((l) => l.name);
+			const missingGoogleLists = await googleTasksProvider.getMissingLocalLists(localListNames);
+			
+			if (missingGoogleLists.length > 0) {
+				console.log(`📋 ${missingGoogleLists.length} liste(s) Google Tasks trouvée(s) sans correspondance locale`);
+				
+				for (const googleList of missingGoogleLists) {
+					// Créer la liste locale
+					const listName = googleList.title || "Mes Tâches";
+					console.log(`➕ Création de la liste locale: "${listName}"`);
+					addList(listName);
+					
+					// Attendre un peu pour que la liste soit créée
+					await new Promise((resolve) => setTimeout(resolve, 100));
+					
+					// Récupérer les tâches de cette liste Google Tasks
+					// Si c'est @default, utiliser "Mes Tâches" comme nom
+					const googleListName = googleList.id === "@default" ? "Mes Tâches" : googleList.title;
+					const pulledTodosFromList = await googleTasksProvider.pullTodos(googleListName);
+					
+					// Basculer vers la nouvelle liste pour y ajouter les tâches
+					const newLists = useTodoStore.getState().lists;
+					const newList = newLists.find((l) => l.name === listName);
+					if (newList) {
+						setCurrentList(newList.id);
+						
+						// Ajouter les tâches dans la nouvelle liste
+						for (const pulledTodo of pulledTodosFromList) {
+							addTodo(
+								pulledTodo.title,
+								pulledTodo.deadline,
+								pulledTodo.id,
+								pulledTodo.completed,
+								pulledTodo.priority,
+								pulledTodo.createdAt
+							);
+						}
+						
+						console.log(`✅ ${pulledTodosFromList.length} tâche(s) ajoutée(s) à la liste "${listName}"`);
+					}
+				}
+				
+				// Revenir à la liste actuelle
+				setCurrentList(currentListId);
+			}
+
+			// 2. Ensuite, synchroniser les tâches de la liste actuelle
 			// Pull: récupérer les tâches depuis Google Tasks pour la liste actuelle
 			// Récupérer le nom de la liste actuelle pour synchroniser depuis la bonne liste Google Tasks
 			const currentList = lists.find((l) => l.id === currentListId);
