@@ -81,6 +81,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 			expect(idMap.get("local-id-123")).toBe("google-google-task-456");
 
 			// Pull: retrieve task from Google
+			// Note: The ID returned from Google is "google-task-456", but pullTodos adds "google-" prefix
 			const mockTasksResponse = {
 				items: [
 					{
@@ -108,6 +109,7 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 
 			const pulledTodos = await provider.pullTodos();
 			expect(pulledTodos.length).toBe(1);
+			// The ID will be "google-google-task-456" because pullTodos adds "google-" prefix to Google IDs
 			expect(pulledTodos[0].id).toBe("google-google-task-456");
 			expect(pulledTodos[0].title).toBe("New Local Task");
 		});

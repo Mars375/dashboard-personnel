@@ -50,7 +50,7 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 				nextPageToken: undefined,
 			};
 
-			// First call fails with timeout, second succeeds
+			// First call (getAllTaskLists) fails with timeout, second succeeds
 			(global.fetch as any)
 				.mockRejectedValueOnce(new Error("Network timeout"))
 				.mockResolvedValueOnce({
@@ -208,6 +208,7 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			(global.fetch as any)
@@ -221,7 +222,7 @@ describe("GoogleTasksSyncProvider - Edge Cases", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ id: "task-1", title: "Task with deadline" }),
+					json: async () => ({ id: "task-1", title: "Task with deadline", status: "needsAction" }),
 				});
 
 			// Should handle invalid date gracefully

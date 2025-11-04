@@ -260,15 +260,16 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 						id: "task-1",
 						title: "Task 1",
 						status: "needsAction",
-						due: "2024-12-31",
+						due: "2024-12-31T00:00:00.000Z",
 					},
 					{
 						id: "task-2",
 						title: "Task 2",
 						status: "completed",
-						due: "2024-12-30",
+						due: "2024-12-30T00:00:00.000Z",
 					},
 				],
+				nextPageToken: undefined,
 			};
 
 			(global.fetch as any)
@@ -292,6 +293,7 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 			expect(todos[0].title).toBe("Task 1");
 			expect(todos[0].completed).toBe(false);
 			expect(todos[0].deadline).toBe("2024-12-31");
+			expect(todos[1].id).toBe("google-task-2");
 			expect(todos[1].completed).toBe(true);
 		});
 
