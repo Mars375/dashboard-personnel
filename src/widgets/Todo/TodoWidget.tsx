@@ -141,6 +141,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const cardRef = useRef<HTMLDivElement>(null);
 	const newListInputRef = useRef<HTMLInputElement>(null);
+	const syncingTodoIdsRef = useRef<Set<string>>(new Set()); // Pour éviter les doublons lors de la synchronisation
 
 	const filtered = filteredTodos(filter, searchQuery);
 	const totalCount = todos.length;
@@ -398,15 +399,25 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 			);
 
 			// Fusionner avec les tâches locales de la liste actuelle (éviter les doublons)
+			// Utiliser une fonction callback pour obtenir les todos à jour
 			const currentTodos = todos; // Utiliser la valeur courante de todos
 			const existingTodoIds = new Set(currentTodos.map((t) => t.id));
+			
+			// Vérifier aussi les IDs en cours de synchronisation
+			const processingIds = new Set([...existingTodoIds, ...syncingTodoIdsRef.current]);
 
 			let addedCount = 0;
 			let updatedCount = 0;
 
-			for (const pulledTodo of pulledTodos) {
-				// Si la tâche n'existe pas localement, l'ajouter avec son ID Google
-				if (!existingTodoIds.has(pulledTodo.id)) {
+			// Filtrer les tâches déjà présentes ou en cours de traitement pour éviter les doublons
+			const todosToAdd = pulledTodos.filter((pulledTodo) => !processingIds.has(pulledTodo.id));
+			
+			for (const pulledTodo of todosToAdd) {
+				// Vérifier à nouveau avant d'ajouter (double vérification)
+				if (!processingIds.has(pulledTodo.id)) {
+					// Marquer comme en cours de traitement
+					syncingTodoIdsRef.current.add(pulledTodo.id);
+					
 					// Ajouter à la liste locale actuelle avec l'ID Google pour éviter les doublons
 					addTodo(
 						pulledTodo.title,
@@ -416,33 +427,37 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 						pulledTodo.priority,
 						pulledTodo.createdAt
 					);
+					
 					addedCount++;
 					console.log(
 						`✅ Tâche ajoutée: "${pulledTodo.title}"${
 							pulledTodo.deadline ? ` (deadline: ${pulledTodo.deadline})` : ""
 						}`
 					);
-				} else {
-					// Mettre à jour la tâche existante si nécessaire
-					const existingTodo = currentTodos.find((t) => t.id === pulledTodo.id);
-					if (existingTodo) {
-						let needsUpdate = false;
-						if (existingTodo.title !== pulledTodo.title) {
-							editTodo(pulledTodo.id, pulledTodo.title);
-							needsUpdate = true;
-						}
-						if (existingTodo.deadline !== pulledTodo.deadline) {
-							setDeadline(pulledTodo.id, pulledTodo.deadline);
-							needsUpdate = true;
-						}
-						if (existingTodo.completed !== pulledTodo.completed) {
-							toggleTodo(pulledTodo.id);
-							needsUpdate = true;
-						}
-						if (needsUpdate) {
-							updatedCount++;
-							console.log(`🔄 Tâche mise à jour: "${pulledTodo.title}"`);
-						}
+				}
+			}
+
+			// Mettre à jour les tâches existantes
+			const todosToUpdate = pulledTodos.filter((pulledTodo) => existingTodoIds.has(pulledTodo.id));
+			for (const pulledTodo of todosToUpdate) {
+				const existingTodo = currentTodos.find((t) => t.id === pulledTodo.id);
+				if (existingTodo) {
+					let needsUpdate = false;
+					if (existingTodo.title !== pulledTodo.title) {
+						editTodo(pulledTodo.id, pulledTodo.title);
+						needsUpdate = true;
+					}
+					if (existingTodo.deadline !== pulledTodo.deadline) {
+						setDeadline(pulledTodo.id, pulledTodo.deadline);
+						needsUpdate = true;
+					}
+					if (existingTodo.completed !== pulledTodo.completed) {
+						toggleTodo(pulledTodo.id);
+						needsUpdate = true;
+					}
+					if (needsUpdate) {
+						updatedCount++;
+						console.log(`🔄 Tâche mise à jour: "${pulledTodo.title}"`);
 					}
 				}
 			}
@@ -495,6 +510,10 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				description: error instanceof Error ? error.message : "Erreur inconnue",
 			});
 		} finally {
+			// Nettoyer les IDs en cours de traitement après un court délai
+			setTimeout(() => {
+				syncingTodoIdsRef.current.clear();
+			}, 1000);
 			setIsSyncing(false);
 		}
 	}, [
@@ -2066,37 +2085,6 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 														</div>
 														{!editingId && (
 															<div className='opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5'>
-																{/* Bouton pour créer un événement depuis un todo avec deadline */}
-																{todo.deadline && !todo.completed && (
-																	<Tooltip>
-																		<TooltipTrigger asChild>
-																			<Button
-																				variant='ghost'
-																				size='icon'
-																				className='h-5 w-5'
-																				onClick={(e) => {
-																					e.stopPropagation();
-																					// Fonction supprimée : plus de synchronisation Calendar/Todo
-																				}}
-																				onMouseDown={(e: React.MouseEvent) => {
-																					e.stopPropagation();
-																				}}
-																				onDragStart={(e: React.DragEvent) => {
-																					e.preventDefault();
-																					e.stopPropagation();
-																				}}
-																				aria-label='Créer un événement calendrier'
-																			>
-																				<Calendar className='h-2.5 w-2.5 text-blue-500' />
-																			</Button>
-																		</TooltipTrigger>
-																		<TooltipContent>
-																			<p>
-																				Créer un événement dans le calendrier
-																			</p>
-																		</TooltipContent>
-																	</Tooltip>
-																)}
 																<Button
 																	variant='ghost'
 																	size='icon'

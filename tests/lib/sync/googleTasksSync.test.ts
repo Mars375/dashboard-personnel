@@ -50,7 +50,10 @@ describe("GoogleTasksSyncProvider", () => {
 		};
 		const provider = new GoogleTasksSyncProvider(config);
 		
-		await expect(provider.sync()).rejects.toThrow("Non connecté à Google");
+		// sync() returns a result object, not throws
+		const result = await provider.sync();
+		expect(result.success).toBe(false);
+		expect(result.message).toContain("Non connecté");
 	});
 
 	it("returns success when sync called with valid config", async () => {
@@ -97,6 +100,7 @@ describe("GoogleTasksSyncProvider", () => {
 		};
 		const provider = new GoogleTasksSyncProvider(config);
 
+		// pushTodos throws when OAuth is not connected
 		await expect(provider.pushTodos([], "test-list")).rejects.toThrow(
 			"Non connecté à Google"
 		);
@@ -107,6 +111,13 @@ describe("GoogleTasksSyncProvider", () => {
 			items: [{ id: "@default", title: "Mes tâches" }],
 		};
 
+		const mockCreatedTask = {
+			id: "task-1",
+			title: "Test todo",
+			status: "needsAction",
+		};
+
+		// Mock: getOrCreateDefaultTaskList -> getAllTaskLists -> test @default -> create task
 		(global.fetch as any)
 			.mockResolvedValueOnce({
 				ok: true,
@@ -114,17 +125,17 @@ describe("GoogleTasksSyncProvider", () => {
 			})
 			.mockResolvedValueOnce({
 				ok: true,
-				json: async () => ({ items: [] }),
+				json: async () => ({ items: [] }), // Test @default response
 			})
 			.mockResolvedValueOnce({
 				ok: true,
-				json: async () => ({ id: "task-1", title: "Test todo" }),
+				json: async () => mockCreatedTask, // Create task response
 			});
 
 		const provider = new GoogleTasksSyncProvider(validConfig);
 		const todos = [
 			{
-				id: "1",
+				id: "local-id-1",
 				title: "Test todo",
 				completed: false,
 				priority: false,
@@ -132,9 +143,11 @@ describe("GoogleTasksSyncProvider", () => {
 			},
 		];
 
-		// Should not throw
-		const idMap = await provider.pushTodos(todos, "test-list");
-		expect(idMap.size).toBeGreaterThan(0);
+		// Should return ID mapping (don't pass listId, uses @default)
+		const idMap = await provider.pushTodos(todos);
+		expect(idMap.size).toBe(1);
+		expect(idMap.has("local-id-1")).toBe(true);
+		expect(idMap.get("local-id-1")).toBe("google-task-1");
 	});
 
 	it("handles pullTodos with valid credentials", async () => {
@@ -146,6 +159,7 @@ describe("GoogleTasksSyncProvider", () => {
 			items: [],
 		};
 
+		// Mock: getOrCreateDefaultTaskList (if listId not provided) -> getAllTaskLists -> test @default -> pull tasks
 		(global.fetch as any)
 			.mockResolvedValueOnce({
 				ok: true,
@@ -153,15 +167,16 @@ describe("GoogleTasksSyncProvider", () => {
 			})
 			.mockResolvedValueOnce({
 				ok: true,
-				json: async () => ({ items: [] }),
+				json: async () => ({ items: [] }), // Test @default response
 			})
 			.mockResolvedValueOnce({
 				ok: true,
-				json: async () => mockTasksResponse,
+				json: async () => mockTasksResponse, // Pull tasks response
 			});
 
 		const provider = new GoogleTasksSyncProvider(validConfig);
-		const result = await provider.pullTodos("test-list");
+		// Don't pass listId, uses @default
+		const result = await provider.pullTodos();
 
 		expect(Array.isArray(result)).toBe(true);
 		expect(result.length).toBe(0);
