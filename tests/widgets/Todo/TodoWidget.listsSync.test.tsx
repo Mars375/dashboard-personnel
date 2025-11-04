@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TodoWidget } from "@/widgets/Todo/TodoWidget";
@@ -282,7 +283,7 @@ describe("TodoWidget - Lists Synchronization", () => {
 		await waitFor(() => {
 			// The component should be rendered - check for a more specific element
 			const input = screen.getByPlaceholderText("Ajouter une tâche...");
-			expect(input).toBeInTheDocument();
+			expect(input).toBeDefined();
 		}, { timeout: 1000 });
 	});
 });
