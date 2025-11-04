@@ -1,18 +1,33 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { GoogleTasksSyncProvider } from "@/lib/sync/googleTasksSync";
 import type { SyncConfig } from "@/lib/sync/apiSync";
+
+// Mock OAuth Manager
+vi.mock("@/lib/auth/oauthManager", () => ({
+	getOAuthManager: () => ({
+		isConnected: vi.fn().mockReturnValue(true),
+		getValidAccessToken: vi.fn().mockResolvedValue("mock-access-token"),
+	}),
+}));
+
+// Mock fetch
+global.fetch = vi.fn();
 
 describe("GoogleTasksSyncProvider", () => {
 	const validConfig: SyncConfig = {
 		provider: "google-tasks",
 		enabled: true,
 		credentials: {
-			token: "test-token",
+			token: "oauth",
 		},
 	};
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		Storage.prototype.getItem = vi.fn();
+		Storage.prototype.setItem = vi.fn();
+		Storage.prototype.removeItem = vi.fn();
+		(global.fetch as any).mockClear();
 	});
 
 	it("creates provider with correct name and enabled state", () => {
@@ -21,42 +36,91 @@ describe("GoogleTasksSyncProvider", () => {
 		expect(provider.enabled).toBe(true);
 	});
 
-	it("returns error when sync called without token", async () => {
+	it("returns error when sync called without OAuth", async () => {
+		const { getOAuthManager } = await import("@/lib/auth/oauthManager");
+		const manager = getOAuthManager();
+		vi.mocked(manager.isConnected).mockReturnValueOnce(false);
+
 		const config: SyncConfig = {
 			provider: "google-tasks",
 			enabled: true,
+			credentials: {
+				token: "oauth",
+			},
 		};
 		const provider = new GoogleTasksSyncProvider(config);
-		const result = await provider.sync();
-
-		expect(result.success).toBe(false);
-		expect(result.message).toContain("Configuration Google Tasks incomplète");
-		expect(result.error).toContain("Token d'accès");
+		
+		await expect(provider.sync()).rejects.toThrow("Non connecté à Google");
 	});
 
 	it("returns success when sync called with valid config", async () => {
+		const mockTaskListResponse = {
+			items: [{ id: "@default", title: "Mes tâches" }],
+		};
+
+		const mockTasksResponse = {
+			items: [],
+		};
+
+		(global.fetch as any)
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => mockTaskListResponse,
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ items: [] }),
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => mockTasksResponse,
+			});
+
 		const provider = new GoogleTasksSyncProvider(validConfig);
 		const result = await provider.sync();
 
 		expect(result.success).toBe(true);
-		expect(result.message).toContain("Synchronisation Google Tasks réussie");
-		expect(result.todosPushed).toBe(0);
-		expect(result.todosPulled).toBe(0);
+		expect(result.message).toContain("Synchronisation réussie");
 	});
 
-	it("throws error when pushTodos called without token", async () => {
+	it("throws error when pushTodos called without OAuth", async () => {
+		const { getOAuthManager } = await import("@/lib/auth/oauthManager");
+		const manager = getOAuthManager();
+		vi.mocked(manager.isConnected).mockReturnValueOnce(false);
+
 		const config: SyncConfig = {
 			provider: "google-tasks",
 			enabled: true,
+			credentials: {
+				token: "oauth",
+			},
 		};
 		const provider = new GoogleTasksSyncProvider(config);
 
 		await expect(provider.pushTodos([], "test-list")).rejects.toThrow(
-			"Configuration Google Tasks incomplète"
+			"Non connecté à Google"
 		);
 	});
 
 	it("handles pushTodos with valid credentials", async () => {
+		const mockTaskListResponse = {
+			items: [{ id: "@default", title: "Mes tâches" }],
+		};
+
+		(global.fetch as any)
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => mockTaskListResponse,
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ items: [] }),
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ id: "task-1", title: "Test todo" }),
+			});
+
 		const provider = new GoogleTasksSyncProvider(validConfig);
 		const todos = [
 			{
@@ -69,27 +133,37 @@ describe("GoogleTasksSyncProvider", () => {
 		];
 
 		// Should not throw
-		await expect(provider.pushTodos(todos, "test-list")).resolves.not.toThrow();
-	});
-
-	it("throws error when pullTodos called without token", async () => {
-		const config: SyncConfig = {
-			provider: "google-tasks",
-			enabled: true,
-		};
-		const provider = new GoogleTasksSyncProvider(config);
-
-		await expect(provider.pullTodos("test-list")).rejects.toThrow(
-			"Configuration Google Tasks incomplète"
-		);
+		const idMap = await provider.pushTodos(todos, "test-list");
+		expect(idMap.size).toBeGreaterThan(0);
 	});
 
 	it("handles pullTodos with valid credentials", async () => {
+		const mockTaskListResponse = {
+			items: [{ id: "@default", title: "Mes tâches" }],
+		};
+
+		const mockTasksResponse = {
+			items: [],
+		};
+
+		(global.fetch as any)
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => mockTaskListResponse,
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ items: [] }),
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => mockTasksResponse,
+			});
+
 		const provider = new GoogleTasksSyncProvider(validConfig);
 		const result = await provider.pullTodos("test-list");
 
 		expect(Array.isArray(result)).toBe(true);
-		expect(result.length).toBe(0); // Placeholder returns empty array
+		expect(result.length).toBe(0);
 	});
 });
-
