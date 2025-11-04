@@ -63,12 +63,6 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 
 			// Push: create task in Google
 			// Note: getAllTaskLists -> test @default -> POST create task
-			// The response.json() can only be called once, so we need to create a new response object
-			const createTaskResponse = {
-				ok: true,
-				json: vi.fn().mockResolvedValue(mockCreatedTask),
-			};
-			
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
@@ -78,7 +72,10 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 					ok: true,
 					json: async () => ({ items: [] }),
 				})
-				.mockResolvedValueOnce(createTaskResponse);
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => mockCreatedTask,
+				});
 
 			const idMap = await provider.pushTodos([localTodo]);
 			expect(idMap.size).toBe(1);
@@ -235,18 +232,18 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				nextPageToken: undefined,
 			};
 
-			// Local modification
+			// Local modification (local ID already has google- prefix)
 			const localTodo: Todo = {
-				id: "google-task-conflict",
+				id: "google-task-conflict", // Local ID with google- prefix
 				title: "Local Change",
 				completed: false,
 				priority: true,
 				createdAt: Date.now(),
 			};
 
-			// Google has different version
+			// Google has different version (Google returns ID without prefix)
 			const googleTask = {
-				id: "google-task-conflict",
+				id: "task-conflict", // Google returns ID without "google-" prefix
 				title: "Google Change",
 				status: "completed",
 			};
@@ -291,6 +288,3 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 		});
 	});
 });
-
-
-
