@@ -139,7 +139,7 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 			};
 
 			const mockCreatedTask = {
-				id: "google-task-id-456",
+				id: "task-id-456", // Google returns ID without "google-" prefix
 				title: "Test Task",
 				status: "needsAction",
 			};
@@ -161,7 +161,7 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 			const idMap = await provider.pushTodos([todo]);
 
 			expect(idMap.has("local-id-123")).toBe(true);
-			expect(idMap.get("local-id-123")).toBe("google-google-task-id-456");
+			expect(idMap.get("local-id-123")).toBe("google-task-id-456"); // Code adds "google-" prefix
 		});
 
 		it("should update existing task with Google ID", async () => {
@@ -219,11 +219,13 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			const mockCreatedTask = {
-				id: "google-task-id-456",
+				id: "task-id-456", // Google returns ID without "google-" prefix
 				title: "Test Task",
+				status: "needsAction",
 			};
 
 			// First call fails, second succeeds
@@ -252,6 +254,7 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 		it("should pull todos and convert them correctly", async () => {
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			const mockTasksResponse = {
@@ -383,6 +386,7 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 		it("should delete task with Google ID", async () => {
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			(global.fetch as any)
@@ -412,6 +416,7 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 		it("should handle 404 gracefully (task already deleted)", async () => {
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
+				nextPageToken: undefined,
 			};
 
 			(global.fetch as any)

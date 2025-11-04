@@ -57,7 +57,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 				nextPageToken: undefined,
 			};
 
-			// First pull
+			// First pull: getAllTaskLists -> test @default (fetch) -> pullTodos
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
@@ -65,7 +65,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
+					json: async () => ({ items: [] }), // Test @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
@@ -77,6 +77,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 			expect(todos1[0].id).toBe("google-task-1");
 
 			// Second pull - same task should not create duplicates
+			// Note: taskListId is cached, but we still need getAllTaskLists -> test @default -> pullTodos
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
@@ -84,7 +85,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
+					json: async () => ({ items: [] }), // Test @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
@@ -125,7 +126,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 				nextPageToken: undefined,
 			};
 
-			// First pull
+			// First pull: getAllTaskLists -> test @default (fetch) -> pullTodos
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
@@ -133,7 +134,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
+					json: async () => ({ items: [] }), // Test @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
@@ -145,7 +146,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 			expect(todos1[0].title).toBe("Task 1");
 			expect(todos1[0].completed).toBe(false);
 
-			// Second pull with updated content
+			// Second pull with updated content: getAllTaskLists -> test @default (fetch) -> pullTodos
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
@@ -153,7 +154,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
+					json: async () => ({ items: [] }), // Test @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
@@ -183,7 +184,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 			};
 
 			const mockCreatedTask = {
-				id: "google-task-id-456",
+				id: "task-id-456", // Google returns ID without "google-" prefix
 				title: "New Task",
 				status: "needsAction",
 			};
@@ -205,7 +206,7 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 			const idMap = await provider.pushTodos([todo]);
 
 			expect(idMap.has("local-id-123")).toBe(true);
-			expect(idMap.get("local-id-123")).toBe("google-google-task-id-456");
+			expect(idMap.get("local-id-123")).toBe("google-task-id-456"); // Code adds "google-" prefix
 		});
 
 		it("should not return ID mapping for tasks that already have Google ID", async () => {
