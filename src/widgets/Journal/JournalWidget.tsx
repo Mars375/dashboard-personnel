@@ -83,7 +83,10 @@ function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
 				content: editContent,
 			});
 		}
-		setEntries(loadJournalEntries());
+		const updatedEntries = loadJournalEntries();
+		setEntries(updatedEntries);
+		// Mettre à jour la date sélectionnée pour afficher la nouvelle entrée
+		setSelectedDate(editDate);
 		setIsDialogOpen(false);
 	}, [selectedEntry, editDate, editTitle, editContent]);
 

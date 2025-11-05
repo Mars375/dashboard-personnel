@@ -134,6 +134,54 @@ function WeatherWidgetComponent({ size = "medium" }: WidgetProps) {
 					setSearchCity={setSearchCity}
 					onSubmit={handleAddCity}
 					loading={newCityLoading}
+					onSelectSuggestion={async (suggestion) => {
+						setSearchCity(suggestion.name);
+						ac.reset();
+						// Ajouter directement la ville sélectionnée
+						setNewCityLoading(true);
+						try {
+							const OPENWEATHER_API_KEY =
+								import.meta.env.VITE_OPENWEATHER_API_KEY;
+							let timezoneOffsetSec: number | undefined;
+
+							if (OPENWEATHER_API_KEY && suggestion.lat && suggestion.lon) {
+								try {
+									const weatherUrl = new URL(
+										"https://api.openweathermap.org/data/2.5/weather"
+									);
+									weatherUrl.searchParams.set("lat", String(suggestion.lat));
+									weatherUrl.searchParams.set("lon", String(suggestion.lon));
+									weatherUrl.searchParams.set("appid", OPENWEATHER_API_KEY);
+									weatherUrl.searchParams.set("units", "metric");
+									const weatherRes = await fetch(weatherUrl.toString());
+									if (weatherRes.ok) {
+										const weatherJson = await weatherRes.json();
+										if (typeof weatherJson.timezone === "number") {
+											timezoneOffsetSec = weatherJson.timezone;
+										}
+									}
+								} catch (err) {
+									// Ignorer l'erreur, on continuera sans timezone
+								}
+							}
+
+							const newCity: SavedCity = {
+								name: suggestion.name,
+								country: suggestion.country,
+								lat: suggestion.lat,
+								lon: suggestion.lon,
+								timezoneOffsetSec,
+							};
+							const updated = addSavedCity(newCity);
+							setSavedCities(updated);
+							setSearchCity("");
+							ac.reset();
+						} catch (error) {
+							logger.error("Erreur lors de l'ajout de la ville:", error);
+						} finally {
+							setNewCityLoading(false);
+						}
+					}}
 				/>
 			)}
 

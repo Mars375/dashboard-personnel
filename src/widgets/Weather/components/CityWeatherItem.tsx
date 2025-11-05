@@ -120,61 +120,81 @@ function CityWeatherItemComponent({
 		);
 	}
 
+	if (isCompact) {
+		// Style compact complètement revu : design minimaliste et moderne
+		return (
+			<motion.div
+				initial={{ opacity: 0, scale: 0.95 }}
+				animate={{ opacity: 1, scale: 1 }}
+				className="group flex flex-col items-center justify-center gap-1 p-2 rounded-lg border bg-gradient-to-br from-card to-accent/30 hover:from-accent/50 hover:to-accent/70 transition-all cursor-pointer shrink-0 min-w-[100px] max-w-[110px] h-[90px] shadow-sm hover:shadow-md"
+				onClick={onClick}
+				onMouseDown={(e: React.MouseEvent) => {
+					e.stopPropagation();
+				}}
+				onDragStart={(e: React.DragEvent) => {
+					e.preventDefault();
+					e.stopPropagation();
+				}}
+			>
+				{iconUrl && (
+					<img
+						src={iconUrl}
+						alt={data.description}
+						className="size-8 shrink-0 drop-shadow-sm"
+					/>
+				)}
+				<div className="flex flex-col items-center gap-0.5 w-full">
+					<div className="text-lg font-bold leading-none">
+						{Number.isFinite(data.temperatureC)
+							? `${Math.round(data.temperatureC)}°`
+							: "—"}
+					</div>
+					<div className="text-[9px] text-muted-foreground capitalize truncate w-full text-center">
+						{data.city}
+					</div>
+					{currentTime && (
+						<div className="text-[8px] text-muted-foreground/70 font-mono">
+							{currentTime}
+						</div>
+					)}
+				</div>
+			</motion.div>
+		);
+	}
+
+	// Style full inchangé
 	return (
 		<motion.div
 			initial={{ opacity: 0, y: -5 }}
 			animate={{ opacity: 1, y: 0 }}
-			className={`group flex items-center gap-2 ${
-				isCompact
-					? "p-1.5 rounded-md border bg-card shrink-0 min-w-[120px] max-w-[140px]"
-					: "p-2 rounded-md border bg-card cursor-pointer hover:bg-accent transition-colors"
-			}`}
+			className="group flex items-center gap-2 p-2 rounded-md border bg-card cursor-pointer hover:bg-accent transition-colors"
 			onClick={onClick}
 		>
 			{iconUrl && (
 				<img
 					src={iconUrl}
 					alt={data.description}
-					className={`${isCompact ? "size-6" : "size-10"} shrink-0`}
+					className="size-10 shrink-0"
 				/>
 			)}
 			<div className="flex-1 min-w-0">
 				<div className="flex items-center gap-1.5">
-					<div
-						className={`font-bold ${
-							isCompact ? "text-sm" : "text-base"
-						}`}
-					>
+					<div className="font-bold text-base">
 						{Number.isFinite(data.temperatureC)
 							? `${Math.round(data.temperatureC)}°C`
 							: "—"}
 					</div>
-					{currentTime && isCompact && (
-						<div className="text-[9px] text-muted-foreground shrink-0">
-							{currentTime}
-						</div>
-					)}
 				</div>
-				<div
-					className={`text-muted-foreground capitalize ${
-						isCompact ? "text-[10px]" : "text-xs"
-					} truncate`}
-				>
+				<div className="text-muted-foreground capitalize text-xs truncate">
 					{data.description}
 				</div>
-				{!isCompact && (
-					<div className="text-xs text-muted-foreground">
-						{data.city}
-						{data.country && `, ${data.country}`}
-					</div>
-				)}
+				<div className="text-xs text-muted-foreground">
+					{data.city}
+					{data.country && `, ${data.country}`}
+				</div>
 				{(data.tempMinC !== undefined ||
 					data.tempMaxC !== undefined) && (
-					<div
-						className={`text-muted-foreground ${
-							isCompact ? "text-[10px]" : "text-xs"
-						}`}
-					>
+					<div className="text-muted-foreground text-xs">
 						{data.tempMinC !== undefined
 							? Math.round(data.tempMinC)
 							: "—"}

@@ -26,6 +26,7 @@ interface WeatherSearchProps {
 	setSearchCity: (city: string) => void;
 	onSubmit: (e?: React.FormEvent) => void;
 	loading: boolean;
+	onSelectSuggestion?: (suggestion: { name: string; lat?: number; lon?: number; country?: string; state?: string }) => void;
 }
 
 function WeatherSearchComponent({
@@ -33,6 +34,7 @@ function WeatherSearchComponent({
 	setSearchCity,
 	onSubmit,
 	loading,
+	onSelectSuggestion,
 }: WeatherSearchProps) {
 	const ac = useAutocompleteCity();
 	const inputRef = useRef<HTMLInputElement | null>(null);
@@ -118,8 +120,21 @@ function WeatherSearchComponent({
 												e.preventDefault()
 											}
 											onSelect={() => {
-												setSearchCity(s.name);
-												ac.reset();
+												if (onSelectSuggestion) {
+													onSelectSuggestion(s);
+												} else {
+													setSearchCity(s.name);
+													ac.reset();
+												}
+											}}
+											onClick={(e) => {
+												e.stopPropagation();
+												if (onSelectSuggestion) {
+													onSelectSuggestion(s);
+												} else {
+													setSearchCity(s.name);
+													ac.reset();
+												}
 											}}
 											className={
 												idx === ac.activeIndex

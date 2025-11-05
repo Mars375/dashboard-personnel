@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, memo, useCallback } from "react";
-import { Plus, Check, X, Flame, Calendar, Edit2, Trash2, TrendingUp } from "lucide-react";
+import { Plus, Check, Circle, Flame, Calendar, Edit2, Trash2, TrendingUp } from "lucide-react";
 import type { WidgetProps } from "@/lib/widgetSize";
 import {
 	loadHabits,
@@ -231,7 +231,7 @@ function HabitsWidgetComponent({ size = "medium" }: WidgetProps) {
 											{isCompleted ? (
 												<Check className="h-4 w-4" />
 											) : (
-												<X className="h-4 w-4" />
+												<Circle className="h-4 w-4" />
 											)}
 										</Button>
 										<div className="flex-1 min-w-0">
