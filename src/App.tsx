@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Loading } from "@/components/ui/loading";
+import { WidgetProvider } from "@/lib/widgetContext";
 
 // Lazy loading des composants lourds
 const Dashboard = lazy(() =>
@@ -28,12 +29,12 @@ function App() {
 	}
 
 	return (
-		<>
+		<WidgetProvider>
 			<Suspense fallback={<Loading fullScreen />}>
 				<Dashboard />
 			</Suspense>
 			<Toaster />
-		</>
+		</WidgetProvider>
 	);
 }
 

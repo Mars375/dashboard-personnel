@@ -41,6 +41,8 @@ export function WidgetSkeleton({ widgetType, className }: WidgetSkeletonProps) {
 			return <QuoteSkeleton className={className} />;
 		case "graphiques":
 			return <GraphiquesSkeleton className={className} />;
+		case "stock":
+			return <StockSkeleton className={className} />;
 		default:
 			return <GenericWidgetSkeleton className={className} />;
 	}
@@ -364,6 +366,36 @@ function GraphiquesSkeleton({ className }: { className?: string }) {
 							<Skeleton className="h-4 w-4 rounded" />
 						</div>
 						<Skeleton className="h-32 w-full" />
+					</div>
+				))}
+			</div>
+		</div>
+	);
+}
+
+/**
+ * Skeleton pour le widget Stock
+ */
+function StockSkeleton({ className }: { className?: string }) {
+	return (
+		<div className={cn("h-full w-full p-4 space-y-4", className)}>
+			<div className="flex items-center justify-between">
+				<Skeleton className="h-6 w-24" />
+				<Skeleton className="h-8 w-20" />
+			</div>
+			<div className="space-y-2">
+				{[...Array(4)].map((_, i) => (
+					<div key={i} className="p-3 rounded space-y-2">
+						<div className="flex items-center justify-between">
+							<div className="space-y-1">
+								<Skeleton className="h-4 w-16" />
+								<Skeleton className="h-3 w-32" />
+							</div>
+							<div className="text-right space-y-1">
+								<Skeleton className="h-5 w-20" />
+								<Skeleton className="h-4 w-16" />
+							</div>
+						</div>
 					</div>
 				))}
 			</div>

@@ -147,81 +147,130 @@ function BookmarksWidgetComponent({ size = "medium" }: WidgetProps) {
 				</div>
 			)}
 
-			{/* Bookmarks List */}
-			<div className="flex-1 overflow-y-auto">
-				{filteredBookmarks.length === 0 ? (
-					<div className="text-sm text-muted-foreground text-center py-8">
-						{searchQuery ? "Aucun bookmark trouvé" : "Aucun bookmark"}
+			{isCompact && (
+				<div className="flex flex-col gap-1.5 flex-1 overflow-y-auto">
+					<div className="flex items-center justify-between shrink-0 pb-1 border-b">
+						<div className="flex items-center gap-1.5">
+							<Link2 className="h-4 w-4 text-muted-foreground" />
+							<div className="text-xs font-bold">{bookmarks.length}</div>
+							<div className="text-[10px] text-muted-foreground">bookmarks</div>
+						</div>
+						<Button
+							size="sm"
+							variant="ghost"
+							className="h-6 px-2"
+							onClick={handleAddBookmark}
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+						>
+							<Plus className="h-3 w-3" />
+						</Button>
 					</div>
-				) : (
-					<div className={cn("flex flex-col", isCompact ? "gap-1" : "gap-2")}>
-						{filteredBookmarks.map((bookmark) => (
-							<motion.div
+					{bookmarks.length === 0 ? (
+						<div className="flex flex-col items-center justify-center gap-2 flex-1 text-center">
+							<Link2 className="h-6 w-6 text-muted-foreground" />
+							<div className="text-xs text-muted-foreground">Aucun bookmark</div>
+						</div>
+					) : (
+						bookmarks.slice(0, 6).map((bookmark) => (
+							<div
 								key={bookmark.id}
-								initial={{ opacity: 0, y: 10 }}
-								animate={{ opacity: 1, y: 0 }}
-								className={cn(
-									"p-3 rounded-lg border bg-card hover:bg-accent transition-colors cursor-pointer",
-									isCompact && "p-1.5 text-xs"
-								)}
+								className="p-2 rounded border bg-card hover:bg-accent transition-colors cursor-pointer"
 								onClick={() => handleOpenBookmark(bookmark.url)}
 							>
-								<div className="flex items-start justify-between gap-2">
-									<div className="flex items-start gap-3 flex-1 min-w-0">
-										{bookmark.favicon ? (
-											<img
-												src={bookmark.favicon}
-												alt=""
-												className={cn("shrink-0 rounded-md border", isCompact ? "w-4 h-4" : "w-8 h-8")}
-												onError={(e) => {
-													(e.target as HTMLImageElement).style.display = "none";
-												}}
-											/>
-										) : (
-											<div
-												className={cn(
-													"shrink-0 rounded-md border bg-muted flex items-center justify-center",
-													isCompact ? "w-4 h-4" : "w-8 h-8"
-												)}
-											>
-												<Link2 className={cn("text-muted-foreground", isCompact ? "w-2 h-2" : "w-4 h-4")} />
-											</div>
-										)}
-										<div className="flex-1 min-w-0">
-											<div className={cn("font-semibold truncate", isCompact && "text-xs")}>
-												{bookmark.title || bookmark.url}
-											</div>
-											<div className={cn("text-muted-foreground truncate mt-0.5", isCompact ? "text-[10px]" : "text-xs")}>
-												{new URL(bookmark.url).hostname}
-											</div>
-											{bookmark.description && (
-												<div
-													className={cn(
-														"text-muted-foreground line-clamp-2 mt-1",
-														isCompact ? "text-[10px]" : "text-xs"
-													)}
-												>
-													{bookmark.description}
-												</div>
-											)}
-											{bookmark.tags && bookmark.tags.length > 0 && (
-												<div className="flex gap-1 mt-1.5 flex-wrap">
-													{bookmark.tags.slice(0, 3).map((tag, idx) => (
-														<span
-															key={idx}
-															className={cn(
-																"px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[10px]",
-																isCompact && "text-[8px] px-1 py-0"
-															)}
-														>
-															{tag}
-														</span>
-													))}
-												</div>
-											)}
+								<div className="flex items-center gap-2">
+									{bookmark.favicon ? (
+										<img
+											src={bookmark.favicon}
+											alt=""
+											className="h-4 w-4 shrink-0 rounded border"
+											onError={(e) => {
+												(e.target as HTMLImageElement).style.display = "none";
+											}}
+										/>
+									) : (
+										<div className="h-4 w-4 shrink-0 rounded border bg-muted flex items-center justify-center">
+											<Link2 className="h-2.5 w-2.5 text-muted-foreground" />
 										</div>
+									)}
+									<div className="flex-1 min-w-0">
+										<div className="text-xs font-medium truncate">{bookmark.title || bookmark.url}</div>
+										<div className="text-[10px] text-muted-foreground truncate">{new URL(bookmark.url).hostname}</div>
 									</div>
-									{isFull && (
+								</div>
+							</div>
+						))
+					)}
+					{bookmarks.length > 6 && (
+						<div className="text-[10px] text-muted-foreground text-center pt-1">
+							+{bookmarks.length - 6} autres
+						</div>
+					)}
+				</div>
+			)}
+
+			{/* Bookmarks List - Full */}
+			{isFull && (
+				<div className="flex-1 overflow-y-auto">
+					{filteredBookmarks.length === 0 ? (
+						<div className="text-sm text-muted-foreground text-center py-8">
+							{searchQuery ? "Aucun bookmark trouvé" : "Aucun bookmark"}
+						</div>
+					) : (
+						<div className="flex flex-col gap-2">
+							{filteredBookmarks.map((bookmark) => (
+								<motion.div
+									key={bookmark.id}
+									initial={{ opacity: 0, y: 10 }}
+									animate={{ opacity: 1, y: 0 }}
+									className="p-3 rounded-lg border bg-card hover:bg-accent transition-colors cursor-pointer"
+									onClick={() => handleOpenBookmark(bookmark.url)}
+								>
+									<div className="flex items-start justify-between gap-2">
+										<div className="flex items-start gap-3 flex-1 min-w-0">
+											{bookmark.favicon ? (
+												<img
+													src={bookmark.favicon}
+													alt=""
+													className="shrink-0 rounded-md border w-8 h-8"
+													onError={(e) => {
+														(e.target as HTMLImageElement).style.display = "none";
+													}}
+												/>
+											) : (
+												<div className="shrink-0 rounded-md border bg-muted flex items-center justify-center w-8 h-8">
+													<Link2 className="w-4 h-4 text-muted-foreground" />
+												</div>
+											)}
+											<div className="flex-1 min-w-0">
+												<div className="font-semibold truncate">{bookmark.title || bookmark.url}</div>
+												<div className="text-muted-foreground truncate mt-0.5 text-xs">
+													{new URL(bookmark.url).hostname}
+												</div>
+												{bookmark.description && (
+													<div className="text-muted-foreground line-clamp-2 mt-1 text-xs">
+														{bookmark.description}
+													</div>
+												)}
+												{bookmark.tags && bookmark.tags.length > 0 && (
+													<div className="flex gap-1 mt-1.5 flex-wrap">
+														{bookmark.tags.slice(0, 3).map((tag, idx) => (
+															<span
+																key={idx}
+																className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[10px]"
+															>
+																{tag}
+															</span>
+														))}
+													</div>
+												)}
+											</div>
+										</div>
 										<div className="flex items-center gap-1 shrink-0">
 											<Button
 												variant="ghost"
@@ -281,13 +330,13 @@ function BookmarksWidgetComponent({ size = "medium" }: WidgetProps) {
 												<Trash2 className="h-4 w-4" />
 											</Button>
 										</div>
-									)}
-								</div>
-							</motion.div>
-						))}
-					</div>
-				)}
-			</div>
+									</div>
+								</motion.div>
+							))}
+						</div>
+					)}
+				</div>
+			)}
 
 			{/* Compact Add Button */}
 			{isCompact && (

@@ -94,6 +94,7 @@ export const useDashboardStore = create<DashboardState>()(
 						rss: { w: 4, h: 6, minW: 3, minH: 4 },
 						quote: { w: 3, h: 3, minW: 2, minH: 2 },
 						graphiques: { w: 4, h: 6, minW: 3, minH: 4 },
+						stock: { w: 4, h: 6, minW: 3, minH: 4 },
 					};
 
 					const defaultSize = sizes[type] || { w: 4, h: 4, minW: 2, minH: 2 };
