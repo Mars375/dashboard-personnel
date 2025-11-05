@@ -2,8 +2,6 @@
  * Widget Library System - Système de base pour ajout dynamique de widgets
  */
 
-import type { WidgetDefinition } from "./widgetRegistry";
-
 export interface WidgetManifest {
 	id: string;
 	name: string;

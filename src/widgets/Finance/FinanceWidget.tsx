@@ -21,7 +21,7 @@ import { DatePicker } from "@/components/ui/calendar-full";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, memo, useCallback } from "react";
-import { Plus, Edit2, Trash2, TrendingUp, TrendingDown, DollarSign, Calendar } from "lucide-react";
+import { Plus, Edit2, Trash2, TrendingUp, TrendingDown, Calendar } from "lucide-react";
 import type { WidgetProps } from "@/lib/widgetSize";
 import {
 	loadTransactions,
@@ -37,7 +37,7 @@ import {
 	type Budget,
 } from "@/store/financeStorage";
 import { cn } from "@/lib/utils";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { fr } from "date-fns/locale";
 import { LazyPieChart, LazyPie, LazyCell } from "@/components/ui/chart-lazy";
 
@@ -126,17 +126,6 @@ function FinanceWidgetComponent({ size = "medium" }: WidgetProps) {
 		setEditCategory("");
 		setIsBudgetDialogOpen(true);
 	}, []);
-
-	const handleEditBudget = useCallback((budget: Budget) => {
-		setSelectedBudget(budget);
-		setEditAmount(budget.amount.toString());
-		setEditCategory(budget.category);
-		setIsBudgetDialogOpen(true);
-	}, []);
-
-	const handleEditBudgetClick = useCallback((budget: Budget) => {
-		handleEditBudget(budget);
-	}, [handleEditBudget]);
 
 	const handleSaveBudget = useCallback(() => {
 		const amount = parseFloat(editAmount);
