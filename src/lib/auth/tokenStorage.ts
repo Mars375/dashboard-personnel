@@ -1,6 +1,7 @@
 // Stockage sécurisé des tokens OAuth
 
 import type { OAuthProvider, OAuthConnection } from "./types";
+import { logger } from "@/lib/logger";
 
 const STORAGE_PREFIX = "oauth:";
 const STORAGE_KEY_CONNECTIONS = "oauth:connections";
@@ -27,7 +28,7 @@ export class TokenStorage {
 			}
 			localStorage.setItem(STORAGE_KEY_CONNECTIONS, JSON.stringify(connections));
 		} catch (error) {
-			console.error("Erreur lors de la sauvegarde de la connexion:", error);
+			logger.error("Erreur lors de la sauvegarde de la connexion:", error);
 		}
 	}
 
@@ -65,7 +66,7 @@ export class TokenStorage {
 			const filtered = connections.filter((c) => c.provider !== provider);
 			localStorage.setItem(STORAGE_KEY_CONNECTIONS, JSON.stringify(filtered));
 		} catch (error) {
-			console.error("Erreur lors de la suppression de la connexion:", error);
+			logger.error("Erreur lors de la suppression de la connexion:", error);
 		}
 	}
 

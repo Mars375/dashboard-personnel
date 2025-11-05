@@ -14,7 +14,7 @@ export const logger = {
 	/**
 	 * Logs de debug (seulement en développement)
 	 */
-	debug: (...args: any[]) => {
+	debug: (...args: unknown[]) => {
 		if (isDev) {
 			console.log("[DEBUG]", ...args);
 		}
@@ -23,28 +23,28 @@ export const logger = {
 	/**
 	 * Logs d'information (toujours affichés)
 	 */
-	info: (...args: any[]) => {
+	info: (...args: unknown[]) => {
 		console.log("[INFO]", ...args);
 	},
 
 	/**
 	 * Avertissements (toujours affichés)
 	 */
-	warn: (...args: any[]) => {
+	warn: (...args: unknown[]) => {
 		console.warn("[WARN]", ...args);
 	},
 
 	/**
 	 * Erreurs (toujours affichées)
 	 */
-	error: (...args: any[]) => {
+	error: (...args: unknown[]) => {
 		console.error("[ERROR]", ...args);
 	},
 
 	/**
 	 * Log avec un niveau spécifique
 	 */
-	log: (level: LogLevel, ...args: any[]) => {
+	log: (level: LogLevel, ...args: unknown[]) => {
 		logger[level](...args);
 	},
 };

@@ -30,6 +30,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import type { CalendarEvent, CalendarView } from "@/widgets/Calendar/types";
@@ -871,7 +872,7 @@ export function Calendar({
 														handleEventDragStart(event.id);
 													} catch (error) {
 														// Ignorer les erreurs d'extensions de navigateur
-														console.warn(
+														logger.warn(
 															"Erreur lors du drag start (peut être causée par une extension):",
 															error
 														);
@@ -883,7 +884,7 @@ export function Calendar({
 														handleEventDragEnd();
 													} catch (error) {
 														// Ignorer les erreurs d'extensions de navigateur
-														console.warn(
+														logger.warn(
 															"Erreur lors du drag end (peut être causée par une extension):",
 															error
 														);
@@ -933,7 +934,7 @@ export function Calendar({
 				</div>
 			);
 		} catch (error) {
-			console.error("Erreur dans WeekView:", error);
+			logger.error("Erreur dans WeekView:", error);
 			return (
 				<div className='p-4 text-center text-muted-foreground'>
 					Erreur lors de l'affichage de la vue semaine
@@ -997,7 +998,7 @@ export function Calendar({
 						handleEventDrop(displayDate, newTime);
 					} catch (error) {
 						toast.error("Erreur lors du changement d'heure");
-						console.error("Erreur dragDrop time:", error);
+						logger.error("Erreur dragDrop time:", error);
 					}
 				}
 			};
@@ -1086,7 +1087,7 @@ export function Calendar({
 													handleEventDragStart(event.id);
 												} catch (error) {
 													// Ignorer les erreurs d'extensions de navigateur
-													console.warn(
+													logger.warn(
 														"Erreur lors du drag start (peut être causée par une extension):",
 														error
 													);
@@ -1098,7 +1099,7 @@ export function Calendar({
 													handleEventDragEnd();
 												} catch (error) {
 													// Ignorer les erreurs d'extensions de navigateur
-													console.warn(
+													logger.warn(
 														"Erreur lors du drag end (peut être causée par une extension):",
 														error
 													);
@@ -1146,7 +1147,7 @@ export function Calendar({
 				</div>
 			);
 		} catch (error) {
-			console.error("Erreur dans DayView:", error);
+			logger.error("Erreur dans DayView:", error);
 			return (
 				<div className='p-4 text-center text-muted-foreground'>
 					Erreur lors de l'affichage de la vue jour

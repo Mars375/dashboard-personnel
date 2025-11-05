@@ -11,6 +11,7 @@ import { TokenStorage } from "./tokenStorage";
 import { GoogleAuth, type GoogleAuthConfig } from "./googleAuth";
 import { MicrosoftAuth, type MicrosoftAuthConfig } from "./microsoftAuth";
 import { NotionAuth, type NotionAuthConfig } from "./notionAuth";
+import { logger } from "@/lib/logger";
 
 export interface OAuthManagerConfig {
 	google?: GoogleAuthConfig;
@@ -54,7 +55,7 @@ export class OAuthManager {
 				try {
 					user = await this.googleAuth.getUserInfo(tokens.accessToken);
 				} catch (error) {
-					console.warn("Impossible de récupérer les infos utilisateur:", error);
+					logger.warn("Impossible de récupérer les infos utilisateur:", error);
 				}
 				break;
 			}
@@ -66,7 +67,7 @@ export class OAuthManager {
 				try {
 					user = await this.microsoftAuth.getUserInfo(tokens.accessToken);
 				} catch (error) {
-					console.warn("Impossible de récupérer les infos utilisateur:", error);
+					logger.warn("Impossible de récupérer les infos utilisateur:", error);
 				}
 				break;
 			}
@@ -78,7 +79,7 @@ export class OAuthManager {
 				try {
 					user = await this.notionAuth.getUserInfo(tokens.accessToken);
 				} catch (error) {
-					console.warn("Impossible de récupérer les infos utilisateur:", error);
+					logger.warn("Impossible de récupérer les infos utilisateur:", error);
 				}
 				break;
 			}
@@ -148,39 +149,55 @@ export class OAuthManager {
 
 		let refreshedTokens: OAuthTokens;
 
-		switch (provider) {
-			case "google": {
-				if (!this.googleAuth) {
-					throw new Error("Google Auth n'est pas configuré");
+		try {
+			switch (provider) {
+				case "google": {
+					if (!this.googleAuth) {
+						throw new Error("Google Auth n'est pas configuré");
+					}
+					refreshedTokens = await this.googleAuth.refreshAccessToken(
+						connection.tokens.refreshToken,
+					);
+					break;
 				}
-				refreshedTokens = await this.googleAuth.refreshAccessToken(
-					connection.tokens.refreshToken,
-				);
-				break;
-			}
-			case "microsoft": {
-				if (!this.microsoftAuth) {
-					throw new Error("Microsoft Auth n'est pas configuré");
+				case "microsoft": {
+					if (!this.microsoftAuth) {
+						throw new Error("Microsoft Auth n'est pas configuré");
+					}
+					refreshedTokens = await this.microsoftAuth.refreshAccessToken(
+						connection.tokens.refreshToken,
+					);
+					break;
 				}
-				refreshedTokens = await this.microsoftAuth.refreshAccessToken(
-					connection.tokens.refreshToken,
-				);
-				break;
+				case "notion": {
+					// Notion n'utilise pas de refresh token standard
+					throw new Error(
+						"Les tokens Notion doivent être rafraîchis manuellement",
+					);
+				}
+				default:
+					throw new Error(`Provider non supporté: ${provider}`);
 			}
-			case "notion": {
-				// Notion n'utilise pas de refresh token standard
+
+			// Mettre à jour les tokens
+			TokenStorage.updateTokens(provider, refreshedTokens);
+
+			return refreshedTokens.accessToken;
+		} catch (error) {
+			// Si le refresh token est invalide ou expiré, supprimer la connexion et demander une nouvelle authentification
+			if (error instanceof Error && (
+				error.message.includes("Token invalide") ||
+				error.message.includes("expiré") ||
+				error.message.includes("reconnecter")
+			)) {
+				// Supprimer la connexion invalide
+				TokenStorage.removeConnection(provider);
 				throw new Error(
-					"Les tokens Notion doivent être rafraîchis manuellement",
+					`Session expirée. Veuillez vous reconnecter à ${provider}.`
 				);
 			}
-			default:
-				throw new Error(`Provider non supporté: ${provider}`);
+			throw error;
 		}
-
-		// Mettre à jour les tokens
-		TokenStorage.updateTokens(provider, refreshedTokens);
-
-		return refreshedTokens.accessToken;
 	}
 
 	/**

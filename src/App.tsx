@@ -1,18 +1,37 @@
-import { Dashboard } from "@/components/Dashboard/Dashboard";
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
-import { OAuthCallback } from "@/pages/OAuthCallback";
+import { Loading } from "@/components/ui/loading";
+
+// Lazy loading des composants lourds
+const Dashboard = lazy(() =>
+	import("@/components/Dashboard/Dashboard").then((module) => ({
+		default: module.Dashboard,
+	}))
+);
+
+const OAuthCallback = lazy(() =>
+	import("@/pages/OAuthCallback").then((module) => ({
+		default: module.OAuthCallback,
+	}))
+);
 
 function App() {
 	// Détecter si on est sur la page de callback OAuth
 	const isOAuthCallback = window.location.pathname.startsWith("/oauth/");
 
 	if (isOAuthCallback) {
-		return <OAuthCallback />;
+		return (
+			<Suspense fallback={<Loading fullScreen />}>
+				<OAuthCallback />
+			</Suspense>
+		);
 	}
 
 	return (
 		<>
-			<Dashboard />
+			<Suspense fallback={<Loading fullScreen />}>
+				<Dashboard />
+			</Suspense>
 			<Toaster />
 		</>
 	);

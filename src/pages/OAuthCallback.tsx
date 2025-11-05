@@ -1,6 +1,7 @@
 // Page de callback OAuth pour gérer les redirections OAuth
 
 import { useEffect, useRef } from "react";
+import { logger } from "@/lib/logger";
 
 export function OAuthCallback() {
 	// Flag pour s'assurer que le message n'est envoyé qu'une seule fois
@@ -47,7 +48,7 @@ export function OAuthCallback() {
 			}, 100);
 		} else if (!window.opener) {
 			// Fenêtre principale - rediriger vers le dashboard
-			console.log("OAuth callback reçu dans la fenêtre principale:", { code, error });
+			logger.debug("OAuth callback reçu dans la fenêtre principale:", { code, error });
 			// Rediriger vers le dashboard
 			window.location.href = "/";
 		}

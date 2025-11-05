@@ -20,10 +20,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { widgetRegistry } from "@/lib/widgetRegistry";
 import { useDashboardStore } from "@/store/dashboardStore";
-import { useState } from "react";
-import type React from "react";
+import { useState, memo } from "react";
 
-export function WidgetPicker() {
+function WidgetPickerComponent() {
 	const isOpen = useDashboardStore((state) => state.isPickerOpen);
 	const closePicker = useDashboardStore((state) => state.closePicker);
 	const addWidget = useDashboardStore((state) => state.addWidget);
@@ -275,3 +274,6 @@ export function WidgetPicker() {
 		</Dialog>
 	);
 }
+
+// Optimiser avec React.memo pour éviter les re-renders inutiles
+export const WidgetPicker = memo(WidgetPickerComponent);

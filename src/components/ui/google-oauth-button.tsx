@@ -8,10 +8,12 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Loader2, CheckCircle2, Calendar } from "lucide-react";
+import { CheckCircle2, Calendar } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import { getOAuthManager } from "@/lib/auth/oauthManager";
 import { toast } from "sonner";
 import type { OAuthService } from "@/lib/auth/types";
+import { logger } from "@/lib/logger";
 
 interface GoogleOAuthButtonProps {
 	onCalendarConnect?: () => void;
@@ -86,7 +88,7 @@ export function GoogleOAuthButton({
 			} else {
 				toast.error(`Erreur lors de la connexion à Google: ${errorMessage}`);
 			}
-			console.error("Erreur OAuth Google:", error);
+			logger.error("Erreur OAuth Google:", error);
 		} finally {
 			setIsConnecting(false);
 		}
@@ -105,7 +107,7 @@ export function GoogleOAuthButton({
 			toast.error(
 				`Erreur lors de la déconnexion: ${error instanceof Error ? error.message : "Erreur inconnue"}`,
 			);
-			console.error("Erreur déconnexion Google:", error);
+			logger.error("Erreur déconnexion Google:", error);
 		}
 	};
 
@@ -140,12 +142,12 @@ export function GoogleOAuthButton({
 						disabled={isConnecting}
 						className={isConnected ? "bg-green-600 hover:bg-green-700" : ""}
 					>
-						{isConnecting ? (
-							<>
-								<Loader2 className='mr-2 h-4 w-4 animate-spin' />
-								{!iconOnly && "Connexion..."}
-							</>
-						) : (
+					{isConnecting ? (
+						<>
+							<Spinner className='mr-2 size-4' />
+							{!iconOnly && "Connexion..."}
+						</>
+					) : (
 							buttonContent
 						)}
 					</Button>

@@ -15,10 +15,12 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, CheckCircle2, Calendar } from "lucide-react";
+import { CheckCircle2, Calendar } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import type { OAuthProvider } from "@/lib/auth";
 import { getOAuthManager } from "@/lib/auth/oauthManager";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 interface OAuthButtonProps {
 	provider: OAuthProvider;
@@ -74,7 +76,7 @@ export function OAuthButton({
 					`Erreur lors de la connexion à ${getServiceName()}: ${errorMessage}`,
 				);
 			}
-			console.error("Erreur OAuth:", error);
+			logger.error("Erreur OAuth:", error);
 		} finally {
 			setIsConnecting(false);
 		}
@@ -91,7 +93,7 @@ export function OAuthButton({
 			toast.error(
 				`Erreur lors de la déconnexion: ${error instanceof Error ? error.message : "Erreur inconnue"}`,
 			);
-			console.error("Erreur déconnexion:", error);
+			logger.error("Erreur déconnexion:", error);
 		}
 	};
 
@@ -148,7 +150,7 @@ export function OAuthButton({
 							}
 						>
 							{isConnecting ? (
-								<Loader2 className="h-4 w-4 animate-spin" />
+								<Spinner className="size-4" />
 							) : isConnected ? (
 								<CheckCircle2 className="h-4 w-4 text-green-600" />
 							) : (
@@ -192,7 +194,7 @@ export function OAuthButton({
 		>
 			{isConnecting ? (
 				<>
-					<Loader2 className="h-4 w-4 animate-spin" />
+					<Spinner className="size-4" />
 					Connexion...
 				</>
 			) : (

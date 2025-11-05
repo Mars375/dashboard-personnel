@@ -1,5 +1,13 @@
+/**
+ * Provider de synchronisation Notion (placeholder)
+ * 
+ * ⚠️ Ce provider est un placeholder non implémenté.
+ * Il sera complété lors de l'intégration de l'API Notion.
+ */
+
 import type { Todo } from "@/store/todoStorage";
 import type { SyncProvider, SyncResult, SyncConfig } from "./apiSync";
+import { logger } from "@/lib/logger";
 
 export class NotionSyncProvider implements SyncProvider {
 	name = "Notion";
@@ -23,6 +31,7 @@ export class NotionSyncProvider implements SyncProvider {
 		try {
 			// Placeholder for Notion API integration
 			// You would implement actual Notion API calls here
+			logger.debug("Notion sync not yet implemented");
 			return {
 				success: true,
 				message: "Synchronisation Notion réussie",
@@ -45,7 +54,7 @@ export class NotionSyncProvider implements SyncProvider {
 
 		// Placeholder for Notion API push
 		// Example: POST to Notion API to create/update pages
-		console.log(`Pushing ${todos.length} todos to Notion (list: ${listId})`);
+		logger.debug(`Pushing ${todos.length} todos to Notion (list: ${listId}) - not implemented`);
 	}
 
 	async pullTodos(listId: string): Promise<Todo[]> {
@@ -55,7 +64,7 @@ export class NotionSyncProvider implements SyncProvider {
 
 		// Placeholder for Notion API pull
 		// Example: GET from Notion API to fetch pages
-		console.log(`Pulling todos from Notion (list: ${listId})`);
+		logger.debug(`Pulling todos from Notion (list: ${listId}) - not implemented`);
 		return [];
 	}
 }

@@ -34,7 +34,8 @@ import { toast } from "sonner";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { motion } from "framer-motion";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useTodos, type TodoFilter } from "@/hooks/useTodos";
+import { useTodos } from "@/hooks/useTodos";
+import type { TodoFilter } from "@/lib/constants";
 import { saveTodos, type Todo } from "@/store/todoStorage";
 import { useTodoStore } from "@/store/todoStore";
 import { DatePicker } from "@/components/ui/calendar-full";
@@ -62,16 +63,25 @@ import {
 import { logger } from "@/lib/logger";
 import { syncMessages, getSyncError, syncWarnings } from "@/lib/syncMessages";
 import {
-	Star,
+	SYNC_INTERVALS,
+	RETRY_DELAYS,
+	TODO_FILTERS,
+} from "@/lib/constants";
+import { shouldVirtualize } from "@/lib/performance";
+import { VirtualizedList } from "@/components/ui/virtualized-list";
+import {
+	TodoFilters,
+	TodoSearchBar,
+	TodoAddForm,
+	TodoItem,
+	TodoStats,
+} from "./components";
+import {
 	Trash2,
 	Edit2,
-	Search,
 	Calendar,
 	Download,
 	Upload,
-	AlertCircle,
-	BarChart3,
-	PieChart,
 	Undo2,
 	Redo2,
 	ChevronDown,
@@ -80,14 +90,8 @@ import {
 	Bell,
 	BellOff,
 	RefreshCw,
-	Loader2,
 } from "lucide-react";
-import {
-	ChartContainer,
-	ChartTooltip,
-	ChartTooltipContent,
-} from "@/components/ui/chart";
-import { PieChart as RechartsPieChart, Pie, Cell } from "recharts";
+import { Spinner } from "@/components/ui/spinner";
 import type { WidgetProps } from "@/lib/widgetSize";
 
 export function TodoWidget({ size = "medium" }: WidgetProps) {
@@ -117,7 +121,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 		canRedo,
 	} = useTodos();
 
-	const [filter, setFilter] = useState<TodoFilter>("all");
+	const [filter, setFilter] = useState<TodoFilter>(TODO_FILTERS.ALL);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [editingValue, setEditingValue] = useState("");
@@ -134,7 +138,6 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [todoToDelete, setTodoToDelete] = useState<string | null>(null);
 	const [isDragging, setIsDragging] = useState(false);
-	const [showStats, setShowStats] = useState(false);
 	const [newListName, setNewListName] = useState("");
 	const [showNewList, setShowNewList] = useState(false);
 	const [isSyncing, setIsSyncing] = useState(false);
@@ -277,12 +280,16 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 						let unsubscribe: (() => void) | undefined;
 
 						// Attendre un court délai pour que la tâche soit ajoutée au store
-						await new Promise((resolve) => setTimeout(resolve, 100));
+						await new Promise((resolve) =>
+							setTimeout(resolve, RETRY_DELAYS.INITIAL)
+						);
 
 						// Essayer de trouver la tâche (max 2 tentatives avec délais plus courts)
 						for (let attempt = 0; attempt < 2 && !newTodo; attempt++) {
 							if (attempt > 0) {
-								await new Promise((resolve) => setTimeout(resolve, 100));
+								await new Promise((resolve) =>
+									setTimeout(resolve, RETRY_DELAYS.INITIAL)
+								);
 							}
 							// Utiliser la fonction utilitaire pour récupérer la tâche
 							newTodo = getTodoByTitle(todoTitle, true);
@@ -311,14 +318,14 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 										}
 									});
 
-									// Timeout après 500ms
+									// Timeout après un délai raisonnable
 									setTimeout(() => {
 										if (unsubscribe) {
 											unsubscribe();
 											unsubscribe = undefined;
 										}
 										resolve(undefined);
-									}, 500);
+									}, RETRY_DELAYS.INITIAL * 5);
 								}
 							);
 
@@ -455,7 +462,9 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 					setSyncingTodoIds(new Set(syncingTodoIdsRef.current));
 
 					// Attendre que le state soit mis à jour (editTodo et setDeadline sont asynchrones)
-					await new Promise((resolve) => setTimeout(resolve, 100));
+					await new Promise((resolve) =>
+						setTimeout(resolve, RETRY_DELAYS.INITIAL)
+					);
 					const updatedTodo = todos.find((t) => t.id === id);
 					if (updatedTodo) {
 						// Créer une copie avec les valeurs mises à jour pour s'assurer qu'on envoie les bonnes valeurs
@@ -521,7 +530,9 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				setSyncingTodoIds(new Set(syncingTodoIdsRef.current));
 
 				// Attendre que le state soit mis à jour, puis récupérer la tâche mise à jour
-				await new Promise((resolve) => setTimeout(resolve, 100));
+				await new Promise((resolve) =>
+					setTimeout(resolve, RETRY_DELAYS.INITIAL)
+				);
 				const updatedTodo = todos.find((t) => t.id === todo.id);
 				if (updatedTodo) {
 					// Créer une copie avec le statut complété mis à jour
@@ -869,10 +880,17 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 			});
 		} finally {
 			// Nettoyer les IDs en cours de traitement après un court délai
-			setTimeout(() => {
+			// Utiliser requestAnimationFrame ou setTimeout avec vérification de l'environnement
+			if (typeof window !== "undefined") {
+				setTimeout(() => {
+					syncingTodoIdsRef.current.clear();
+					setSyncingTodoIds(new Set());
+				}, 1000);
+			} else {
+				// En environnement de test, nettoyer immédiatement
 				syncingTodoIdsRef.current.clear();
 				setSyncingTodoIds(new Set());
-			}, 1000);
+			}
 			setIsSyncing(false);
 		}
 	}, [
@@ -945,29 +963,22 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 						logger.error("Erreur lors de la synchronisation initiale:", error);
 					}
 				}
-			}, 2000);
+			}, SYNC_INTERVALS.INITIAL_DELAY);
 
-			// Puis synchroniser toutes les 5 minutes
-			syncIntervalTasksRef.current = setInterval(
-				async () => {
-					if (
-						googleTasksProvider &&
-						googleTasksProvider.enabled &&
-						!isSyncing
-					) {
-						try {
-							logger.debug("🔄 Synchronisation automatique Google Tasks...");
-							await handleSync();
-						} catch (error) {
-							logger.error(
-								"Erreur lors de la synchronisation périodique:",
-								error
-							);
-						}
+			// Puis synchroniser toutes les X minutes
+			syncIntervalTasksRef.current = setInterval(async () => {
+				if (googleTasksProvider && googleTasksProvider.enabled && !isSyncing) {
+					try {
+						logger.debug("🔄 Synchronisation automatique Google Tasks...");
+						await handleSync();
+					} catch (error) {
+						logger.error(
+							"Erreur lors de la synchronisation périodique:",
+							error
+						);
 					}
-				},
-				5 * 60 * 1000
-			); // 5 minutes
+				}
+			}, SYNC_INTERVALS.GOOGLE_TASKS);
 
 			return () => {
 				clearTimeout(initialSync);
@@ -1522,7 +1533,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 																	<Tooltip>
 																		<TooltipTrigger asChild>
 																			<div className='flex items-center ml-1'>
-																				<Loader2 className='h-3 w-3 text-blue-500 animate-spin' />
+																				<Spinner className='size-3 text-blue-500' />
 																			</div>
 																		</TooltipTrigger>
 																		<TooltipContent>
@@ -2176,402 +2187,108 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 						)}
 
 						{/* Recherche (icône) */}
-						<div className='flex justify-end'>
-							<Popover>
-								<PopoverTrigger asChild>
-									<Button
-										variant='outline'
-										size='icon'
-										className='h-7 w-7'
-										onMouseDown={(e: React.MouseEvent) => {
-											e.stopPropagation();
-										}}
-										onDragStart={(e: React.DragEvent) => {
-											e.preventDefault();
-											e.stopPropagation();
-										}}
-									>
-										<Search className='h-3.5 w-3.5' />
-										<span className='sr-only'>Rechercher</span>
-									</Button>
-								</PopoverTrigger>
-								<PopoverContent className='w-64 p-2'>
-									<div className='relative'>
-										<Search className='absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-										<Input
-											type='text'
-											placeholder='Rechercher...'
-											value={searchQuery}
-											onChange={(e) => setSearchQuery(e.target.value)}
-											onMouseDown={(e: React.MouseEvent) => {
-												e.stopPropagation();
-											}}
-											onDragStart={(e: React.DragEvent) => {
-												e.preventDefault();
-												e.stopPropagation();
-											}}
-											className='pl-8'
-											aria-label='Rechercher dans les tâches'
-										/>
-									</div>
-								</PopoverContent>
-							</Popover>
-						</div>
+						<TodoSearchBar
+							searchQuery={searchQuery}
+							setSearchQuery={setSearchQuery}
+							size='medium'
+						/>
 
 						{/* Input ajout */}
-						<form onSubmit={handleAddTodo} className='flex flex-col gap-1.5'>
-							<div className='flex gap-1.5'>
-								<Input
-									ref={inputRef}
-									placeholder='Ajouter une tâche...'
-									onMouseDown={(e: React.MouseEvent) => {
-										e.stopPropagation();
-									}}
-									onDragStart={(e: React.DragEvent) => {
-										e.preventDefault();
-										e.stopPropagation();
-									}}
-									className='flex-1 h-9 text-sm'
-									aria-label='Nouvelle tâche'
-								/>
-								<Button
-									type='submit'
-									size='sm'
-									className='h-9'
-									onMouseDown={(e: React.MouseEvent) => {
-										e.stopPropagation();
-									}}
-									onDragStart={(e: React.DragEvent) => {
-										e.preventDefault();
-										e.stopPropagation();
-									}}
-								>
-									Ajouter
-								</Button>
-							</div>
-						</form>
+						<TodoAddForm
+							onSubmit={(title, deadline) => {
+								// Appeler directement addTodo avec les valeurs
+								if (title.trim()) {
+									// Convertir deadline string en Date si nécessaire
+									if (deadline) {
+										const deadlineDate = new Date(deadline);
+										setNewTodoDeadline(deadlineDate);
+										setShowNewDeadline(true);
+									}
+									// Appeler addTodo directement
+									addTodo(title, deadline);
+								}
+							}}
+							size='medium'
+						/>
 
 						{/* Filtres compacts */}
-						<div className='flex gap-1.5'>
-							<Button
-								variant={filter === "all" ? "default" : "outline"}
-								size='sm'
-								onClick={() => setFilter("all")}
-								onMouseDown={(e: React.MouseEvent) => {
-									e.stopPropagation();
-								}}
-								onDragStart={(e: React.DragEvent) => {
-									e.preventDefault();
-									e.stopPropagation();
-								}}
-								className='h-8 text-sm'
-							>
-								Toutes
-							</Button>
-							<Button
-								variant={filter === "active" ? "default" : "outline"}
-								size='sm'
-								onClick={() => setFilter("active")}
-								onMouseDown={(e: React.MouseEvent) => {
-									e.stopPropagation();
-								}}
-								onDragStart={(e: React.DragEvent) => {
-									e.preventDefault();
-									e.stopPropagation();
-								}}
-								className='h-8 text-sm'
-							>
-								Actives
-							</Button>
-							<Button
-								variant={filter === "completed" ? "default" : "outline"}
-								size='sm'
-								onClick={() => setFilter("completed")}
-								onMouseDown={(e: React.MouseEvent) => {
-									e.stopPropagation();
-								}}
-								onDragStart={(e: React.DragEvent) => {
-									e.preventDefault();
-									e.stopPropagation();
-								}}
-								className='h-8 text-sm'
-							>
-								Terminées
-							</Button>
-						</div>
+						<TodoFilters filter={filter} setFilter={setFilter} size='medium' />
 
 						{/* Liste des tâches */}
-						<div className='flex-1 overflow-y-auto min-h-0'>
-							<div className='flex flex-col gap-1.5'>
-								{filtered.length === 0 ? (
-									<motion.div
-										key='empty'
-										initial={{ opacity: 0 }}
-										animate={{ opacity: 1 }}
-										className='text-center text-muted-foreground py-4 text-xs'
-									>
-										{searchQuery
-											? "Aucune tâche ne correspond à votre recherche"
-											: filter === "all"
-											? "Aucune tâche. Ajoutez-en une !"
-											: filter === "active"
-											? "Aucune tâche active"
-											: filter === "completed"
-											? "Aucune tâche terminée"
-											: "Aucune tâche prioritaire"}
-									</motion.div>
-								) : (
-									filtered.map((todo) => {
-										const deadlineStatus = getDeadlineStatus(todo.deadline);
-										return (
-											<motion.div
-												key={todo.id}
-												initial={{ opacity: 0, y: -10 }}
-												animate={{ opacity: 1, y: 0 }}
-												exit={{ opacity: 0, x: -20 }}
-												layout
-											>
-												<div
-													className={cn(
-														"rounded-md border p-2 text-xs group",
-														todo.priority
-															? "border-yellow-400/50 bg-yellow-50/30 dark:bg-yellow-950/10"
-															: "border-border",
-														todo.completed && "opacity-60"
-													)}
-												>
-													<div className='flex items-start justify-between gap-2'>
-														<div className='flex items-start gap-1.5 flex-1 min-w-0'>
-															<Checkbox
-																checked={todo.completed}
-																onCheckedChange={async () => {
-																	await handleToggleTodo(todo);
-																}}
-																onMouseDown={(e: React.MouseEvent) => {
-																	e.stopPropagation();
-																}}
-																onDragStart={(e: React.DragEvent) => {
-																	e.preventDefault();
-																	e.stopPropagation();
-																}}
-																className='mt-0.5 h-3.5 w-3.5'
-																aria-label={
-																	todo.completed
-																		? "Marquer comme non terminé"
-																		: "Marquer comme terminé"
-																}
-															/>
-															<div className='flex-1 min-w-0'>
-																{editingId === todo.id ? (
-																	<div
-																		className='flex flex-col gap-1.5'
-																		data-editing-todo={todo.id}
-																	>
-																		<Input
-																			ref={editInputRef}
-																			value={editingValue}
-																			onChange={(
-																				e: React.ChangeEvent<HTMLInputElement>
-																			) => setEditingValue(e.target.value)}
-																			onKeyDown={(
-																				e: React.KeyboardEvent<HTMLInputElement>
-																			) => {
-																				if (e.key === "Enter") {
-																					saveEdit(todo.id);
-																				} else if (e.key === "Escape") {
-																					cancelEdit();
-																				}
-																			}}
-																			onMouseDown={(e: React.MouseEvent) => {
-																				e.stopPropagation();
-																			}}
-																			onDragStart={(e: React.DragEvent) => {
-																				e.preventDefault();
-																				e.stopPropagation();
-																			}}
-																			className='flex-1 h-7 text-xs'
-																		/>
-																		{/* Champ deadline dans l'édition */}
-																		<div className='flex gap-2 items-center'>
-																			<Popover
-																				open={deadlinePickerOpen}
-																				onOpenChange={setDeadlinePickerOpen}
-																			>
-																				<PopoverTrigger asChild>
-																					<Button
-																						variant='outline'
-																						className='flex-1 justify-start text-left font-normal h-7 text-xs'
-																						onMouseDown={(
-																							e: React.MouseEvent
-																						) => {
-																							e.stopPropagation();
-																						}}
-																						onDragStart={(
-																							e: React.DragEvent
-																						) => {
-																							e.preventDefault();
-																							e.stopPropagation();
-																						}}
-																					>
-																						<Calendar className='mr-2 h-3 w-3' />
-																						{editingDeadline ? (
-																							format(editingDeadline, "PPP", {
-																								locale: fr,
-																							})
-																						) : (
-																							<span className='text-muted-foreground'>
-																								Date limite (optionnel)
-																							</span>
-																						)}
-																					</Button>
-																				</PopoverTrigger>
-																				<PopoverContent
-																					className='w-auto p-0'
-																					align='start'
-																					onMouseDown={(
-																						e: React.MouseEvent
-																					) => {
-																						e.stopPropagation();
-																					}}
-																					onDragStart={(e: React.DragEvent) => {
-																						e.preventDefault();
-																						e.stopPropagation();
-																					}}
-																				>
-																					<DatePicker
-																						selected={editingDeadline}
-																						onSelect={(date) => {
-																							setEditingDeadline(date);
-																							// Fermer le Popover après la sélection
-																							if (date) {
-																								setDeadlinePickerOpen(false);
-																							}
-																						}}
-																						captionLayout='dropdown'
-																					/>
-																				</PopoverContent>
-																			</Popover>
-																			{editingDeadline && (
-																				<Button
-																					type='button'
-																					variant='ghost'
-																					size='sm'
-																					className='h-7 px-2 text-xs shrink-0'
-																					onClick={() =>
-																						setEditingDeadline(undefined)
-																					}
-																					onMouseDown={(
-																						e: React.MouseEvent
-																					) => {
-																						e.stopPropagation();
-																					}}
-																					onDragStart={(e: React.DragEvent) => {
-																						e.preventDefault();
-																						e.stopPropagation();
-																					}}
-																					aria-label='Supprimer la date limite'
-																				>
-																					×
-																				</Button>
-																			)}
-																		</div>
-																	</div>
-																) : (
-																	<>
-																		<div
-																			className={cn(
-																				"font-medium",
-																				todo.completed &&
-																					"line-through text-muted-foreground"
-																			)}
-																			onDoubleClick={(e) => {
-																				e.stopPropagation();
-																				startEdit(todo);
-																			}}
-																			onMouseDown={(e: React.MouseEvent) => {
-																				e.stopPropagation();
-																			}}
-																		>
-																			{todo.title}
-																		</div>
-																		{deadlineStatus && !todo.completed && (
-																			<div className='text-[10px] text-muted-foreground mt-0.5 flex flex-col gap-1'>
-																				<div className='flex items-center gap-1'>
-																					<Calendar className='h-2.5 w-2.5' />
-																					<span>{deadlineStatus.text}</span>
-																					{deadlineStatus.status ===
-																						"overdue" && (
-																						<AlertCircle className='h-2.5 w-2.5 text-destructive' />
-																					)}
-																				</div>
-																				{/* Affichage des événements du calendrier supprimé : séparation Calendar/Todo */}
-																			</div>
-																		)}
-																	</>
-																)}
-															</div>
-														</div>
-														{!editingId && (
-															<div className='opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5'>
-																<Button
-																	variant='ghost'
-																	size='icon'
-																	className='h-5 w-5'
-																	onClick={(e) => {
-																		e.stopPropagation();
-																		handleTogglePriority(todo);
-																	}}
-																	onMouseDown={(e: React.MouseEvent) => {
-																		e.stopPropagation();
-																	}}
-																	onDragStart={(e: React.DragEvent) => {
-																		e.preventDefault();
-																		e.stopPropagation();
-																	}}
-																	aria-label={
-																		todo.priority
-																			? "Retirer la priorité"
-																			: "Marquer comme prioritaire"
-																	}
-																>
-																	<Star
-																		className={cn(
-																			"h-2.5 w-2.5",
-																			todo.priority
-																				? "fill-yellow-400 text-yellow-400"
-																				: "text-muted-foreground"
-																		)}
-																	/>
-																</Button>
-																<Button
-																	variant='ghost'
-																	size='icon'
-																	className='h-5 w-5'
-																	onClick={(e) => {
-																		e.stopPropagation();
-																		handleDeleteClick(todo.id);
-																	}}
-																	onMouseDown={(e: React.MouseEvent) => {
-																		e.stopPropagation();
-																	}}
-																	onDragStart={(e: React.DragEvent) => {
-																		e.preventDefault();
-																		e.stopPropagation();
-																	}}
-																	aria-label='Supprimer la tâche'
-																>
-																	×
-																</Button>
-															</div>
-														)}
-													</div>
-												</div>
-											</motion.div>
-										);
-									})
+						{filtered.length === 0 ? (
+							<motion.div
+								key='empty'
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								className='text-center text-muted-foreground py-4 text-xs'
+							>
+								{searchQuery
+									? "Aucune tâche ne correspond à votre recherche"
+									: filter === "all"
+									? "Aucune tâche. Ajoutez-en une !"
+									: filter === "active"
+									? "Aucune tâche active"
+									: filter === "completed"
+									? "Aucune tâche terminée"
+									: "Aucune tâche prioritaire"}
+							</motion.div>
+						) : shouldVirtualize(filtered.length) ? (
+							<VirtualizedList
+								items={filtered}
+								renderItem={(todo) => (
+									<TodoItem
+										key={todo.id}
+										todo={todo}
+										editingId={editingId}
+										editingValue={editingValue}
+										editingDeadline={editingDeadline}
+										deadlinePickerOpen={deadlinePickerOpen}
+										onToggle={handleToggleTodo}
+										onDelete={handleDeleteClick}
+										onStartEdit={startEdit}
+										onEditValueChange={setEditingValue}
+										onEditDeadlineChange={setEditingDeadline}
+										onSaveEdit={saveEdit}
+										onCancelEdit={cancelEdit}
+										onToggleDeadlinePicker={setDeadlinePickerOpen}
+										onTogglePriority={handleTogglePriority}
+										onCreateEvent={() => {}}
+										isSyncing={syncingTodoIds.has(todo.id)}
+										editInputRef={editInputRef}
+									/>
 								)}
+								containerHeight='100%'
+								className='flex-1'
+								widgetSize='medium'
+							/>
+						) : (
+							<div className='flex-1 overflow-y-auto min-h-0'>
+								<div className='flex flex-col gap-1.5'>
+									{filtered.map((todo) => (
+										<TodoItem
+											key={todo.id}
+											todo={todo}
+											editingId={editingId}
+											editingValue={editingValue}
+											editingDeadline={editingDeadline}
+											deadlinePickerOpen={deadlinePickerOpen}
+											onToggle={handleToggleTodo}
+											onDelete={handleDeleteClick}
+											onStartEdit={startEdit}
+											onEditValueChange={setEditingValue}
+											onEditDeadlineChange={setEditingDeadline}
+											onSaveEdit={saveEdit}
+											onCancelEdit={cancelEdit}
+											onToggleDeadlinePicker={setDeadlinePickerOpen}
+											onTogglePriority={handleTogglePriority}
+											onCreateEvent={() => {}}
+											isSyncing={syncingTodoIds.has(todo.id)}
+											editInputRef={editInputRef}
+										/>
+									))}
+								</div>
 							</div>
-						</div>
+						)}
 					</>
 				)}
 
@@ -2579,141 +2296,25 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				{isFull && (
 					<>
 						{/* Stats */}
-						{totalCount > 0 && (
-							<div className='space-y-3'>
-								<div className='flex items-center justify-between'>
-									<div className='flex items-center justify-between text-sm flex-1'>
-										<span className='text-muted-foreground'>Progression</span>
-										<span className='font-medium'>{progressPercentage}%</span>
-									</div>
-									<Button
-										variant='ghost'
-										size='sm'
-										onClick={() => setShowStats(!showStats)}
-										onMouseDown={(e: React.MouseEvent) => {
-											e.stopPropagation();
-										}}
-										onDragStart={(e: React.DragEvent) => {
-											e.preventDefault();
-											e.stopPropagation();
-										}}
-										className='h-8'
-										aria-label='Afficher les statistiques'
-									>
-										{showStats ? (
-											<BarChart3 className='h-4 w-4' />
-										) : (
-											<PieChart className='h-4 w-4' />
-										)}
-									</Button>
-								</div>
-								<Progress value={progressPercentage} className='w-full' />
-								<div className='flex gap-4 text-xs text-muted-foreground'>
-									<span>
-										{activeCount} active{activeCount !== 1 ? "s" : ""}
-									</span>
-									<span>
-										{completedCount} terminée{completedCount !== 1 ? "s" : ""}
-									</span>
-									{priorityCount > 0 && (
-										<span>
-											{priorityCount} prioritaire
-											{priorityCount !== 1 ? "s" : ""}
-										</span>
-									)}
-									{overdueCount > 0 && (
-										<span className='text-red-600 font-medium'>
-											{overdueCount} en retard
-										</span>
-									)}
-								</div>
-
-								{/* Visual Statistics Charts */}
-								{showStats && (
-									<div className='grid grid-cols-2 gap-4 pt-2'>
-										{/* Status Pie Chart */}
-										<div className='space-y-2'>
-											<h4 className='text-xs font-medium text-muted-foreground'>
-												Par statut
-											</h4>
-											<ChartContainer
-												config={chartConfig}
-												className='h-[120px]'
-											>
-												<RechartsPieChart>
-													<ChartTooltip
-														content={<ChartTooltipContent hideLabel />}
-													/>
-													<Pie
-														data={statusChartData}
-														dataKey='value'
-														nameKey='name'
-														cx='50%'
-														cy='50%'
-														outerRadius={50}
-													>
-														{statusChartData.map((entry, index) => (
-															<Cell key={`cell-${index}`} fill={entry.fill} />
-														))}
-													</Pie>
-												</RechartsPieChart>
-											</ChartContainer>
-										</div>
-
-										{/* Priority Pie Chart */}
-										{priorityCount > 0 && (
-											<div className='space-y-2'>
-												<h4 className='text-xs font-medium text-muted-foreground'>
-													Par priorité
-												</h4>
-												<ChartContainer
-													config={chartConfig}
-													className='h-[120px]'
-												>
-													<RechartsPieChart>
-														<ChartTooltip
-															content={<ChartTooltipContent hideLabel />}
-														/>
-														<Pie
-															data={priorityChartData}
-															dataKey='value'
-															nameKey='name'
-															cx='50%'
-															cy='50%'
-															outerRadius={50}
-														>
-															{priorityChartData.map((entry, index) => (
-																<Cell key={`cell-${index}`} fill={entry.fill} />
-															))}
-														</Pie>
-													</RechartsPieChart>
-												</ChartContainer>
-											</div>
-										)}
-									</div>
-								)}
-							</div>
-						)}
+						<TodoStats
+							totalCount={totalCount}
+							activeCount={activeCount}
+							completedCount={completedCount}
+							priorityCount={priorityCount}
+							overdueCount={overdueCount}
+							progressPercentage={progressPercentage}
+							size='full'
+							chartConfig={chartConfig}
+							statusChartData={statusChartData}
+							priorityChartData={priorityChartData}
+						/>
 
 						{/* Recherche complète */}
-						<div className='relative'>
-							<Search className='absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-							<Input
-								type='text'
-								placeholder='Rechercher...'
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								onMouseDown={(e: React.MouseEvent) => {
-									e.stopPropagation();
-								}}
-								onDragStart={(e: React.DragEvent) => {
-									e.preventDefault();
-									e.stopPropagation();
-								}}
-								className='pl-8'
-								aria-label='Rechercher dans les tâches'
-							/>
-						</div>
+						<TodoSearchBar
+							searchQuery={searchQuery}
+							setSearchQuery={setSearchQuery}
+							size='full'
+						/>
 
 						{/* Input ajout avec deadline */}
 						<form onSubmit={handleAddTodo} className='flex flex-col gap-2'>
@@ -2837,354 +2438,81 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 						</form>
 
 						{/* Filtres complets */}
-						<div className='flex gap-2 text-sm items-center flex-wrap'>
-							<Button
-								variant={filter === "all" ? "default" : "outline"}
-								size='sm'
-								onClick={() => setFilter("all")}
-								onMouseDown={(e: React.MouseEvent) => {
-									e.stopPropagation();
-								}}
-								onDragStart={(e: React.DragEvent) => {
-									e.preventDefault();
-									e.stopPropagation();
-								}}
-								aria-label='Toutes les tâches'
-							>
-								Toutes
-							</Button>
-							<Button
-								variant={filter === "active" ? "default" : "outline"}
-								size='sm'
-								onClick={() => setFilter("active")}
-								onMouseDown={(e: React.MouseEvent) => {
-									e.stopPropagation();
-								}}
-								onDragStart={(e: React.DragEvent) => {
-									e.preventDefault();
-									e.stopPropagation();
-								}}
-								aria-label='Tâches actives'
-							>
-								Actives
-							</Button>
-							<Button
-								variant={filter === "completed" ? "default" : "outline"}
-								size='sm'
-								onClick={() => setFilter("completed")}
-								onMouseDown={(e: React.MouseEvent) => {
-									e.stopPropagation();
-								}}
-								onDragStart={(e: React.DragEvent) => {
-									e.preventDefault();
-									e.stopPropagation();
-								}}
-								aria-label='Tâches terminées'
-							>
-								Terminées
-							</Button>
-							<Button
-								variant={filter === "priority" ? "default" : "outline"}
-								size='sm'
-								onClick={() => setFilter("priority")}
-								onMouseDown={(e: React.MouseEvent) => {
-									e.stopPropagation();
-								}}
-								onDragStart={(e: React.DragEvent) => {
-									e.preventDefault();
-									e.stopPropagation();
-								}}
-								aria-label='Tâches prioritaires'
-							>
-								<Star className='h-3 w-3 mr-1' />
-								Prioritaires
-							</Button>
-						</div>
+						<TodoFilters filter={filter} setFilter={setFilter} size='full' />
 
 						{/* Liste complète */}
-						<div className='flex flex-col gap-2 min-h-[200px] max-h-[400px] overflow-y-auto'>
-							{filtered.length === 0 ? (
-								<motion.div
-									key='empty'
-									initial={{ opacity: 0 }}
-									animate={{ opacity: 1 }}
-									className='text-center text-muted-foreground py-8 text-sm'
-								>
-									{searchQuery
-										? "Aucune tâche ne correspond à votre recherche"
-										: filter === "all"
-										? "Aucune tâche. Ajoutez-en une !"
-										: filter === "active"
-										? "Aucune tâche active"
-										: filter === "completed"
-										? "Aucune tâche terminée"
-										: "Aucune tâche prioritaire"}
-								</motion.div>
-							) : (
-								filtered.map((todo) => {
-									const deadlineStatus = getDeadlineStatus(todo.deadline);
-									return (
-										<motion.div
-											key={todo.id}
-											initial={{ opacity: 0, y: -10 }}
-											animate={{ opacity: 1, y: 0 }}
-											exit={{ opacity: 0, x: -20 }}
-											layout
-										>
-											<div
-												className={cn(
-													"rounded-md border p-3 group",
-													todo.priority
-														? "border-yellow-400/50 bg-yellow-50/30 dark:bg-yellow-950/10"
-														: "border-border",
-													todo.completed && "opacity-60"
-												)}
-											>
-												<div className='flex items-start justify-between gap-2'>
-													<div className='flex items-start gap-2 flex-1 min-w-0'>
-														<Checkbox
-															checked={todo.completed}
-															onCheckedChange={() => toggleTodo(todo.id)}
-															onMouseDown={(e: React.MouseEvent) => {
-																e.stopPropagation();
-															}}
-															onDragStart={(e: React.DragEvent) => {
-																e.preventDefault();
-																e.stopPropagation();
-															}}
-															className='mt-1'
-															aria-label={
-																todo.completed
-																	? "Marquer comme non terminé"
-																	: "Marquer comme terminé"
-															}
-														/>
-														<div className='flex-1 min-w-0'>
-															{editingId === todo.id ? (
-																<div
-																	className='flex flex-col gap-2'
-																	data-editing-todo={todo.id}
-																>
-																	<Input
-																		ref={editInputRef}
-																		value={editingValue}
-																		onChange={(
-																			e: React.ChangeEvent<HTMLInputElement>
-																		) => setEditingValue(e.target.value)}
-																		onKeyDown={(
-																			e: React.KeyboardEvent<HTMLInputElement>
-																		) => {
-																			if (e.key === "Enter") {
-																				saveEdit(todo.id);
-																			} else if (e.key === "Escape") {
-																				cancelEdit();
-																			}
-																		}}
-																		onMouseDown={(e: React.MouseEvent) => {
-																			e.stopPropagation();
-																		}}
-																		onDragStart={(e: React.DragEvent) => {
-																			e.preventDefault();
-																			e.stopPropagation();
-																		}}
-																		className='flex-1'
-																	/>
-																	{/* Champ deadline dans l'édition full */}
-																	<div className='flex gap-2 items-center'>
-																		<Popover
-																			open={deadlinePickerOpen}
-																			onOpenChange={setDeadlinePickerOpen}
-																		>
-																			<PopoverTrigger asChild>
-																				<Button
-																					variant='outline'
-																					className='flex-1 justify-start text-left font-normal'
-																					onMouseDown={(
-																						e: React.MouseEvent
-																					) => {
-																						e.stopPropagation();
-																					}}
-																					onDragStart={(e: React.DragEvent) => {
-																						e.preventDefault();
-																						e.stopPropagation();
-																					}}
-																				>
-																					<Calendar className='mr-2 h-4 w-4' />
-																					{editingDeadline ? (
-																						format(editingDeadline, "PPP", {
-																							locale: fr,
-																						})
-																					) : (
-																						<span className='text-muted-foreground'>
-																							Date limite (optionnel)
-																						</span>
-																					)}
-																				</Button>
-																			</PopoverTrigger>
-																			<PopoverContent
-																				className='w-auto p-0'
-																				align='start'
-																				onMouseDown={(e: React.MouseEvent) => {
-																					e.stopPropagation();
-																				}}
-																				onDragStart={(e: React.DragEvent) => {
-																					e.preventDefault();
-																					e.stopPropagation();
-																				}}
-																			>
-																				<DatePicker
-																					selected={editingDeadline}
-																					onSelect={(date) => {
-																						setEditingDeadline(date);
-																						// Fermer le Popover après la sélection
-																						if (date) {
-																							setDeadlinePickerOpen(false);
-																						}
-																					}}
-																					captionLayout='dropdown'
-																				/>
-																			</PopoverContent>
-																		</Popover>
-																		{editingDeadline && (
-																			<Button
-																				type='button'
-																				variant='ghost'
-																				size='sm'
-																				className='shrink-0'
-																				onClick={() =>
-																					setEditingDeadline(undefined)
-																				}
-																				onMouseDown={(e: React.MouseEvent) => {
-																					e.stopPropagation();
-																				}}
-																				onDragStart={(e: React.DragEvent) => {
-																					e.preventDefault();
-																					e.stopPropagation();
-																				}}
-																				aria-label='Supprimer la date limite'
-																			>
-																				×
-																			</Button>
-																		)}
-																	</div>
-																</div>
-															) : (
-																<>
-																	<div
-																		className={cn(
-																			"font-medium",
-																			todo.completed &&
-																				"line-through text-muted-foreground"
-																		)}
-																		onDoubleClick={(e) => {
-																			e.stopPropagation();
-																			startEdit(todo);
-																		}}
-																		onMouseDown={(e: React.MouseEvent) => {
-																			e.stopPropagation();
-																		}}
-																		onDragStart={(e: React.DragEvent) => {
-																			e.preventDefault();
-																			e.stopPropagation();
-																		}}
-																	>
-																		{todo.title}
-																	</div>
-																	{deadlineStatus && !todo.completed && (
-																		<div className='text-xs text-muted-foreground mt-1 flex flex-col gap-1'>
-																			<div className='flex items-center gap-1'>
-																				<Calendar className='h-3 w-3' />
-																				<span>{deadlineStatus.text}</span>
-																				{deadlineStatus.status ===
-																					"overdue" && (
-																					<AlertCircle className='h-3 w-3 text-destructive' />
-																				)}
-																			</div>
-																		</div>
-																	)}
-																</>
-															)}
-														</div>
-													</div>
-													{!editingId && (
-														<div className='opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1'>
-															<Button
-																variant='ghost'
-																size='icon'
-																className='h-8 w-8'
-																onClick={(e) => {
-																	e.stopPropagation();
-																	handleTogglePriority(todo);
-																}}
-																onMouseDown={(e: React.MouseEvent) => {
-																	e.stopPropagation();
-																}}
-																onDragStart={(e: React.DragEvent) => {
-																	e.preventDefault();
-																	e.stopPropagation();
-																}}
-																aria-label={
-																	todo.priority
-																		? "Retirer la priorité"
-																		: "Marquer comme prioritaire"
-																}
-															>
-																<Star
-																	className={cn(
-																		"h-4 w-4",
-																		todo.priority
-																			? "fill-yellow-400 text-yellow-400"
-																			: "text-muted-foreground"
-																	)}
-																/>
-															</Button>
-															<Button
-																variant='ghost'
-																size='icon'
-																className='h-8 w-8'
-																onClick={(e) => {
-																	e.stopPropagation();
-																	startEdit(todo);
-																}}
-																onMouseDown={(e: React.MouseEvent) => {
-																	e.stopPropagation();
-																}}
-																onDragStart={(e: React.DragEvent) => {
-																	e.preventDefault();
-																	e.stopPropagation();
-																}}
-																aria-label='Modifier la tâche'
-															>
-																<Edit2 className='h-4 w-4' />
-															</Button>
-															<Button
-																variant='ghost'
-																size='icon'
-																className='h-8 w-8'
-																onClick={(e) => {
-																	e.stopPropagation();
-																	handleDeleteClick(todo.id);
-																}}
-																onMouseDown={(e: React.MouseEvent) => {
-																	e.stopPropagation();
-																}}
-																onDragStart={(e: React.DragEvent) => {
-																	e.preventDefault();
-																	e.stopPropagation();
-																}}
-																aria-label='Supprimer la tâche'
-															>
-																<Trash2 className='h-4 w-4' />
-															</Button>
-														</div>
-													)}
-												</div>
-											</div>
-										</motion.div>
-									);
-								})
-							)}
-						</div>
+						{filtered.length === 0 ? (
+							<motion.div
+								key='empty'
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								className='text-center text-muted-foreground py-8 text-sm'
+							>
+								{searchQuery
+									? "Aucune tâche ne correspond à votre recherche"
+									: filter === "all"
+									? "Aucune tâche. Ajoutez-en une !"
+									: filter === "active"
+									? "Aucune tâche active"
+									: filter === "completed"
+									? "Aucune tâche terminée"
+									: "Aucune tâche prioritaire"}
+							</motion.div>
+						) : shouldVirtualize(filtered.length) ? (
+							<VirtualizedList
+								items={filtered}
+								renderItem={(todo) => (
+									<TodoItem
+										key={todo.id}
+										todo={todo}
+										editingId={editingId}
+										editingValue={editingValue}
+										editingDeadline={editingDeadline}
+										deadlinePickerOpen={deadlinePickerOpen}
+										onToggle={handleToggleTodo}
+										onDelete={handleDeleteClick}
+										onStartEdit={startEdit}
+										onEditValueChange={setEditingValue}
+										onEditDeadlineChange={setEditingDeadline}
+										onSaveEdit={saveEdit}
+										onCancelEdit={cancelEdit}
+										onToggleDeadlinePicker={setDeadlinePickerOpen}
+										onTogglePriority={handleTogglePriority}
+										onCreateEvent={() => {}}
+										isSyncing={syncingTodoIds.has(todo.id)}
+										editInputRef={editInputRef}
+									/>
+								)}
+								containerHeight='400px'
+								className='min-h-[200px]'
+								widgetSize='full'
+							/>
+						) : (
+							<div className='flex flex-col gap-2 min-h-[200px] max-h-[400px] overflow-y-auto'>
+								{filtered.map((todo) => (
+									<TodoItem
+										key={todo.id}
+										todo={todo}
+										editingId={editingId}
+										editingValue={editingValue}
+										editingDeadline={editingDeadline}
+										deadlinePickerOpen={deadlinePickerOpen}
+										onToggle={handleToggleTodo}
+										onDelete={handleDeleteClick}
+										onStartEdit={startEdit}
+										onEditValueChange={setEditingValue}
+										onEditDeadlineChange={setEditingDeadline}
+										onSaveEdit={saveEdit}
+										onCancelEdit={cancelEdit}
+										onToggleDeadlinePicker={setDeadlinePickerOpen}
+										onTogglePriority={handleTogglePriority}
+										onCreateEvent={() => {}}
+										isSyncing={syncingTodoIds.has(todo.id)}
+										editInputRef={editInputRef}
+									/>
+								))}
+							</div>
+						)}
 					</>
 				)}
 
