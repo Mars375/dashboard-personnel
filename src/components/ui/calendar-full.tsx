@@ -11,29 +11,20 @@ import {
 	isSameDay,
 	addDays,
 	subDays,
-	startOfMonth,
-	endOfMonth,
-	isSameMonth,
 	addMonths,
 	subMonths,
-	getYear,
-	getMonth,
 } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import type { CalendarEvent, CalendarView } from "@/widgets/Calendar/types";
+import { CalendarHeader } from "./calendar/CalendarHeader";
+import { CalendarGrid } from "./calendar/CalendarGrid";
+import { calculateModifiers, getModifiersClassNames } from "./calendar/CalendarModifiers";
 
 // Interface pour DatePicker simple (utilisé dans les Popovers)
 export interface DatePickerProps {
@@ -57,23 +48,6 @@ export function DatePicker({
 	captionLayout = "dropdown",
 	showOutsideDays = true,
 }: DatePickerProps) {
-	const MONTHS = [
-		"Janvier",
-		"Février",
-		"Mars",
-		"Avril",
-		"Mai",
-		"Juin",
-		"Juillet",
-		"Août",
-		"Septembre",
-		"Octobre",
-		"Novembre",
-		"Décembre",
-	];
-
-	const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-
 	const [currentMonth, setCurrentMonth] = useState<Date>(month || new Date());
 
 	useEffect(() => {
@@ -85,16 +59,6 @@ export function DatePicker({
 	const handleMonthChange = (newMonth: Date) => {
 		setCurrentMonth(newMonth);
 		onMonthChange?.(newMonth);
-	};
-
-	const handleMonthSelect = (monthIndex: number) => {
-		const newMonth = new Date(currentMonth.getFullYear(), monthIndex, 1);
-		handleMonthChange(newMonth);
-	};
-
-	const handleYearSelect = (year: number) => {
-		const newMonth = new Date(year, currentMonth.getMonth(), 1);
-		handleMonthChange(newMonth);
 	};
 
 	const handleDayClick = (day: Date) => {
@@ -111,156 +75,19 @@ export function DatePicker({
 		onSelect?.(day);
 	};
 
-	// Calculer les jours à afficher
-	const monthStart = startOfMonth(currentMonth);
-	const monthEnd = endOfMonth(currentMonth);
-	const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-	const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-
-	const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
-
-	const currentYear = getYear(currentMonth);
-	const currentMonthIndex = getMonth(currentMonth);
-	const years = Array.from({ length: 20 }, (_, i) => currentYear - 10 + i);
-
-	const isToday = (day: Date) => isSameDay(day, new Date());
-	const isSelected = (day: Date) => selected && isSameDay(day, selected);
-
 	return (
 		<div className={cn("group/calendar p-3 w-fit", className)}>
-			{/* Header avec navigation */}
-			<div className='flex items-center justify-between mb-4'>
-				{captionLayout === "dropdown" ||
-				captionLayout === "dropdown-buttons" ? (
-					<div className='flex items-center gap-1.5'>
-						<Select
-							value={currentMonthIndex.toString()}
-							onValueChange={(value) => handleMonthSelect(Number(value))}
-						>
-							<SelectTrigger
-								className='w-[100px] h-8 text-sm'
-								onMouseDown={(e: React.MouseEvent) => {
-									e.stopPropagation();
-								}}
-								onDragStart={(e: React.DragEvent) => {
-									e.preventDefault();
-									e.stopPropagation();
-								}}
-							>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{MONTHS.map((month, index) => (
-									<SelectItem key={index} value={index.toString()}>
-										{month}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-
-						<Select
-							value={currentYear.toString()}
-							onValueChange={(value) => handleYearSelect(Number(value))}
-						>
-							<SelectTrigger
-								className='w-[80px] h-8 text-sm'
-								onMouseDown={(e: React.MouseEvent) => {
-									e.stopPropagation();
-								}}
-								onDragStart={(e: React.DragEvent) => {
-									e.preventDefault();
-									e.stopPropagation();
-								}}
-							>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{years.map((year) => (
-									<SelectItem key={year} value={year.toString()}>
-										{year}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
-				) : (
-					<div className='text-sm font-medium'>
-						{format(currentMonth, "MMMM yyyy", { locale: fr })}
-					</div>
-				)}
-			</div>
-
-			{/* Grille du calendrier */}
-			<div className='w-full'>
-				{/* En-têtes des jours */}
-				<div className='grid grid-cols-7 gap-1 mb-1'>
-					{WEEKDAYS.map((day) => (
-						<div
-							key={day}
-							className='text-muted-foreground text-center text-sm font-normal p-2'
-						>
-							{day}
-						</div>
-					))}
-				</div>
-
-				{/* Jours */}
-				<div className='grid grid-cols-7 gap-1'>
-					{days.map((day) => {
-						const isOutsideMonth = !isSameMonth(day, currentMonth);
-						const isDaySelected = isSelected(day);
-						const isDayToday = isToday(day);
-
-						if (!showOutsideDays && isOutsideMonth) {
-							return <div key={day.toISOString()} className='p-2' />;
-						}
-
-						// Vérifier si la date est dans le passé (tous les jours, même ceux en dehors du mois)
-						const today = new Date();
-						today.setHours(0, 0, 0, 0);
-						const dayToCheck = new Date(day);
-						dayToCheck.setHours(0, 0, 0, 0);
-						const isPast = dayToCheck < today;
-
-						return (
-							<Button
-								key={day.toISOString()}
-								variant='ghost'
-								size='icon'
-								className={cn(
-									"h-9 w-9 p-0 font-normal",
-									isOutsideMonth && "text-muted-foreground opacity-50",
-									isPast && "opacity-30 cursor-not-allowed line-through",
-									isDaySelected &&
-										"bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-									isDayToday &&
-										!isDaySelected &&
-										"bg-primary/30 text-primary-foreground hover:bg-primary/40"
-								)}
-								onClick={() => handleDayClick(day)}
-								disabled={isPast}
-								onMouseDown={(e: React.MouseEvent) => {
-									if (isPast) {
-										e.preventDefault();
-										return;
-									}
-									e.stopPropagation();
-								}}
-								onDragStart={(e: React.DragEvent) => {
-									if (isPast) {
-										e.preventDefault();
-										return;
-									}
-									e.preventDefault();
-									e.stopPropagation();
-								}}
-							>
-								{format(day, "d")}
-							</Button>
-						);
-					})}
-				</div>
-			</div>
+			<CalendarHeader
+				currentMonth={currentMonth}
+				onMonthChange={handleMonthChange}
+				captionLayout={captionLayout}
+			/>
+			<CalendarGrid
+				currentMonth={currentMonth}
+				selectedDate={selected}
+				onDayClick={handleDayClick}
+				showOutsideDays={showOutsideDays}
+			/>
 		</div>
 	);
 }
@@ -401,60 +228,12 @@ export function Calendar({
 	);
 
 	// Modifiers pour le calendrier (dates avec événements et todos avec deadlines)
-	const modifiers = useMemo(() => {
-		// Créer un Set de toutes les dates qui ont des événements (y compris multi-jours)
-		const eventDates = new Set<string>();
-		events.forEach((event) => {
-			// Parser la date en évitant les problèmes de timezone
-			const [startYear, startMonth, startDay] = event.date
-				.split("-")
-				.map(Number);
-			const startDate = new Date(startYear, startMonth - 1, startDay);
-			startDate.setHours(0, 0, 0, 0);
-
-			if (event.endDate) {
-				// Événement multi-jours : ajouter toutes les dates de la plage
-				const [endYear, endMonth, endDay] = event.endDate
-					.split("-")
-					.map(Number);
-				const endDate = new Date(endYear, endMonth - 1, endDay);
-				endDate.setHours(23, 59, 59, 999);
-
-				for (
-					let d = new Date(startDate);
-					d <= endDate;
-					d.setDate(d.getDate() + 1)
-				) {
-					eventDates.add(formatDateLocal(d));
-				}
-			} else {
-				// Événement d'un seul jour
-				eventDates.add(formatDateLocal(startDate));
-			}
-		});
-
-		const todoDates = new Set(
-			todosWithDeadlines?.map((todo) => {
-				const deadlineDate = new Date(todo.deadline);
-				return formatDateLocal(deadlineDate);
-			}) || []
-		);
-
-		return {
-			hasEvents: (date: Date) => eventDates.has(formatDateLocal(date)),
-			hasTodos: (date: Date) => todoDates.has(formatDateLocal(date)),
-		};
-	}, [events, todosWithDeadlines]);
-
-	const modifiersClassNames = useMemo(
-		() => ({
-			hasEvents:
-				"relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:rounded-full after:bg-primary",
-			hasTodos:
-				"relative before:absolute before:top-1 before:right-1 before:w-1.5 before:h-1.5 before:rounded-full before:bg-orange-500",
-		}),
-		[]
+	const modifiers = useMemo(
+		() => calculateModifiers(events, todosWithDeadlines),
+		[events, todosWithDeadlines]
 	);
+
+	const modifiersClassNames = useMemo(() => getModifiersClassNames(), []);
 
 	// État pour la vue mois
 	const [currentMonth, setCurrentMonth] = useState<Date>(currentDate);
@@ -465,23 +244,6 @@ export function Calendar({
 
 	// Vue Mois
 	const renderMonthView = () => {
-		const MONTHS = [
-			"Janvier",
-			"Février",
-			"Mars",
-			"Avril",
-			"Mai",
-			"Juin",
-			"Juillet",
-			"Août",
-			"Septembre",
-			"Octobre",
-			"Novembre",
-			"Décembre",
-		];
-
-		const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-
 		const handleMonthChange = (newMonth: Date) => {
 			setCurrentMonth(newMonth);
 			handleDateChange(newMonth);
@@ -501,235 +263,27 @@ export function Calendar({
 			handleMonthChange(newMonth);
 		};
 
-		const handleMonthSelect = (monthIndex: number) => {
-			const newMonth = new Date(currentMonth.getFullYear(), monthIndex, 1);
-			handleMonthChange(newMonth);
-		};
-
-		const handleYearSelect = (year: number) => {
-			const newMonth = new Date(year, currentMonth.getMonth(), 1);
-			handleMonthChange(newMonth);
-		};
-
 		const handleDayClick = (day: Date) => {
 			handleSelectDate(day);
 		};
 
-		// Calculer les jours à afficher
-		const monthStart = startOfMonth(currentMonth);
-		const monthEnd = endOfMonth(currentMonth);
-		const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-		const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-
-		const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
-
-		const currentYear = getYear(currentMonth);
-		const currentMonthIndex = getMonth(currentMonth);
-		const years = Array.from({ length: 20 }, (_, i) => currentYear - 10 + i);
-
-		const isToday = (day: Date) => isSameDay(day, new Date());
-		const isSelected = (day: Date) =>
-			selectedDate && isSameDay(day, selectedDate);
-
-		const getDayModifiers = (day: Date) => {
-			const dayModifiers: string[] = [];
-			const modifiersKeys = Object.keys(modifiers) as Array<
-				keyof typeof modifiers
-			>;
-			modifiersKeys.forEach((key) => {
-				const modifier = modifiers[key];
-				if (Array.isArray(modifier)) {
-					const dayStr = formatDateLocal(day);
-					if (modifier.some((d) => formatDateLocal(d) === dayStr)) {
-						dayModifiers.push(key);
-					}
-				} else if (typeof modifier === "function") {
-					if (modifier(day)) {
-						dayModifiers.push(key);
-					}
-				}
-			});
-			return dayModifiers;
-		};
-
-		const getDayClassName = (day: Date) => {
-			const dayModifiers = getDayModifiers(day);
-			const classes: string[] = [];
-
-			if (isToday(day) && !isSelected(day)) {
-				classes.push("bg-primary/30", "text-primary-foreground");
-			}
-
-			if (isSelected(day)) {
-				classes.push("bg-primary", "text-primary-foreground");
-			}
-
-			dayModifiers.forEach((modifier) => {
-				const classNames = modifiersClassNames as Record<string, string>;
-				if (classNames[modifier]) {
-					classes.push(classNames[modifier]);
-				}
-			});
-
-			return classes;
-		};
-
 		return (
 			<div className={cn("group/calendar p-3 w-fit", className)}>
-				{/* Header avec navigation */}
-				<div className='flex items-center justify-between mb-4'>
-					{captionLayout === "dropdown-buttons" && (
-						<Button
-							variant='ghost'
-							size='icon'
-							onClick={handlePreviousMonth}
-							onMouseDown={(e: React.MouseEvent) => {
-								e.stopPropagation();
-							}}
-							onDragStart={(e: React.DragEvent) => {
-								e.preventDefault();
-								e.stopPropagation();
-							}}
-							aria-label='Mois précédent'
-						>
-							<ChevronLeft className='h-4 w-4' />
-						</Button>
-					)}
-
-					{captionLayout === "dropdown" ||
-					captionLayout === "dropdown-buttons" ? (
-						<div className='flex items-center gap-1.5'>
-							<Select
-								value={currentMonthIndex.toString()}
-								onValueChange={(value) => handleMonthSelect(Number(value))}
-							>
-								<SelectTrigger
-									className='w-[100px] h-8 text-sm'
-									onMouseDown={(e: React.MouseEvent) => {
-										e.stopPropagation();
-									}}
-									onDragStart={(e: React.DragEvent) => {
-										e.preventDefault();
-										e.stopPropagation();
-									}}
-								>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{MONTHS.map((month, index) => (
-										<SelectItem key={index} value={index.toString()}>
-											{month}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-
-							<Select
-								value={currentYear.toString()}
-								onValueChange={(value) => handleYearSelect(Number(value))}
-							>
-								<SelectTrigger
-									className='w-[80px] h-8 text-sm'
-									onMouseDown={(e: React.MouseEvent) => {
-										e.stopPropagation();
-									}}
-									onDragStart={(e: React.DragEvent) => {
-										e.preventDefault();
-										e.stopPropagation();
-									}}
-								>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{years.map((year) => (
-										<SelectItem key={year} value={year.toString()}>
-											{year}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-					) : (
-						<div className='text-sm font-medium'>
-							{format(currentMonth, "MMMM yyyy", { locale: fr })}
-						</div>
-					)}
-
-					{captionLayout === "dropdown-buttons" && (
-						<Button
-							variant='ghost'
-							size='icon'
-							onClick={handleNextMonth}
-							onMouseDown={(e: React.MouseEvent) => {
-								e.stopPropagation();
-							}}
-							onDragStart={(e: React.DragEvent) => {
-								e.preventDefault();
-								e.stopPropagation();
-							}}
-							aria-label='Mois suivant'
-						>
-							<ChevronRight className='h-4 w-4' />
-						</Button>
-					)}
-				</div>
-
-				{/* Grille du calendrier */}
-				<div className='w-full'>
-					{/* En-têtes des jours */}
-					<div className='grid grid-cols-7 gap-1 mb-1'>
-						{WEEKDAYS.map((day) => (
-							<div
-								key={day}
-								className='text-muted-foreground text-center text-sm font-normal p-2'
-							>
-								{day}
-							</div>
-						))}
-					</div>
-
-					{/* Jours */}
-					<div className='grid grid-cols-7 gap-1'>
-						{days.map((day) => {
-							const isOutsideMonth = !isSameMonth(day, currentMonth);
-							const isDaySelected = isSelected(day);
-							const isDayToday = isToday(day);
-							const dayClassName = getDayClassName(day);
-
-							if (!showOutsideDays && isOutsideMonth) {
-								return <div key={day.toISOString()} className='p-2' />;
-							}
-
-							return (
-								<Button
-									key={day.toISOString()}
-									variant='ghost'
-									size='icon'
-									className={cn(
-										"h-9 w-9 p-0 font-normal",
-										isOutsideMonth && "text-muted-foreground opacity-50",
-										isDaySelected &&
-											"bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
-										isDayToday &&
-											!isDaySelected &&
-											"bg-primary/30 text-primary-foreground hover:bg-primary/40",
-										dayClassName
-									)}
-									onClick={() => handleDayClick(day)}
-									onMouseDown={(e: React.MouseEvent) => {
-										e.stopPropagation();
-									}}
-									onDragStart={(e: React.DragEvent) => {
-										e.preventDefault();
-										e.stopPropagation();
-									}}
-								>
-									{format(day, "d")}
-								</Button>
-							);
-						})}
-					</div>
-				</div>
+				<CalendarHeader
+					currentMonth={currentMonth}
+					onMonthChange={handleMonthChange}
+					captionLayout={captionLayout}
+					onPreviousMonth={handlePreviousMonth}
+					onNextMonth={handleNextMonth}
+				/>
+				<CalendarGrid
+					currentMonth={currentMonth}
+					selectedDate={selectedDate}
+					onDayClick={handleDayClick}
+					showOutsideDays={showOutsideDays}
+					modifiers={modifiers}
+					modifiersClassNames={modifiersClassNames}
+				/>
 			</div>
 		);
 	};
