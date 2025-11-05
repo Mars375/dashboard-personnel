@@ -168,10 +168,48 @@ function RSSWidgetComponent({ size = "medium" }: WidgetProps) {
 			)}
 
 			{isCompact && (
-				<div className="flex flex-col items-center justify-center gap-1 flex-1">
-					<RSSIcon className="h-8 w-8 text-muted-foreground" />
-					<div className="text-xs font-bold">{unreadItems.length}</div>
-					<div className="text-[10px] text-muted-foreground">non lus</div>
+				<div className="flex flex-col gap-1.5 flex-1 overflow-y-auto">
+					<div className="flex items-center justify-between shrink-0 pb-1 border-b">
+						<div className="flex items-center gap-1.5">
+							<RSSIcon className="h-4 w-4 text-muted-foreground" />
+							<div className="text-xs font-bold">{unreadItems.length}</div>
+							<div className="text-[10px] text-muted-foreground">non lus</div>
+						</div>
+						{feeds.length > 0 && (
+							<div className="text-[10px] text-muted-foreground">
+								{feeds.length} flux
+							</div>
+						)}
+					</div>
+					{unreadItems.length === 0 ? (
+						<div className="flex flex-col items-center justify-center gap-2 flex-1 text-center">
+							<RSSIcon className="h-6 w-6 text-muted-foreground" />
+							<div className="text-xs text-muted-foreground">Aucun article</div>
+						</div>
+					) : (
+						unreadItems.slice(0, 6).map((item) => (
+							<div
+								key={item.id}
+								className="p-2 rounded border bg-card hover:bg-accent transition-colors cursor-pointer"
+								onClick={() => handleOpenItem(item)}
+							>
+								<div className="text-xs font-medium truncate mb-1">{item.title}</div>
+								{item.description && (
+									<div className="text-[10px] text-muted-foreground line-clamp-2">
+										{item.description}
+									</div>
+								)}
+								<div className="text-[9px] text-muted-foreground mt-1">
+									{format(new Date(item.pubDate), "dd MMM", { locale: fr })}
+								</div>
+							</div>
+						))
+					)}
+					{unreadItems.length > 6 && (
+						<div className="text-[10px] text-muted-foreground text-center pt-1">
+							+{unreadItems.length - 6} autres articles
+						</div>
+					)}
 				</div>
 			)}
 

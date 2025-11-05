@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, memo, useCallback } from "react";
-import { Plus, Edit2, Trash2, LineChart } from "lucide-react";
+import { Plus, Edit2, Trash2, LineChart, X } from "lucide-react";
 import type { WidgetProps } from "@/lib/widgetSize";
 import {
 	loadCharts,
@@ -37,6 +37,8 @@ function GraphiquesWidgetComponent({ size = "medium" }: WidgetProps) {
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [editName, setEditName] = useState("");
 	const [editType, setEditType] = useState<"line" | "bar" | "pie" | "area">("line");
+	const [editData, setEditData] = useState<Array<{ x: string; y: number }>>([]);
+	const [newDataPoint, setNewDataPoint] = useState({ x: "", y: "" });
 
 	const isCompact = useMemo(() => size === "compact", [size]);
 	const isFull = useMemo(() => size === "full" || size === "medium", [size]);
@@ -51,6 +53,13 @@ function GraphiquesWidgetComponent({ size = "medium" }: WidgetProps) {
 		setSelectedChart(null);
 		setEditName("");
 		setEditType("line");
+		setEditData([
+			{ x: "Jan", y: 10 },
+			{ x: "Fév", y: 20 },
+			{ x: "Mar", y: 15 },
+			{ x: "Avr", y: 25 },
+		]);
+		setNewDataPoint({ x: "", y: "" });
 		setIsDialogOpen(true);
 	}, []);
 
@@ -58,34 +67,41 @@ function GraphiquesWidgetComponent({ size = "medium" }: WidgetProps) {
 		setSelectedChart(chart);
 		setEditName(chart.name);
 		setEditType(chart.type);
+		setEditData([...chart.data]);
 		setIsDialogOpen(true);
 	}, []);
 
 	const handleSaveChart = useCallback(() => {
-		if (!editName.trim()) return;
-		// Données d'exemple pour MVP
-		const sampleData = [
-			{ x: "Jan", y: 10 },
-			{ x: "Fév", y: 20 },
-			{ x: "Mar", y: 15 },
-			{ x: "Avr", y: 25 },
-		];
+		if (!editName.trim() || editData.length === 0) return;
+		
 		if (selectedChart) {
 			updateChart(selectedChart.id, {
 				name: editName,
 				type: editType,
-				data: sampleData,
+				data: editData,
 			});
 		} else {
 			addChart({
 				name: editName,
 				type: editType,
-				data: sampleData,
+				data: editData,
 			});
 		}
 		setCharts(loadCharts());
 		setIsDialogOpen(false);
-	}, [selectedChart, editName, editType]);
+	}, [selectedChart, editName, editType, editData]);
+
+	const handleAddDataPoint = useCallback(() => {
+		if (!newDataPoint.x.trim() || !newDataPoint.y.trim()) return;
+		const y = parseFloat(newDataPoint.y);
+		if (isNaN(y)) return;
+		setEditData([...editData, { x: newDataPoint.x, y }]);
+		setNewDataPoint({ x: "", y: "" });
+	}, [editData, newDataPoint]);
+
+	const handleRemoveDataPoint = useCallback((index: number) => {
+		setEditData(editData.filter((_, i) => i !== index));
+	}, [editData]);
 
 	const handleDeleteChart = useCallback((id: string) => {
 		if (confirm("Supprimer ce graphique ?")) {
@@ -266,6 +282,79 @@ function GraphiquesWidgetComponent({ size = "medium" }: WidgetProps) {
 								<SelectItem value="area">Aire</SelectItem>
 							</SelectContent>
 						</Select>
+						<div className="space-y-2">
+							<div className="text-sm font-semibold">Données</div>
+							<div className="space-y-2 max-h-[200px] overflow-y-auto border rounded-md p-2">
+								{editData.map((point, index) => (
+									<div key={index} className="flex items-center gap-2">
+										<Input
+											value={point.x}
+											onChange={(e) => {
+												const newData = [...editData];
+												newData[index].x = e.target.value;
+												setEditData(newData);
+											}}
+											placeholder="Label"
+											className="flex-1"
+										/>
+										<Input
+											type="number"
+											value={point.y}
+											onChange={(e) => {
+												const newData = [...editData];
+												newData[index].y = parseFloat(e.target.value) || 0;
+												setEditData(newData);
+											}}
+											placeholder="Valeur"
+											className="w-24"
+										/>
+										<Button
+											variant="ghost"
+											size="icon"
+											className="h-8 w-8"
+											onClick={() => handleRemoveDataPoint(index)}
+											onMouseDown={(e: React.MouseEvent) => {
+												e.stopPropagation();
+											}}
+											onDragStart={(e: React.DragEvent) => {
+												e.preventDefault();
+												e.stopPropagation();
+											}}
+										>
+											<X className="h-4 w-4" />
+										</Button>
+									</div>
+								))}
+							</div>
+							<div className="flex gap-2">
+								<Input
+									placeholder="Label (ex: Jan)"
+									value={newDataPoint.x}
+									onChange={(e) => setNewDataPoint({ ...newDataPoint, x: e.target.value })}
+									className="flex-1"
+								/>
+								<Input
+									type="number"
+									placeholder="Valeur"
+									value={newDataPoint.y}
+									onChange={(e) => setNewDataPoint({ ...newDataPoint, y: e.target.value })}
+									className="w-24"
+								/>
+								<Button
+									size="sm"
+									onClick={handleAddDataPoint}
+									onMouseDown={(e: React.MouseEvent) => {
+										e.stopPropagation();
+									}}
+									onDragStart={(e: React.DragEvent) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+								>
+									<Plus className="h-4 w-4" />
+								</Button>
+							</div>
+						</div>
 					</div>
 					<DialogFooter>
 						{selectedChart && (
