@@ -1,12 +1,10 @@
 // Provider OAuth pour Google (Calendar, Tasks, etc.)
 
 import type {
-	OAuthConfig,
 	OAuthTokens,
 	OAuthUser,
 	OAuthService,
 } from "./types";
-import { TokenStorage } from "./tokenStorage";
 import { logger } from "@/lib/logger";
 
 export interface GoogleAuthConfig {
@@ -47,7 +45,7 @@ export class GoogleAuth {
 			// Flags pour gérer l'état de l'authentification
 			let isExchanging = false;
 			let isResolved = false;
-			let checkPopupClosed: NodeJS.Timeout | null = null;
+			let checkPopupClosed: ReturnType<typeof setTimeout> | null = null;
 			
 			// Nettoyer les listeners et interval
 			const cleanup = () => {

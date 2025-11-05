@@ -8,13 +8,6 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import { CheckCircle2, Calendar } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import type { OAuthProvider } from "@/lib/auth";

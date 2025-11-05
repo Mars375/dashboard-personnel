@@ -10,7 +10,7 @@ import {
 	loadSavedCities,
 } from "@/store/weatherStorage";
 import { logger } from "@/lib/logger";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { WidgetProps } from "@/lib/widgetSize";
 import {
 	CityWeatherItem,

@@ -80,7 +80,7 @@ export function validateGoogleTask(data: unknown): GoogleTask {
 	} catch (error) {
 		if (error instanceof z.ZodError) {
 			throw new SyncError(
-				`Données de tâche invalides: ${error.errors.map(e => e.message).join(", ")}`,
+				`Données de tâche invalides: ${error.issues.map((e) => e.message).join(", ")}`,
 				SyncErrorCode.VALIDATION_ERROR,
 				false,
 				error
@@ -102,7 +102,7 @@ export function validateGoogleTaskList(data: unknown): GoogleTaskList {
 	} catch (error) {
 		if (error instanceof z.ZodError) {
 			throw new SyncError(
-				`Données de liste invalides: ${error.errors.map(e => e.message).join(", ")}`,
+				`Réponse API invalide: ${error.issues.map((e) => e.message).join(", ")}`,
 				SyncErrorCode.VALIDATION_ERROR,
 				false,
 				error
@@ -124,7 +124,7 @@ export function validateGoogleTasksResponse(data: unknown): GoogleTasksResponse 
 	} catch (error) {
 		if (error instanceof z.ZodError) {
 			throw new SyncError(
-				`Réponse API invalide: ${error.errors.map(e => e.message).join(", ")}`,
+				`Réponse API invalide: ${error.issues.map((e) => e.message).join(", ")}`,
 				SyncErrorCode.VALIDATION_ERROR,
 				false,
 				error
@@ -148,7 +148,7 @@ export function validateGoogleTasksListResponse(
 	} catch (error) {
 		if (error instanceof z.ZodError) {
 			throw new SyncError(
-				`Réponse API invalide: ${error.errors.map(e => e.message).join(", ")}`,
+				`Réponse API invalide: ${error.issues.map((e) => e.message).join(", ")}`,
 				SyncErrorCode.VALIDATION_ERROR,
 				false,
 				error

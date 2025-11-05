@@ -6,7 +6,6 @@
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { TODO_FILTERS } from "@/lib/constants";
 
 import type { TodoFilter } from "@/lib/constants";
@@ -24,7 +23,6 @@ function TodoFiltersComponent({
 }: TodoFiltersProps) {
 	const isCompact = size === "compact";
 	const isMedium = size === "medium";
-	const isFull = size === "full";
 
 	// Version compacte : pas de filtres visibles
 	if (isCompact) {

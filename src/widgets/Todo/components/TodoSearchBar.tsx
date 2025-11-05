@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Search } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface TodoSearchBarProps {
 	searchQuery: string;
@@ -23,7 +22,6 @@ function TodoSearchBarComponent({
 }: TodoSearchBarProps) {
 	const isCompact = size === "compact";
 	const isMedium = size === "medium";
-	const isFull = size === "full";
 
 	// Version compacte : pas de recherche
 	if (isCompact) {

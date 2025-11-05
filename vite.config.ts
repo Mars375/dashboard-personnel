@@ -2,7 +2,7 @@ import path from "path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import { visualizer } from "vite-bundle-visualizer";
+import visualizer from "vite-bundle-visualizer";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -10,14 +10,15 @@ export default defineConfig({
 		react(),
 		tailwindcss(),
 		// Bundle visualizer (seulement en mode build)
-		process.env.ANALYZE === "true" &&
-			visualizer({
-				open: true,
-				filename: "dist/stats.html",
-				gzipSize: true,
-				brotliSize: true,
-			}),
-	].filter(Boolean),
+		...(process.env.ANALYZE === "true"
+			? [
+					visualizer({
+						open: true,
+						template: "treemap" as const,
+					}) as any,
+			  ]
+			: []),
+	],
 	resolve: {
 		alias: {
 			"@": path.resolve(__dirname, "src"),

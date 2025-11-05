@@ -47,7 +47,7 @@ export class NotionSyncProvider implements SyncProvider {
 		}
 	}
 
-	async pushTodos(todos: Todo[], listId: string): Promise<void> {
+	async pushTodos(todos: Todo[], listId?: string): Promise<void> {
 		if (!this.config.credentials?.apiKey || !this.config.credentials?.databaseId) {
 			throw new Error("Configuration Notion incomplète");
 		}

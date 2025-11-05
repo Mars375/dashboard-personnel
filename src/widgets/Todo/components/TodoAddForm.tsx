@@ -7,6 +7,7 @@ import { memo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/calendar-full";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -26,7 +27,6 @@ function TodoAddFormComponent({
 
 	const isCompact = size === "compact";
 	const isMedium = size === "medium";
-	const isFull = size === "full";
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -99,22 +99,33 @@ function TodoAddFormComponent({
 			</div>
 			{showNewDeadline ? (
 				<div className="flex gap-2 items-center">
-					<DatePicker
-						date={newTodoDeadline}
-						onDateChange={setNewTodoDeadline}
-					>
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							className="flex-1 justify-start text-left font-normal"
-						>
-							<Calendar className="h-4 w-4 mr-2" />
-							{newTodoDeadline
-								? format(newTodoDeadline, "PPP", { locale: fr })
-								: "Sélectionner une date limite"}
-						</Button>
-					</DatePicker>
+					<Popover>
+						<PopoverTrigger asChild>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="flex-1 justify-start text-left font-normal"
+							>
+								<Calendar className="h-4 w-4 mr-2" />
+								{newTodoDeadline
+									? format(newTodoDeadline, "PPP", { locale: fr })
+									: "Sélectionner une date limite"}
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent className="w-auto p-0" align="start">
+							<DatePicker
+								selected={newTodoDeadline}
+								onSelect={(date) => {
+									setNewTodoDeadline(date);
+									if (date) {
+										setShowNewDeadline(false);
+									}
+								}}
+								captionLayout="dropdown"
+							/>
+						</PopoverContent>
+					</Popover>
 					{newTodoDeadline && (
 						<Button
 							type="button"

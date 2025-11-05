@@ -12,7 +12,6 @@ import { CheckCircle2, Calendar } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { getOAuthManager } from "@/lib/auth/oauthManager";
 import { toast } from "sonner";
-import type { OAuthService } from "@/lib/auth/types";
 import { logger } from "@/lib/logger";
 
 interface GoogleOAuthButtonProps {

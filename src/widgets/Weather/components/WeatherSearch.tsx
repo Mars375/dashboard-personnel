@@ -58,7 +58,7 @@ function WeatherSearchComponent({
 						value={searchCity}
 						onChange={(e) => {
 							setSearchCity(e.target.value);
-							ac.search(e.target.value);
+							ac.setQuery(e.target.value);
 						}}
 						onKeyDown={(e) => {
 							if (e.key === "ArrowDown") {

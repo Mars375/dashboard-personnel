@@ -314,16 +314,13 @@ export function Calendar({
 	onSelectDate,
 	view: controlledView,
 	todosWithDeadlines,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	onViewChange,
+	onViewChange: _onViewChange,
 	events = [],
 	getEventsForDate: externalGetEventsForDate,
 	onEventClick,
 	onEventUpdate,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	onSync,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	syncLoading = false,
+	onSync: _onSync,
+	syncLoading: _syncLoading = false,
 	className,
 	showOutsideDays = true,
 	captionLayout = "dropdown-buttons",

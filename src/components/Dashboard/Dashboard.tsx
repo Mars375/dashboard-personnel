@@ -12,7 +12,7 @@ import { WidgetGrid } from "./WidgetGrid";
 import { WidgetPicker } from "./WidgetPicker";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { motion } from "framer-motion";
-import { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";

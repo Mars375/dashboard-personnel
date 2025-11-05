@@ -122,7 +122,6 @@ export function useCalendar() {
 	// Obtenir les événements pour une date spécifique
 	const getEventsForDate = useCallback(
 		(date: Date) => {
-			const dateStr = formatDateLocal(date);
 			return events.filter((event) => {
 				// Parser les dates en évitant les problèmes de timezone
 				const [startYear, startMonth, startDay] = event.date.split("-").map(Number);

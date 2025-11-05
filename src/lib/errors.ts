@@ -6,41 +6,43 @@
 /**
  * Codes d'erreur pour la synchronisation
  */
-export enum SyncErrorCode {
+export const SyncErrorCode = {
 	// Erreurs d'authentification
-	AUTH_REQUIRED = "AUTH_REQUIRED",
-	AUTH_EXPIRED = "AUTH_EXPIRED",
-	AUTH_INVALID = "AUTH_INVALID",
+	AUTH_REQUIRED: "AUTH_REQUIRED",
+	AUTH_EXPIRED: "AUTH_EXPIRED",
+	AUTH_INVALID: "AUTH_INVALID",
 	
 	// Erreurs réseau
-	NETWORK_ERROR = "NETWORK_ERROR",
-	NETWORK_TIMEOUT = "NETWORK_TIMEOUT",
-	NETWORK_UNAVAILABLE = "NETWORK_UNAVAILABLE",
+	NETWORK_ERROR: "NETWORK_ERROR",
+	NETWORK_TIMEOUT: "NETWORK_TIMEOUT",
+	NETWORK_UNAVAILABLE: "NETWORK_UNAVAILABLE",
 	
 	// Erreurs de quota/rate limiting
-	RATE_LIMIT = "RATE_LIMIT",
-	QUOTA_EXCEEDED = "QUOTA_EXCEEDED",
+	RATE_LIMIT: "RATE_LIMIT",
+	QUOTA_EXCEEDED: "QUOTA_EXCEEDED",
 	
 	// Erreurs de validation
-	VALIDATION_ERROR = "VALIDATION_ERROR",
-	INVALID_DATA = "INVALID_DATA",
+	VALIDATION_ERROR: "VALIDATION_ERROR",
+	INVALID_DATA: "INVALID_DATA",
 	
 	// Erreurs de permission
-	PERMISSION_DENIED = "PERMISSION_DENIED",
-	FORBIDDEN = "FORBIDDEN",
+	PERMISSION_DENIED: "PERMISSION_DENIED",
+	FORBIDDEN: "FORBIDDEN",
 	
 	// Erreurs de ressource
-	NOT_FOUND = "NOT_FOUND",
-	RESOURCE_CONFLICT = "RESOURCE_CONFLICT",
+	NOT_FOUND: "NOT_FOUND",
+	RESOURCE_CONFLICT: "RESOURCE_CONFLICT",
 	
 	// Erreurs serveur
-	SERVER_ERROR = "SERVER_ERROR",
-	SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE",
+	SERVER_ERROR: "SERVER_ERROR",
+	SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
 	
 	// Erreurs génériques
-	UNKNOWN_ERROR = "UNKNOWN_ERROR",
-	SYNC_FAILED = "SYNC_FAILED",
-}
+	UNKNOWN_ERROR: "UNKNOWN_ERROR",
+	SYNC_FAILED: "SYNC_FAILED",
+} as const;
+
+export type SyncErrorCode = typeof SyncErrorCode[keyof typeof SyncErrorCode];
 
 /**
  * Erreur de synchronisation avec code et indicateur de retry
@@ -62,9 +64,9 @@ export class SyncError extends Error {
 		this.retryable = retryable;
 		this.originalError = originalError;
 
-		// Maintenir la stack trace correcte
-		if (Error.captureStackTrace) {
-			Error.captureStackTrace(this, SyncError);
+		// Maintenir la stack trace correcte (si disponible, notamment dans Node.js)
+		if (typeof (Error as unknown as { captureStackTrace?: (error: Error, constructor?: Function) => void }).captureStackTrace === "function") {
+			(Error as unknown as { captureStackTrace: (error: Error, constructor?: Function) => void }).captureStackTrace(this, SyncError);
 		}
 	}
 

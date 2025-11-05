@@ -127,7 +127,7 @@ export class NotionAuth {
 	 * Échange un code d'autorisation contre des tokens
 	 * Cette méthode doit être appelée côté backend pour des raisons de sécurité
 	 */
-	async exchangeCodeForTokens(code: string): Promise<OAuthTokens> {
+	async exchangeCodeForTokens(_code: string): Promise<OAuthTokens> {
 		// NOTE: Cette opération doit être faite côté backend
 		// car elle nécessite le client_secret qui ne doit pas être exposé côté client
 		throw new Error(

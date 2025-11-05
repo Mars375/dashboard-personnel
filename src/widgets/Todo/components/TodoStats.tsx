@@ -10,7 +10,6 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 import { BarChart3, PieChart } from "lucide-react";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
 
 interface TodoStatsProps {
 	totalCount: number;
@@ -54,7 +53,6 @@ function TodoStatsComponent({
 
 	const isCompact = size === "compact";
 	const isMedium = size === "medium";
-	const isFull = size === "full";
 
 	// Version compacte : stats minimales dans le header
 	if (isCompact) {

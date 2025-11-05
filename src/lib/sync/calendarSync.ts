@@ -15,7 +15,10 @@ export interface CalendarSyncProvider {
 
 export interface CalendarSyncResult {
 	success: boolean;
-	synced: number;
+	synced?: number;
+	eventsPulled?: number;
+	message?: string;
+	error?: string;
 	errors?: string[];
 }
 

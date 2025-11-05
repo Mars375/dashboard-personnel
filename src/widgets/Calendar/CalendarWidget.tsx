@@ -35,12 +35,10 @@ import {
 import { ButtonGroup } from "@/components/ui/button-group";
 import { useCalendar } from "@/hooks/useCalendar";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { SYNC_INTERVALS } from "@/lib/constants";
 import {
 	Plus,
 	CalendarIcon,
 	Clock,
-	Edit2,
 	Download,
 	Upload,
 	Bell,
@@ -50,17 +48,14 @@ import {
 	List,
 	RefreshCw,
 	Search,
-	Repeat,
 	ChevronLeft,
 	ChevronRight,
 	Trash2,
 } from "lucide-react";
-import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
 import type { CalendarEvent } from "./types";
 import {
 	exportCalendarToJSON,
@@ -601,7 +596,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 
 			const results = await calendarSyncManager.syncAll();
 			const successCount = results.filter((r) => r.success).length;
-			const totalSynced = results.reduce((sum, r) => sum + r.synced, 0);
+			const totalSynced = results.reduce((sum, r) => sum + (r.synced ?? 0), 0);
 
 			if (successCount > 0) {
 				// Recharger les événements depuis Google Calendar
@@ -675,7 +670,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 	// Initialiser la synchronisation Google Calendar si Google est connecté
 	const providerInitializedRef = useRef(false);
 	const hasSyncedInitiallyRef = useRef(false);
-	const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+	const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	
 	useEffect(() => {
 		const oauthManager = getOAuthManager();

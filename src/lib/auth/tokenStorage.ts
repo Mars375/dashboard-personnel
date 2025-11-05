@@ -3,7 +3,6 @@
 import type { OAuthProvider, OAuthConnection } from "./types";
 import { logger } from "@/lib/logger";
 
-const STORAGE_PREFIX = "oauth:";
 const STORAGE_KEY_CONNECTIONS = "oauth:connections";
 
 /**

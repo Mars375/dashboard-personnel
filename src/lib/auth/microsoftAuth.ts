@@ -5,7 +5,6 @@ import type {
 	OAuthUser,
 	OAuthService,
 } from "./types";
-import { TokenStorage } from "./tokenStorage";
 
 export interface MicrosoftAuthConfig {
 	clientId: string;
