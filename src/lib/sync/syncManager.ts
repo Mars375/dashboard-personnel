@@ -2,6 +2,7 @@ import { loadSyncConfig, saveSyncConfig, type SyncConfig } from "./apiSync";
 import { NotionSyncProvider } from "./notionSync";
 import { GoogleTasksSyncProvider } from "./googleTasksSync";
 import type { SyncProvider } from "./apiSync";
+import { logger } from "@/lib/logger";
 
 export class SyncManager {
 	private providers: Map<string, SyncProvider> = new Map();
@@ -39,10 +40,10 @@ export class SyncManager {
 			try {
 				const result = await provider.sync();
 				if (!result.success) {
-					console.error(`Sync failed for ${provider.name}:`, result.error);
+					logger.error(`Sync failed for ${provider.name}:`, result.error);
 				}
 			} catch (error) {
-				console.error(`Sync error for ${provider.name}:`, error);
+				logger.error(`Sync error for ${provider.name}:`, error);
 			}
 		}
 	}

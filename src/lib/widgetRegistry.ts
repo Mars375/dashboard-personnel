@@ -1,16 +1,33 @@
-import type { ComponentType } from "react";
+import type { ComponentType, LazyExoticComponent } from "react";
+import { lazy } from "react";
 import { Cloud, CheckSquare, Calendar } from "lucide-react";
-import { WeatherWidget } from "@/widgets/Weather/WeatherWidget";
-import { TodoWidget } from "@/widgets/Todo/TodoWidget";
-import { CalendarWidget } from "@/widgets/Calendar/CalendarWidget";
 import type { WidgetProps } from "./widgetSize";
+
+// Lazy loading des widgets pour optimiser le bundle size
+const WeatherWidget = lazy(() =>
+	import("@/widgets/Weather/WeatherWidget").then((module) => ({
+		default: module.WeatherWidget,
+	}))
+);
+
+const TodoWidget = lazy(() =>
+	import("@/widgets/Todo/TodoWidget").then((module) => ({
+		default: module.TodoWidget,
+	}))
+);
+
+const CalendarWidget = lazy(() =>
+	import("@/widgets/Calendar/CalendarWidget").then((module) => ({
+		default: module.CalendarWidget,
+	}))
+);
 
 export interface WidgetDefinition {
 	id: string;
 	name: string;
 	description: string;
 	icon: ComponentType<{ className?: string }>;
-	component: ComponentType<WidgetProps>;
+	component: LazyExoticComponent<ComponentType<WidgetProps>>;
 	defaultSize: { w: number; h: number };
 	minSize: { w: number; h: number };
 	maxSize?: { w: number; h: number };

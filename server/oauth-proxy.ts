@@ -119,9 +119,98 @@ app.post("/api/oauth/exchange", async (req, res) => {
 	}
 });
 
+// Endpoint pour rafraîchir un access token avec le refresh token
+app.post("/api/oauth/refresh", async (req, res) => {
+	try {
+		const { provider, refresh_token } = req.body;
+
+		if (!refresh_token) {
+			return res.status(400).json({ error: "Refresh token manquant" });
+		}
+
+		if (provider !== "google") {
+			return res.status(400).json({ error: "Provider non supporté" });
+		}
+
+		const clientId = process.env.VITE_GOOGLE_CLIENT_ID;
+		const clientSecret = process.env.GOOGLE_CLIENT_SECRET; // Doit être dans .env.local (sans VITE_)
+
+		if (!clientId) {
+			console.error("❌ VITE_GOOGLE_CLIENT_ID manquant dans .env.local");
+			return res.status(500).json({ 
+				error: "VITE_GOOGLE_CLIENT_ID manquant. Vérifiez votre fichier .env.local" 
+			});
+		}
+
+		if (!clientSecret) {
+			console.error("❌ GOOGLE_CLIENT_SECRET manquant dans .env.local");
+			console.error("💡 Astuce: Ajoutez GOOGLE_CLIENT_SECRET=votre_secret dans .env.local (SANS préfixe VITE_)");
+			return res.status(500).json({ 
+				error: "GOOGLE_CLIENT_SECRET manquant. Ajoutez-le dans .env.local (sans préfixe VITE_). Voir docs/OAUTH_BACKEND_SETUP.md" 
+			});
+		}
+
+		// Logs pour debug
+		console.log("🔄 Rafraîchissement du token OAuth...");
+		console.log("   Client ID:", clientId);
+		console.log("   Refresh token (premiers caractères):", refresh_token?.substring(0, 20) + "...");
+
+		// Rafraîchir le token
+		const response = await fetch("https://oauth2.googleapis.com/token", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/x-www-form-urlencoded",
+			},
+			body: new URLSearchParams({
+				client_id: clientId,
+				client_secret: clientSecret,
+				refresh_token: refresh_token,
+				grant_type: "refresh_token",
+			}),
+		});
+
+		if (!response.ok) {
+			const error = await response.json().catch(() => ({}));
+			console.error("❌ Erreur Google OAuth refresh:", error);
+			
+			let errorMessage = error.error_description || error.error || "Erreur lors du rafraîchissement du token";
+			
+			// Si le refresh token est invalide ou expiré, retourner une erreur claire
+			if (error.error === "invalid_grant" || response.status === 400 || response.status === 401) {
+				errorMessage = "Token invalide ou expiré. Veuillez vous reconnecter.";
+				console.error("   💡 Le refresh token est invalide ou expiré. L'utilisateur doit se reconnecter.");
+			}
+			
+			return res.status(response.status).json({ 
+				error: errorMessage,
+				error_description: error.error_description,
+				requires_reconnect: true, // Flag pour indiquer qu'une nouvelle authentification est nécessaire
+			});
+		}
+
+		const data = await response.json();
+
+		// Retourner les tokens au format attendu
+		res.json({
+			access_token: data.access_token,
+			refresh_token: data.refresh_token || refresh_token, // Garder l'ancien si non fourni
+			expires_in: data.expires_in,
+			token_type: data.token_type || "Bearer",
+			scope: data.scope,
+		});
+	} catch (error) {
+		console.error("Erreur serveur:", error);
+		res.status(500).json({ 
+			error: error instanceof Error ? error.message : "Erreur serveur inconnue" 
+		});
+	}
+});
+
 app.listen(PORT, () => {
 	console.log(`🚀 OAuth Proxy démarré sur http://localhost:${PORT}`);
-	console.log(`📝 Endpoint: http://localhost:${PORT}/api/oauth/exchange`);
+	console.log(`📝 Endpoints:`);
+	console.log(`   - POST http://localhost:${PORT}/api/oauth/exchange (échange code → tokens)`);
+	console.log(`   - POST http://localhost:${PORT}/api/oauth/refresh (rafraîchissement token)`);
 	console.log(`\n📋 Variables d'environnement chargées:`);
 	console.log(`   VITE_GOOGLE_CLIENT_ID: ${process.env.VITE_GOOGLE_CLIENT_ID ? "✅ Présent" : "❌ Manquant"}`);
 	console.log(`   GOOGLE_CLIENT_SECRET: ${process.env.GOOGLE_CLIENT_SECRET ? "✅ Présent" : "❌ Manquant"}`);

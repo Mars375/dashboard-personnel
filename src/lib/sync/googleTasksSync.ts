@@ -795,14 +795,22 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 		);
 
 		// Construire la map d'IDs à partir des résultats
-		for (const result of [...createResults, ...updateResults]) {
+		// Seulement pour les nouvelles tâches créées (pas les mises à jour)
+		for (const result of createResults) {
 			if (result.success && result.googleId) {
 				idMap.set(result.todoId, result.googleId);
 			} else if (!result.success) {
 				logger.error(
-					`❌ Erreur lors de ${
-						result.todoId.startsWith("google-") ? "mise à jour" : "création"
-					} de la tâche ${result.todoId}: ${result.error}`
+					`❌ Erreur lors de la création de la tâche ${result.todoId}: ${result.error}`
+				);
+			}
+		}
+
+		// Pour les mises à jour, on ne retourne pas d'ID dans la map (elles ont déjà un ID Google)
+		for (const result of updateResults) {
+			if (!result.success) {
+				logger.error(
+					`❌ Erreur lors de la mise à jour de la tâche ${result.todoId}: ${result.error}`
 				);
 			}
 		}

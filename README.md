@@ -176,7 +176,7 @@ La documentation complète est disponible dans le dossier [`docs/`](./docs/) :
 - 🏗️ [Architecture du projet](./docs/ARCHITECTURE.md) - Structure, patterns et flux de données
 - 🧪 [Documentation des tests](./docs/TESTS.md) - Stratégie de tests et couverture
 - 💻 [Guide de développement](./docs/DEVELOPMENT.md) - Workflow et bonnes pratiques
-- 🔌 [API et intégrations](./docs/API.md) - OpenWeatherMap, Notion, Google Tasks
+- 🔌 [API et intégrations](./docs/API_INTEGRATIONS.md) - OpenWeatherMap, Notion, Google Tasks, OAuth
 - 🚀 [Guide de déploiement](./docs/DEPLOYMENT.md) - Vercel, Netlify, GitHub Pages
 - 🧩 [Documentation des widgets](./docs/WIDGETS.md) - Architecture et création de widgets
 - 📁 [Structure du projet](./docs/PROJECT_STRUCTURE.md) - Organisation détaillée

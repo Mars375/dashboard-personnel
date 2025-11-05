@@ -35,6 +35,7 @@ import {
 import { ButtonGroup } from "@/components/ui/button-group";
 import { useCalendar } from "@/hooks/useCalendar";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { SYNC_INTERVALS } from "@/lib/constants";
 import {
 	Plus,
 	CalendarIcon,
@@ -54,6 +55,7 @@ import {
 	ChevronRight,
 	Trash2,
 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -76,6 +78,8 @@ import { calendarSyncManager } from "@/lib/sync/calendarSyncManager";
 import { isDateInRecurrence } from "@/lib/calendarRecurrence";
 import type { WidgetProps } from "@/lib/widgetSize";
 import { getOAuthManager } from "@/lib/auth/oauthManager";
+import { logger } from "@/lib/logger";
+import { EventForm, EventItem } from "./components";
 
 // Fonction utilitaire pour formater une date en YYYY-MM-DD en local (évite les problèmes de timezone)
 function formatDateLocal(date: Date): string {
@@ -258,7 +262,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 				if (currentEvent) {
 					pushEventToGoogle({ ...currentEvent, ...eventData }, "update").catch(
 						(err) => {
-							console.error("Erreur push Google:", err);
+							logger.error("Erreur push Google:", err);
 						}
 					);
 				}
@@ -267,14 +271,14 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 				toast.success("Événement créé");
 				// Pousser vers Google Calendar en arrière-plan
 				pushEventToGoogle(newEvent, "create").catch((err) => {
-					console.error("Erreur push Google:", err);
+					logger.error("Erreur push Google:", err);
 				});
 			}
 
 			handleDialogOpenChange(false);
 		} catch (error) {
 			toast.error("Erreur lors de la création/modification de l'événement");
-			console.error("Erreur createEvent:", error);
+			logger.error("Erreur createEvent:", error);
 		}
 	};
 
@@ -310,7 +314,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 			setIsDialogOpen(true);
 		} catch (error) {
 			toast.error("Erreur lors de l'édition de l'événement");
-			console.error("Erreur editEvent:", error);
+			logger.error("Erreur editEvent:", error);
 		}
 	};
 
@@ -344,7 +348,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 			toast.success("Calendrier exporté en JSON");
 		} catch (error) {
 			toast.error("Erreur lors de l'export JSON");
-			console.error("Erreur exportJSON:", error);
+			logger.error("Erreur exportJSON:", error);
 		}
 	};
 
@@ -358,7 +362,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 			toast.success("Calendrier exporté en .ics");
 		} catch (error) {
 			toast.error("Erreur lors de l'export .ics");
-			console.error("Erreur exportICS:", error);
+			logger.error("Erreur exportICS:", error);
 		}
 	};
 
@@ -399,7 +403,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 								importedCount++;
 							}
 						} catch (error) {
-							console.error("Erreur lors de l'import d'un événement:", error);
+							logger.error("Erreur lors de l'import d'un événement:", error);
 						}
 					});
 
@@ -415,7 +419,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 			);
 		} catch (error) {
 			toast.error("Erreur lors de la lecture du fichier");
-			console.error("Erreur fileImport:", error);
+			logger.error("Erreur fileImport:", error);
 		}
 	};
 
@@ -458,7 +462,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 			const isGoogleConnected = oauthManager.isConnected("google");
 
 			if (!isGoogleConnected) {
-				console.log("⏭️ Google Calendar non connecté, skip push");
+				logger.debug("⏭️ Google Calendar non connecté, skip push");
 				return;
 			}
 
@@ -480,7 +484,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 			}
 
 			if (!googleProvider) {
-				console.log("⏭️ Google Calendar provider non disponible");
+				logger.debug("⏭️ Google Calendar provider non disponible");
 				return;
 			}
 
@@ -524,11 +528,11 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 							}`
 						);
 					}
-					console.log(`✅ Événement Google supprimé: ${googleEventId}`);
+					logger.debug(`✅ Événement Google supprimé: ${googleEventId}`);
 				} else {
 					// Mise à jour d'un événement Google existant
 					await googleProvider.pushEvents([event]);
-					console.log(
+					logger.debug(
 						`✅ Événement Google ${
 							operation === "create" ? "créé" : "mis à jour"
 						}`
@@ -544,7 +548,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 						if (googleEvent?.id && googleEvent.id.startsWith("google-")) {
 							// Mettre à jour l'ID de l'événement local
 							updateEvent(event.id, { id: googleEvent.id });
-							console.log(
+							logger.debug(
 								`✅ Événement local synchronisé vers Google avec ID: ${googleEvent.id}`
 							);
 						}
@@ -552,17 +556,17 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 				} else if (operation === "update") {
 					// Pour les événements locaux mis à jour, créer dans Google (car ils n'existent pas encore là-bas)
 					await googleProvider.pushEvents([event]);
-					console.log(`✅ Événement local mis à jour dans Google`);
+					logger.debug(`✅ Événement local mis à jour dans Google`);
 				} else if (operation === "delete") {
 					// Pour les événements locaux supprimés, pas besoin de les supprimer de Google
 					// car ils n'existent que localement
-					console.log(
+					logger.debug(
 						"⏭️ Événement local supprimé (non synchronisé avec Google)"
 					);
 				}
 			}
 		} catch (error) {
-			console.error("❌ Erreur lors du push vers Google Calendar:", error);
+			logger.error("❌ Erreur lors du push vers Google Calendar:", error);
 			// Ne pas afficher de toast d'erreur pour ne pas perturber l'UX
 			// L'utilisateur peut toujours faire une sync manuelle
 		}
@@ -660,7 +664,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 			toast.error("Erreur lors de la synchronisation", {
 				description: error instanceof Error ? error.message : "Erreur inconnue",
 			});
-			console.error("Erreur lors de la synchronisation:", error);
+			logger.error("Erreur lors de la synchronisation:", error);
 		} finally {
 			isSyncingRef.current = false;
 			setIsSyncing(false);
@@ -691,7 +695,7 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 				};
 				calendarSyncManager.updateConfig(config);
 				providerInitializedRef.current = true;
-				console.log("✅ Google Calendar provider initialisé");
+				logger.debug("✅ Google Calendar provider initialisé");
 				
 				// Synchroniser une seule fois après initialisation
 				if (!hasSyncedInitiallyRef.current) {
@@ -699,10 +703,10 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 					setTimeout(async () => {
 						if (!isSyncingRef.current) {
 							try {
-								console.log("🔄 Synchronisation initiale Google Calendar...");
+								logger.debug("🔄 Synchronisation initiale Google Calendar...");
 								await handleSync();
 							} catch (error) {
-								console.error("Erreur lors de la synchronisation initiale:", error);
+								logger.error("Erreur lors de la synchronisation initiale:", error);
 							}
 						}
 					}, 2000);
@@ -713,11 +717,11 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 					}
 					syncIntervalRef.current = setInterval(async () => {
 						if (oauthManager.isConnected("google") && !isSyncingRef.current) {
-							console.log("🔄 Synchronisation automatique Google Calendar...");
+							logger.debug("🔄 Synchronisation automatique Google Calendar...");
 							try {
 								await handleSync();
 							} catch (error) {
-								console.error("Erreur lors de la synchronisation périodique:", error);
+								logger.error("Erreur lors de la synchronisation périodique:", error);
 							}
 						}
 					}, 5 * 60 * 1000); // 5 minutes
@@ -1727,17 +1731,17 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 													})}
 													{event.time && ` - ${event.time}`}
 												</div>
-												<CalendarEventItem
-													event={event}
-													onEdit={() => {
-														handleEditEvent(event);
-														setSelectedDate(eventDate);
-													}}
-													onDelete={() => deleteEvent(event.id)}
-													onDragStart={() => handleEventDragStart(event.id)}
-													onDragEnd={handleEventDragEnd}
-													isDragging={draggedEventId === event.id}
-												/>
+								<EventItem
+									event={event}
+									onEdit={() => {
+										handleEditEvent(event);
+										setSelectedDate(eventDate);
+									}}
+									onDelete={() => deleteEvent(event.id)}
+									onDragStart={() => handleEventDragStart(event.id)}
+									onDragEnd={handleEventDragEnd}
+									isDragging={draggedEventId === event.id}
+								/>
 											</div>
 										);
 									})}
@@ -1791,242 +1795,30 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 														: "Créez un nouvel événement dans votre calendrier."}
 												</DialogDescription>
 											</DialogHeader>
-											<div className='flex flex-col gap-4 py-4'>
-												{/* Titre */}
-												<div className='flex flex-col gap-2'>
-													<Label htmlFor='event-title'>Titre *</Label>
-													<Input
-														id='event-title'
-														value={newEventTitle}
-														onChange={(e) => setNewEventTitle(e.target.value)}
-														placeholder="Nom de l'événement"
-													/>
-												</div>
-
-												{/* Date de début */}
-												<div className='flex flex-col gap-2'>
-													<Label>Date de début *</Label>
-													<Popover>
-														<PopoverTrigger asChild>
-															<Button
-																variant='outline'
-																className='w-full justify-start text-left font-normal'
-															>
-																<CalendarIcon className='mr-2 h-4 w-4' />
-																{newEventDate ? (
-																	format(newEventDate, "PPP", { locale: fr })
-																) : (
-																	<span>Sélectionner une date</span>
-																)}
-															</Button>
-														</PopoverTrigger>
-														<PopoverContent
-															className='w-auto p-0'
-															align='start'
-														>
-															<DatePicker
-																selected={newEventDate}
-																onSelect={setNewEventDate}
-																captionLayout='dropdown'
-															/>
-														</PopoverContent>
-													</Popover>
-												</div>
-
-												{/* Date de fin */}
-												<div className='flex flex-col gap-2'>
-													<Label>
-														Date de fin (optionnel - pour événements
-														multi-jours)
-													</Label>
-													<Popover>
-														<PopoverTrigger asChild>
-															<Button
-																variant='outline'
-																className='w-full justify-start text-left font-normal'
-															>
-																<CalendarIcon className='mr-2 h-4 w-4' />
-																{newEventEndDate ? (
-																	format(newEventEndDate, "PPP", { locale: fr })
-																) : (
-																	<span>Sélectionner une date de fin</span>
-																)}
-															</Button>
-														</PopoverTrigger>
-														<PopoverContent
-															className='w-auto p-0'
-															align='start'
-														>
-															<DatePicker
-																selected={newEventEndDate}
-																onSelect={setNewEventEndDate}
-																captionLayout='dropdown'
-															/>
-														</PopoverContent>
-													</Popover>
-												</div>
-
-												{/* Heure de début */}
-												<div className='flex flex-col gap-2'>
-													<Label htmlFor='event-time'>
-														Heure de début (optionnel)
-													</Label>
-													<div className='relative'>
-														<Clock className='absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
-														<Input
-															id='event-time'
-															type='time'
-															value={newEventTime}
-															onChange={(e) => setNewEventTime(e.target.value)}
-															className='pl-8'
-														/>
-													</div>
-												</div>
-
-												{/* Heure de fin */}
-												<div className='flex flex-col gap-2'>
-													<Label htmlFor='event-end-time'>
-														Heure de fin (optionnel)
-													</Label>
-													<div className='relative'>
-														<Clock className='absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
-														<Input
-															id='event-end-time'
-															type='time'
-															value={newEventEndTime}
-															onChange={(e) =>
-																setNewEventEndTime(e.target.value)
-															}
-															className='pl-8'
-														/>
-													</div>
-												</div>
-
-												{/* Description */}
-												<div className='flex flex-col gap-2'>
-													<Label htmlFor='event-description'>
-														Description (optionnel)
-													</Label>
-													<Input
-														id='event-description'
-														value={newEventDescription}
-														onChange={(e) =>
-															setNewEventDescription(e.target.value)
-														}
-														placeholder="Description de l'événement"
-													/>
-												</div>
-
-												{/* Couleur */}
-												<div className='flex flex-col gap-2'>
-													<Label>Couleur (optionnel)</Label>
-													<div className='flex flex-wrap gap-2'>
-														{eventColors.map((color) => (
-															<button
-																key={color.value}
-																type='button'
-																onClick={() => setNewEventColor(color.value)}
-																className={cn(
-																	"h-8 w-8 rounded-full border-2 transition-all",
-																	color.class,
-																	newEventColor === color.value
-																		? "border-primary ring-2 ring-primary ring-offset-2 scale-110"
-																		: "border-border hover:scale-105"
-																)}
-																title={color.name}
-																aria-label={`Sélectionner la couleur ${color.name}`}
-															/>
-														))}
-													</div>
-												</div>
-
-												{/* Répétition */}
-												<div className='flex flex-col gap-2'>
-													<Label htmlFor='event-recurrence'>
-														<Repeat className='mr-2 h-4 w-4 inline' />
-														Répétition (optionnel)
-													</Label>
-													<select
-														id='event-recurrence'
-														value={newEventRecurrence}
-														onChange={(e) =>
-															setNewEventRecurrence(
-																e.target.value as
-																	| "none"
-																	| "daily"
-																	| "weekly"
-																	| "monthly"
-																	| "yearly"
-															)
-														}
-														className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
-													>
-														<option value='none'>Aucune</option>
-														<option value='daily'>Quotidien</option>
-														<option value='weekly'>Hebdomadaire</option>
-														<option value='monthly'>Mensuel</option>
-														<option value='yearly'>Annuel</option>
-													</select>
-												</div>
-
-												{/* Rappel */}
-												<div className='flex flex-col gap-2'>
-													<Label htmlFor='event-reminder'>
-														<Bell className='mr-2 h-4 w-4 inline' />
-														Rappel (optionnel)
-													</Label>
-													<select
-														id='event-reminder'
-														value={newEventReminderMinutes || ""}
-														onChange={(e) =>
-															setNewEventReminderMinutes(
-																e.target.value === ""
-																	? undefined
-																	: Number(e.target.value)
-															)
-														}
-														className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
-													>
-														<option value=''>Aucun rappel</option>
-														<option value='5'>5 minutes avant</option>
-														<option value='15'>15 minutes avant</option>
-														<option value='30'>30 minutes avant</option>
-														<option value='60'>1 heure avant</option>
-														<option value='120'>2 heures avant</option>
-														<option value='1440'>1 jour avant</option>
-													</select>
-												</div>
-
-												{/* Boutons */}
-												<div className='flex justify-end gap-2 mt-2'>
-													<Button
-														variant='outline'
-														onClick={() => handleDialogOpenChange(false)}
-														onMouseDown={(e: React.MouseEvent) => {
-															e.stopPropagation();
-														}}
-														onDragStart={(e: React.DragEvent) => {
-															e.preventDefault();
-															e.stopPropagation();
-														}}
-													>
-														Annuler
-													</Button>
-													<Button
-														onClick={handleCreateEvent}
-														disabled={!newEventDate || !newEventTitle.trim()}
-														onMouseDown={(e: React.MouseEvent) => {
-															e.stopPropagation();
-														}}
-														onDragStart={(e: React.DragEvent) => {
-															e.preventDefault();
-															e.stopPropagation();
-														}}
-													>
-														{editingEvent ? "Enregistrer" : "Créer"}
-													</Button>
-												</div>
-											</div>
+											<EventForm
+												editingEvent={editingEvent}
+												newEventTitle={newEventTitle}
+												newEventDate={newEventDate}
+												newEventEndDate={newEventEndDate}
+												newEventTime={newEventTime}
+												newEventEndTime={newEventEndTime}
+												newEventDescription={newEventDescription}
+												newEventColor={newEventColor}
+												newEventRecurrence={newEventRecurrence}
+												newEventReminderMinutes={newEventReminderMinutes}
+												eventColors={eventColors}
+												onTitleChange={setNewEventTitle}
+												onDateChange={setNewEventDate}
+												onEndDateChange={setNewEventEndDate}
+												onTimeChange={setNewEventTime}
+												onEndTimeChange={setNewEventEndTime}
+												onDescriptionChange={setNewEventDescription}
+												onColorChange={setNewEventColor}
+												onRecurrenceChange={setNewEventRecurrence}
+												onReminderChange={setNewEventReminderMinutes}
+												onSubmit={handleCreateEvent}
+												onCancel={() => handleDialogOpenChange(false)}
+											/>
 										</DialogContent>
 									</Dialog>
 								</div>
@@ -2039,14 +1831,14 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 										</p>
 									) : (
 										selectedDateEvents.map((event) => (
-											<CalendarEventItem
+											<EventItem
 												key={event.id}
 												event={event}
 												onEdit={() => handleEditEvent(event)}
 												onDelete={async () => {
 													// Pousser la suppression vers Google Calendar en arrière-plan
 													pushEventToGoogle(event, "delete").catch((err) => {
-														console.error("Erreur push Google:", err);
+														logger.error("Erreur push Google:", err);
 													});
 													deleteEvent(event.id);
 												}}
@@ -2072,153 +1864,6 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 				className='hidden'
 			/>
 		</Card>
-	);
-}
-
-// Composant pour afficher un événement
-function CalendarEventItem({
-	event,
-	onEdit,
-	onDelete,
-	onDragStart,
-	onDragEnd,
-	isDragging,
-}: {
-	event: CalendarEvent;
-	onEdit: () => void;
-	onDelete: () => void;
-	onDragStart: () => void;
-	onDragEnd: () => void;
-	isDragging: boolean;
-}) {
-	const eventColor = event.color || "";
-
-	// Formater l'heure de l'événement
-	const formatEventTime = () => {
-		if (!event.time) return null;
-		// Retourner l'heure telle quelle (format HH:mm)
-		return event.time;
-	};
-
-	const formattedTime = formatEventTime();
-	const sourceCalendar = event.sourceCalendar;
-
-	// Déterminer la couleur de la barre via after pseudo-element
-	const afterBgColor = eventColor ? `${eventColor}70` : undefined;
-
-	const handleDragStart = (e: React.DragEvent) => {
-		try {
-			e.stopPropagation();
-			// Empêcher les extensions de navigateur d'interférer
-			e.dataTransfer.effectAllowed = "move";
-			onDragStart();
-		} catch (error) {
-			// Ignorer les erreurs d'extensions de navigateur
-			console.warn(
-				"Erreur lors du drag start (peut être causée par une extension):",
-				error
-			);
-		}
-	};
-
-	const handleDragEnd = (e: React.DragEvent) => {
-		try {
-			e.stopPropagation();
-			onDragEnd();
-		} catch (error) {
-			// Ignorer les erreurs d'extensions de navigateur
-			console.warn(
-				"Erreur lors du drag end (peut être causée par une extension):",
-				error
-			);
-		}
-	};
-
-	return (
-		<div
-			draggable
-			onDragStart={handleDragStart}
-			onDragEnd={handleDragEnd}
-			className={cn(
-				"bg-muted relative rounded-md p-2 pl-6 text-sm cursor-move group",
-				"after:absolute after:inset-y-2 after:left-2 after:w-1 after:rounded-full",
-				afterBgColor ? "" : "after:bg-primary/70",
-				isDragging && "opacity-50"
-			)}
-			style={
-				afterBgColor
-					? ({
-							"--after-bg": afterBgColor,
-					  } as React.CSSProperties & { "--after-bg": string })
-					: undefined
-			}
-		>
-			{/* Barre colorée via after pseudo-element avec couleur custom */}
-			{afterBgColor && (
-				<style
-					dangerouslySetInnerHTML={{
-						__html: `.group[style*="--after-bg"]::after { background-color: var(--after-bg) !important; }`,
-					}}
-				/>
-			)}
-			<div className='flex items-start justify-between gap-2'>
-				<div className='flex-1'>
-					<div className='font-medium'>{event.title}</div>
-					<div className='flex items-center gap-2 flex-wrap'>
-						{formattedTime && (
-							<div className='text-muted-foreground text-xs'>
-								{formattedTime}
-							</div>
-						)}
-						{sourceCalendar && (
-							<span className='text-[10px] text-muted-foreground px-1.5 py-0.5 bg-background rounded border'>
-								{sourceCalendar}
-							</span>
-						)}
-					</div>
-				</div>
-				<div className='opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1'>
-					<Button
-						variant='ghost'
-						size='icon'
-						className='h-6 w-6'
-						onClick={(e) => {
-							e.stopPropagation();
-							onEdit();
-						}}
-						onMouseDown={(e: React.MouseEvent) => {
-							e.stopPropagation();
-						}}
-						onDragStart={(e: React.DragEvent) => {
-							e.preventDefault();
-							e.stopPropagation();
-						}}
-						aria-label="Modifier l'événement"
-					>
-						<Edit2 className='h-3 w-3' />
-					</Button>
-					<Button
-						variant='ghost'
-						size='icon'
-						className='h-6 w-6'
-						onClick={(e) => {
-							e.stopPropagation();
-							onDelete();
-						}}
-						onMouseDown={(e: React.MouseEvent) => {
-							e.stopPropagation();
-						}}
-						onDragStart={(e: React.DragEvent) => {
-							e.preventDefault();
-							e.stopPropagation();
-						}}
-						aria-label="Supprimer l'événement"
-					>
-						×
-					</Button>
-				</div>
-			</div>
-		</div>
 	);
 }
 

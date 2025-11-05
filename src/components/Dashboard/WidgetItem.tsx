@@ -1,14 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, memo, Suspense } from "react";
 import type { Layout } from "react-grid-layout";
 import { getWidgetDefinition } from "@/lib/widgetRegistry";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { calculateWidgetSize } from "@/lib/widgetSize";
+import { WidgetSkeleton } from "@/components/ui/widget-skeleton";
 
 interface WidgetItemProps {
 	layout: Layout;
 }
 
-export function WidgetItem({ layout }: WidgetItemProps) {
+function WidgetItemComponent({ layout }: WidgetItemProps) {
 	const widgets = useDashboardStore((state) => state.widgets);
 
 	// Trouver le widget correspondant
@@ -34,13 +35,18 @@ export function WidgetItem({ layout }: WidgetItemProps) {
 			{/* Widget */}
 			<div className='h-full w-full overflow-auto'>
 				<div className='h-full w-full min-w-0'>
-					<WidgetComponent
-						size={widgetSize}
-						width={layout.w}
-						height={layout.h}
-					/>
+					<Suspense fallback={<WidgetSkeleton widgetType={widgetData.type} />}>
+						<WidgetComponent
+							size={widgetSize}
+							width={layout.w}
+							height={layout.h}
+						/>
+					</Suspense>
 				</div>
 			</div>
 		</div>
 	);
 }
+
+// Optimiser avec React.memo pour éviter les re-renders inutiles
+export const WidgetItem = memo(WidgetItemComponent);

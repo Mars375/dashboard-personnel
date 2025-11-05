@@ -1,6 +1,7 @@
 // Interfaces et providers pour la synchronisation de calendrier
 
 import type { CalendarEvent } from "@/widgets/Calendar/types";
+import { logger } from "@/lib/logger";
 
 export type { CalendarEvent };
 
@@ -55,7 +56,7 @@ export function saveSyncConfig(config: CalendarSyncConfig): void {
 	try {
 		localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 	} catch (error) {
-		console.error("Erreur lors de la sauvegarde de la config:", error);
+		logger.error("Erreur lors de la sauvegarde de la config:", error);
 	}
 }
 

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, memo, useCallback } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import type { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
@@ -8,7 +8,6 @@ import { useDashboardStore } from "@/store/dashboardStore";
 import { getWidgetDefinition } from "@/lib/widgetRegistry";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import React from "react";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -27,7 +26,7 @@ interface WidgetGridProps {
 	searchQuery?: string;
 }
 
-export function WidgetGrid({ searchQuery = "" }: WidgetGridProps) {
+function WidgetGridComponent({ searchQuery = "" }: WidgetGridProps) {
 	const widgets = useDashboardStore((state) => state.widgets);
 	const updateLayout = useDashboardStore((state) => state.updateLayout);
 
@@ -207,3 +206,6 @@ export function WidgetGrid({ searchQuery = "" }: WidgetGridProps) {
 		</div>
 	);
 }
+
+// Optimiser avec React.memo pour éviter les re-renders inutiles
+export const WidgetGrid = memo(WidgetGridComponent);

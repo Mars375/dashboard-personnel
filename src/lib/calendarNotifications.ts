@@ -1,6 +1,7 @@
 // Gestion des notifications pour les événements du calendrier
 
 import type { CalendarEvent } from "@/widgets/Calendar/types";
+import { logger } from "@/lib/logger";
 
 export interface CalendarNotificationSettings {
 	enabled: boolean;
@@ -35,7 +36,7 @@ export function saveNotificationSettings(settings: CalendarNotificationSettings)
 	try {
 		localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 	} catch (error) {
-		console.error("Erreur lors de la sauvegarde des paramètres:", error);
+		logger.error("Erreur lors de la sauvegarde des paramètres:", error);
 	}
 }
 

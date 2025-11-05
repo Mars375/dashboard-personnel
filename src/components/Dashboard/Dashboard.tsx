@@ -12,14 +12,15 @@ import { WidgetGrid } from "./WidgetGrid";
 import { WidgetPicker } from "./WidgetPicker";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { getWidgetDefinition } from "@/lib/widgetRegistry";
 import { useTheme } from "@/hooks/useTheme";
 import { GoogleOAuthButton } from "@/components/ui/google-oauth-button";
 
-export function Dashboard() {
+function DashboardComponent() {
 	const openPicker = useDashboardStore((state) => state.openPicker);
 	const widgets = useDashboardStore((state) => state.widgets);
 	const [isHoveringAdd, setIsHoveringAdd] = useState(false);
@@ -54,29 +55,34 @@ export function Dashboard() {
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [openPicker, searchQuery]);
 
-	// Calculer les statistiques des widgets
-	const widgetStats = widgets.reduce(
-		(acc, widget) => {
-			const def = getWidgetDefinition(widget.type);
-			if (def) {
-				acc[widget.type] = (acc[widget.type] || 0) + 1;
-			}
-			return acc;
-		},
-		{} as Record<string, number>
+	// Calculer les statistiques des widgets - optimisé avec useMemo
+	const widgetStats = useMemo(() => {
+		return widgets.reduce(
+			(acc, widget) => {
+				const def = getWidgetDefinition(widget.type);
+				if (def) {
+					acc[widget.type] = (acc[widget.type] || 0) + 1;
+				}
+				return acc;
+			},
+			{} as Record<string, number>
+		);
+	}, [widgets]);
+
+	const totalWidgets = useMemo(() => widgets.length, [widgets]);
+	const widgetTypesCount = useMemo(
+		() => Object.keys(widgetStats).length,
+		[widgetStats]
 	);
 
-	const totalWidgets = widgets.length;
-	const widgetTypesCount = Object.keys(widgetStats).length;
-
 	return (
-		<div className='min-h-screen bg-gradient-to-br from-background via-background to-muted/20'>
+		<div className='min-h-screen bg-linear-to-br from-background via-background to-muted/20'>
 			{/* Header moderne avec animations */}
 			<motion.header
 				initial={{ opacity: 0, y: -20 }}
 				animate={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.3 }}
-				className='sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 mb-4'
+				className='sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-md supports-backdrop-filter:bg-background/60 mb-4'
 			>
 				<div className='container mx-auto px-4 sm:px-6 lg:px-8 py-4'>
 					<div className='flex items-center justify-between'>
@@ -156,9 +162,13 @@ export function Dashboard() {
 											×
 										</Button>
 									) : (
-										<kbd className='pointer-events-none inline-flex h-5 select-none items-center gap-0.5 rounded border border-border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground shrink-0'>
-											<Command className='h-3 w-3' />F
-										</kbd>
+										<KbdGroup>
+											<Kbd>
+												<Command className='h-3 w-3' />
+											</Kbd>
+											<span className='text-muted-foreground'>+</span>
+											<Kbd>F</Kbd>
+										</KbdGroup>
 									)}
 								</div>
 							</div>
@@ -475,3 +485,6 @@ export function Dashboard() {
 		</div>
 	);
 }
+
+// Optimiser avec React.memo pour éviter les re-renders inutiles
+export const Dashboard = memo(DashboardComponent);

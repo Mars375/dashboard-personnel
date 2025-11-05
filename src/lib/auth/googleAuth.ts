@@ -7,6 +7,7 @@ import type {
 	OAuthService,
 } from "./types";
 import { TokenStorage } from "./tokenStorage";
+import { logger } from "@/lib/logger";
 
 export interface GoogleAuthConfig {
 	clientId: string;
@@ -63,11 +64,11 @@ export class GoogleAuth {
 				if (event.origin !== window.location.origin) return;
 
 				if (event.data.type === "OAUTH_SUCCESS") {
-					// Protection contre les appels multiples
-					if (isExchanging || isResolved) {
-						console.warn("⚠️ Tentative d'échange du code déjà en cours, ignorée");
-						return;
-					}
+				// Protection contre les appels multiples
+				if (isExchanging || isResolved) {
+					logger.warn("⚠️ Tentative d'échange du code déjà en cours, ignorée");
+					return;
+				}
 					
 					isExchanging = true;
 					const code = event.data.code;
@@ -139,31 +140,44 @@ export class GoogleAuth {
 	}
 
 	/**
-	 * Rafraîchit un access token avec le refresh token
+	 * Rafraîchit un access token avec le refresh token via le backend proxy
+	 * 
+	 * NOTE: Le refresh token nécessite le client_secret qui ne doit pas être exposé côté client.
+	 * Cette opération doit être faite via le backend proxy pour des raisons de sécurité.
 	 */
 	async refreshAccessToken(refreshToken: string): Promise<OAuthTokens> {
+		// URL du proxy backend (développement local)
+		const proxyUrl = import.meta.env.VITE_OAUTH_PROXY_URL || "http://localhost:3001";
+		
 		try {
-			const response = await fetch("https://oauth2.googleapis.com/token", {
+			const response = await fetch(`${proxyUrl}/api/oauth/refresh`, {
 				method: "POST",
 				headers: {
-					"Content-Type": "application/x-www-form-urlencoded",
+					"Content-Type": "application/json",
 				},
-				body: new URLSearchParams({
-					client_id: this.config.clientId,
+				body: JSON.stringify({
+					provider: "google",
 					refresh_token: refreshToken,
-					grant_type: "refresh_token",
 				}),
 			});
 
 			if (!response.ok) {
 				const errorData = await response.json().catch(() => ({}));
-				const errorMessage = errorData.error?.message || errorData.error_description || response.statusText;
-				console.error(`❌ Erreur lors du rafraîchissement du token (${response.status}):`, errorData);
+				const errorMessage = errorData.error?.message || errorData.error_description || errorData.error || response.statusText;
 				
 				// Si le refresh token est invalide ou expiré, on peut vouloir forcer une nouvelle authentification
 				if (response.status === 400 || response.status === 401) {
 					throw new Error(
 						`Token invalide ou expiré. Veuillez vous reconnecter. Détails: ${errorMessage}`
+					);
+				}
+				
+				// Si le proxy n'est pas disponible, donner une erreur informative
+				if (response.status === 503 || response.status === 502) {
+					throw new Error(
+						"Le backend proxy OAuth n'est pas démarré. " +
+						"Lancez `pnpm dev:server` dans un terminal séparé. " +
+						"Voir docs/OAUTH_SETUP.md pour plus d'informations."
 					);
 				}
 				
@@ -184,9 +198,19 @@ export class GoogleAuth {
 				scope: data.scope,
 			};
 		} catch (error) {
+			// Si le proxy n'est pas disponible (erreur réseau)
+			if (error instanceof TypeError && error.message.includes("fetch")) {
+				throw new Error(
+					"Le backend proxy OAuth n'est pas démarré. " +
+					"Lancez `pnpm dev:server` dans un terminal séparé. " +
+					"Voir docs/OAUTH_SETUP.md pour plus d'informations."
+				);
+			}
+			
 			if (error instanceof Error && error.message.includes("Token invalide")) {
 				throw error;
 			}
+			
 			throw new Error(
 				`Erreur lors du rafraîchissement du token: ${error instanceof Error ? error.message : "Unknown error"}`,
 			);

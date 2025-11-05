@@ -7,6 +7,7 @@ import {
 	saveCalendarEvents,
 } from "@/store/calendarStorage";
 import { isDateInRecurrence } from "@/lib/calendarRecurrence";
+import { logger } from "@/lib/logger";
 
 export function useCalendar() {
 	const [currentDate, setCurrentDate] = useState(new Date());
@@ -19,7 +20,7 @@ export function useCalendar() {
 	// Charger les événements au montage
 	useEffect(() => {
 		const loaded = loadCalendarEvents();
-		console.log("🚀 Montage initial: Chargement de", loaded.length, "événement(s)");
+		logger.debug("🚀 Montage initial: Chargement de", loaded.length, "événement(s)");
 		setEvents(loaded);
 		setIsInitialMount(false);
 	}, []);
@@ -27,11 +28,11 @@ export function useCalendar() {
 	// Sauvegarder les événements à chaque changement (sauf au montage initial)
 	useEffect(() => {
 		if (isInitialMount) {
-			console.log("⏭️ Skip sauvegarde (montage initial)");
+			logger.debug("⏭️ Skip sauvegarde (montage initial)");
 			return;
 		}
 		
-		console.log("🔄 useEffect: Sauvegarde de", events.length, "événement(s)");
+		logger.debug("🔄 useEffect: Sauvegarde de", events.length, "événement(s)");
 		saveCalendarEvents(events);
 	}, [events, isInitialMount]);
 
@@ -172,7 +173,7 @@ export function useCalendar() {
 
 	// Fonction pour ajouter plusieurs événements en une seule fois
 	const addEvents = useCallback((newEvents: (Omit<CalendarEvent, "id" | "createdAt" | "updatedAt"> | CalendarEvent)[]) => {
-		console.log("➕ addEvents: Ajout de", newEvents.length, "événement(s)");
+		logger.debug("➕ addEvents: Ajout de", newEvents.length, "événement(s)");
 		setEvents((prev) => {
 			const existingIds = new Set(prev.map((e) => e.id));
 			const eventsToAdd: CalendarEvent[] = [];
@@ -198,19 +199,19 @@ export function useCalendar() {
 				if (!existingIds.has(processedEvent.id)) {
 					eventsToAdd.push(processedEvent);
 					existingIds.add(processedEvent.id);
-					console.log("  ✓ Ajouté:", processedEvent.title, "(" + processedEvent.id + ")");
+									logger.debug("  ✓ Ajouté:", processedEvent.title, "(" + processedEvent.id + ")");
 				} else {
-					console.log("  ⏭️ Ignoré (déjà présent):", processedEvent.title, "(" + processedEvent.id + ")");
+					logger.debug("  ⏭️ Ignoré (déjà présent):", processedEvent.title, "(" + processedEvent.id + ")");
 				}
 			}
 
 			if (eventsToAdd.length === 0) {
-				console.log("⚠️ Aucun événement à ajouter (tous déjà présents)");
+				logger.debug("⚠️ Aucun événement à ajouter (tous déjà présents)");
 				return prev;
 			}
 
 			const newEventsList = [...prev, ...eventsToAdd];
-			console.log("✅ Total après ajout:", newEventsList.length, "événement(s)");
+				logger.debug("✅ Total après ajout:", newEventsList.length, "événement(s)");
 			return newEventsList;
 		});
 	}, []);

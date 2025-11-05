@@ -8,6 +8,7 @@
 		"dev:server": "tsx watch server/oauth-proxy.ts",
 		"dev:all": "concurrently \"pnpm dev\" \"pnpm dev:server\"",
 		"build": "tsc -b && vite build",
+		"build:analyze": "cross-env ANALYZE=true pnpm build",
 		"lint": "eslint .",
 		"preview": "vite preview",
 		"test": "vitest"
@@ -26,6 +27,7 @@
 		"@radix-ui/react-switch": "^1.2.6",
 		"@radix-ui/react-tooltip": "^1.2.8",
 		"@tailwindcss/vite": "^4.1.16",
+		"@tanstack/react-virtual": "^3.13.12",
 		"@types/react-grid-layout": "^1.3.5",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
@@ -59,6 +61,7 @@
 		"@vitest/ui": "^4.0.5",
 		"concurrently": "^9.2.1",
 		"cors": "^2.8.5",
+		"cross-env": "^10.1.0",
 		"dotenv": "^17.2.3",
 		"eslint": "^9.36.0",
 		"eslint-plugin-react-hooks": "^5.2.0",
@@ -71,6 +74,7 @@
 		"typescript": "~5.9.3",
 		"typescript-eslint": "^8.45.0",
 		"vite": "^7.1.7",
+		"vite-bundle-visualizer": "^1.2.1",
 		"vitest": "^4.0.5"
 	}
 }

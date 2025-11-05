@@ -46,6 +46,30 @@ vi.mock("recharts", () => ({
 
 const mockAddTodo = vi.fn();
 
+vi.mock("@/store/todoStore", () => ({
+	useTodoStore: () => ({
+		todos: [],
+		currentListId: "pro",
+		lists: [{ id: "pro", name: "Pro", createdAt: Date.now() }],
+		setCurrentList: vi.fn(),
+		addList: vi.fn(),
+		updateList: vi.fn(),
+		deleteList: vi.fn(),
+		addTodo: mockAddTodo,
+		updateTodo: vi.fn(),
+		deleteTodo: vi.fn(),
+		toggleTodo: vi.fn(),
+		editTodo: vi.fn(),
+		togglePriority: vi.fn(),
+		setDeadline: vi.fn(),
+		updateTodoId: vi.fn(),
+		undo: vi.fn(),
+		redo: vi.fn(),
+		canUndo: false,
+		canRedo: false,
+	}),
+}), { virtual: true });
+
 vi.mock("@/hooks/useTodos", () => ({
 	useTodos: () => ({
 		todos: [],
@@ -61,7 +85,8 @@ vi.mock("@/hooks/useTodos", () => ({
 		editTodo: vi.fn(),
 		togglePriority: vi.fn(),
 		setDeadline: vi.fn(),
-		filteredTodos: () => [],
+		updateTodoId: vi.fn(),
+		filteredTodos: vi.fn(() => []),
 		activeCount: 0,
 		completedCount: 0,
 		priorityCount: 0,
@@ -95,6 +120,47 @@ vi.mock("@/lib/sync/syncManager", () => ({
 	syncManager: {
 		syncAll: vi.fn().mockResolvedValue(undefined),
 	},
+}), { virtual: true });
+
+vi.mock("@/lib/auth/oauthManager", () => ({
+	getOAuthManager: () => ({
+		isConnected: vi.fn().mockReturnValue(false),
+		getAccessToken: vi.fn(),
+		getValidAccessToken: vi.fn(),
+	}),
+}), { virtual: true });
+
+vi.mock("@/lib/sync/googleTasksSync", () => ({
+	GoogleTasksSyncProvider: vi.fn(),
+}), { virtual: true });
+
+vi.mock("@/lib/logger", () => ({
+	logger: {
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+	},
+}), { virtual: true });
+
+vi.mock("@/lib/syncMessages", () => ({
+	syncMessages: {
+		taskCreated: vi.fn(() => ({ title: "Tâche créée", description: "" })),
+		taskCompleted: vi.fn(() => ({ title: "Tâche terminée", description: "" })),
+		tasksSynced: vi.fn(() => ({ title: "Synchronisé", description: "" })),
+	},
+	getSyncError: vi.fn(() => ({ title: "Erreur", description: "" })),
+	syncWarnings: {
+		noGoogleIdReturned: vi.fn(() => ({ title: "Avertissement", description: "" })),
+	},
+}), { virtual: true });
+
+vi.mock("@/lib/todoUtils", () => ({
+	getCurrentTodos: vi.fn(() => []),
+	getCurrentLists: vi.fn(() => []),
+	getTodoByTitle: vi.fn(() => undefined),
+	waitForListAdded: vi.fn(),
+	waitForCurrentListChanged: vi.fn(),
 }), { virtual: true });
 
 beforeEach(() => {
@@ -131,6 +197,7 @@ describe("TodoWidget - Add Todo", () => {
 	});
 
 	it("adds a todo with deadline when deadline is provided", async () => {
+		vi.useRealTimers();
 		const user = userEvent.setup();
 		render(<TodoWidget size="full" />); // Use full size to show deadline button
 

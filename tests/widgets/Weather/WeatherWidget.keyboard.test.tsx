@@ -78,7 +78,7 @@ describe("WeatherWidget (keyboard navigation)", () => {
     const user = userEvent.setup();
     render(<WeatherWidget size="full" />);
     
-    const input = screen.getByPlaceholderText("Rechercher et ajouter une ville...");
+    const input = screen.getByPlaceholderText("Ajouter une ville...");
     expect(input).toBeTruthy();
     
     // Test ArrowDown

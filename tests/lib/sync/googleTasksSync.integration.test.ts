@@ -215,21 +215,25 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 				status: "completed",
 			};
 
-			// getOrCreateDefaultTaskList: getAllTaskLists finds "Mes tâches", then tests @default access
-			// pushTodos: updates task
-			(global.fetch as any)
-				.mockResolvedValueOnce({
-					ok: true,
-					json: vi.fn().mockResolvedValue(mockTaskListResponse), // getAllTaskLists - finds "Mes tâches"
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: vi.fn().mockResolvedValue({}), // test @default access
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: vi.fn().mockResolvedValue(mockUpdatedTask), // pushTodos updates task
-				});
+		// getOrCreateDefaultTaskList: getAllTaskLists finds "Mes tâches", then tests @default access
+		// pushTodos: updates task (getOrCreateTaskList may also be called)
+		(global.fetch as any)
+			.mockResolvedValueOnce({
+				ok: true,
+				json: vi.fn().mockResolvedValue(mockTaskListResponse), // getAllTaskLists - finds "Mes tâches"
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: vi.fn().mockResolvedValue({}), // test @default access
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: vi.fn().mockResolvedValue({ items: [] }), // getOrCreateTaskList check (if called)
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: vi.fn().mockResolvedValue(mockUpdatedTask), // pushTodos updates task
+			});
 
 			const idMap = await provider.pushTodos([todo]);
 
