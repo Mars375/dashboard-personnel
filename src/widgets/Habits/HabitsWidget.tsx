@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, memo, useCallback } from "react";
-import { Plus, Check, X, Flame, Calendar, Edit2, Trash2 } from "lucide-react";
+import { Plus, Check, X, Flame, Calendar, Edit2, Trash2, TrendingUp } from "lucide-react";
 import type { WidgetProps } from "@/lib/widgetSize";
 import {
 	loadHabits,
@@ -42,6 +42,28 @@ function HabitsWidgetComponent({ size = "medium" }: WidgetProps) {
 	}, []);
 
 	const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+
+	// Calcul des statistiques pour différenciation visuelle
+	const habitsStats = useMemo(() => {
+		const totalHabits = habits.length;
+		const completedToday = habits.filter((h) => h.completedDates.includes(today)).length;
+		const totalStreak = habits.reduce((sum, h) => sum + h.streak, 0);
+		const avgStreak = totalHabits > 0 ? Math.round(totalStreak / totalHabits) : 0;
+		
+		// Calcul des 7 derniers jours pour heatmap
+		const last7Days = Array.from({ length: 7 }, (_, i) => {
+			const date = new Date();
+			date.setDate(date.getDate() - (6 - i));
+			return date.toISOString().split("T")[0];
+		});
+
+		const heatmapData = last7Days.map((date) => {
+			const completedCount = habits.filter((h) => h.completedDates.includes(date)).length;
+			return { date, count: completedCount, percentage: totalHabits > 0 ? (completedCount / totalHabits) * 100 : 0 };
+		});
+
+		return { totalHabits, completedToday, avgStreak, heatmapData };
+	}, [habits, today]);
 
 	const handleAddHabit = useCallback(() => {
 		const newHabit = addHabit({
@@ -107,23 +129,60 @@ function HabitsWidgetComponent({ size = "medium" }: WidgetProps) {
 				isCompact ? "overflow-hidden" : "overflow-auto"
 			)}
 		>
-			{/* Header */}
+			{/* Header avec statistiques visuelles */}
 			{isFull && (
-				<div className="flex items-center justify-between shrink-0">
-					<h3 className="text-sm font-semibold">Habitudes</h3>
-					<Button
-						size="sm"
-						onClick={handleAddHabit}
-						onMouseDown={(e: React.MouseEvent) => {
-							e.stopPropagation();
-						}}
-						onDragStart={(e: React.DragEvent) => {
-							e.preventDefault();
-							e.stopPropagation();
-						}}
-					>
-						<Plus className="h-4 w-4" />
-					</Button>
+				<div className="space-y-2 shrink-0">
+					<div className="flex items-center justify-between">
+						<h3 className="text-sm font-semibold">Habitudes</h3>
+						<Button
+							size="sm"
+							onClick={handleAddHabit}
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+						>
+							<Plus className="h-4 w-4" />
+						</Button>
+					</div>
+					{habits.length > 0 && (
+						<div className="flex items-center gap-3 text-xs">
+							<div className="flex items-center gap-1 text-muted-foreground">
+								<Check className="h-3 w-3 text-green-500" />
+								<span>{habitsStats.completedToday}/{habitsStats.totalHabits} aujourd'hui</span>
+							</div>
+							{habitsStats.avgStreak > 0 && (
+								<div className="flex items-center gap-1 text-muted-foreground">
+									<TrendingUp className="h-3 w-3 text-blue-500" />
+									<span>Moy: {habitsStats.avgStreak}j</span>
+								</div>
+							)}
+						</div>
+					)}
+					{/* Mini heatmap 7 derniers jours */}
+					{habits.length > 0 && (
+						<div className="flex items-center gap-1">
+							{habitsStats.heatmapData.map((day) => (
+								<div
+									key={day.date}
+									className={cn(
+										"flex-1 h-2 rounded-sm transition-colors",
+										day.percentage === 0
+											? "bg-muted"
+											: day.percentage < 33
+												? "bg-yellow-500/30"
+												: day.percentage < 66
+													? "bg-yellow-500/60"
+													: "bg-green-500"
+									)}
+									title={`${day.count} habitude(s) le ${format(new Date(day.date), "dd/MM", { locale: fr })}`}
+								/>
+							))}
+						</div>
+					)}
 				</div>
 			)}
 

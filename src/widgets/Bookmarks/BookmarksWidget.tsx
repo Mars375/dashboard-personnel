@@ -161,47 +161,56 @@ function BookmarksWidgetComponent({ size = "medium" }: WidgetProps) {
 								initial={{ opacity: 0, y: 10 }}
 								animate={{ opacity: 1, y: 0 }}
 								className={cn(
-									"p-2 rounded-md border cursor-pointer hover:bg-accent transition-colors",
+									"p-3 rounded-lg border bg-card hover:bg-accent transition-colors cursor-pointer",
 									isCompact && "p-1.5 text-xs"
 								)}
 								onClick={() => handleOpenBookmark(bookmark.url)}
 							>
 								<div className="flex items-start justify-between gap-2">
-									<div className="flex items-start gap-2 flex-1 min-w-0">
-										{bookmark.favicon && (
+									<div className="flex items-start gap-3 flex-1 min-w-0">
+										{bookmark.favicon ? (
 											<img
 												src={bookmark.favicon}
 												alt=""
-												className={cn("shrink-0 rounded", isCompact ? "w-3 h-3" : "w-4 h-4")}
+												className={cn("shrink-0 rounded-md border", isCompact ? "w-4 h-4" : "w-8 h-8")}
 												onError={(e) => {
 													(e.target as HTMLImageElement).style.display = "none";
 												}}
 											/>
+										) : (
+											<div
+												className={cn(
+													"shrink-0 rounded-md border bg-muted flex items-center justify-center",
+													isCompact ? "w-4 h-4" : "w-8 h-8"
+												)}
+											>
+												<Link2 className={cn("text-muted-foreground", isCompact ? "w-2 h-2" : "w-4 h-4")} />
+											</div>
 										)}
 										<div className="flex-1 min-w-0">
-											<div className={cn("font-medium truncate", isCompact && "text-xs")}>
+											<div className={cn("font-semibold truncate", isCompact && "text-xs")}>
 												{bookmark.title || bookmark.url}
 											</div>
-											<div className={cn("text-muted-foreground truncate text-xs", isCompact && "text-[10px]")}>
-												{bookmark.url}
+											<div className={cn("text-muted-foreground truncate mt-0.5", isCompact ? "text-[10px]" : "text-xs")}>
+												{new URL(bookmark.url).hostname}
 											</div>
 											{bookmark.description && (
 												<div
 													className={cn(
-														"text-muted-foreground line-clamp-1 mt-1 text-xs",
-														isCompact && "text-[10px]"
+														"text-muted-foreground line-clamp-2 mt-1",
+														isCompact ? "text-[10px]" : "text-xs"
 													)}
 												>
 													{bookmark.description}
 												</div>
 											)}
 											{bookmark.tags && bookmark.tags.length > 0 && (
-												<div className="flex gap-1 mt-1 flex-wrap">
-													{bookmark.tags.slice(0, 2).map((tag, idx) => (
+												<div className="flex gap-1 mt-1.5 flex-wrap">
+													{bookmark.tags.slice(0, 3).map((tag, idx) => (
 														<span
 															key={idx}
 															className={cn(
-																"px-1.5 py-0.5 bg-muted rounded text-[10px]",
+																"px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[10px]",
 																isCompact && "text-[8px] px-1 py-0"
 															)}
 														>

@@ -15,7 +15,7 @@ import { DatePicker } from "@/components/ui/calendar-full";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, memo, useCallback } from "react";
-import { Plus, Calendar, Trash2, Edit2 } from "lucide-react";
+import { Plus, Calendar, Trash2, Edit2, FileText, Clock } from "lucide-react";
 import type { WidgetProps } from "@/lib/widgetSize";
 import {
 	loadJournalEntries,
@@ -30,13 +30,14 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
-	const [, setEntries] = useState<JournalEntry[]>(() => loadJournalEntries());
+	const [entries, setEntries] = useState<JournalEntry[]>(() => loadJournalEntries());
 	const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 	const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [editTitle, setEditTitle] = useState("");
 	const [editContent, setEditContent] = useState("");
 	const [editDate, setEditDate] = useState<Date>(new Date());
+	const [showRecentEntries, setShowRecentEntries] = useState(false);
 
 	const isCompact = useMemo(() => size === "compact", [size]);
 	const isFull = useMemo(() => size === "full" || size === "medium", [size]);
@@ -59,6 +60,13 @@ function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
 			setEditDate(selectedDate);
 		}
 	}, [selectedDate]);
+
+	// Récupérer les dernières entrées pour différenciation visuelle
+	const recentEntries = useMemo(() => {
+		return [...entries]
+			.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+			.slice(0, 5);
+	}, [entries]);
 
 	const handleSaveEntry = useCallback(() => {
 		const dateStr = format(editDate, "yyyy-MM-dd");
@@ -101,56 +109,118 @@ function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
 				isCompact ? "overflow-hidden" : "overflow-auto"
 			)}
 		>
-			{/* Header */}
+			{/* Header avec vue récentes */}
 			{isFull && (
-				<div className="flex items-center gap-2 shrink-0">
-					<Popover>
-						<PopoverTrigger asChild>
-							<Button
-								variant="outline"
-								size="sm"
-								className="flex-1 justify-start text-left font-normal"
-								onMouseDown={(e: React.MouseEvent) => {
-									e.stopPropagation();
-								}}
-								onDragStart={(e: React.DragEvent) => {
-									e.preventDefault();
-									e.stopPropagation();
-								}}
-							>
-								<Calendar className="h-4 w-4 mr-2" />
-								{format(selectedDate, "PPP", { locale: fr })}
-							</Button>
-						</PopoverTrigger>
-						<PopoverContent className="w-auto p-0" align="start">
-							<DatePicker
-								selected={selectedDate}
-								onSelect={(date) => {
-									if (date) setSelectedDate(date);
-								}}
-								captionLayout="dropdown"
-							/>
-						</PopoverContent>
-					</Popover>
-					<Button
-						size="sm"
-						onClick={() => setIsDialogOpen(true)}
-						onMouseDown={(e: React.MouseEvent) => {
-							e.stopPropagation();
-						}}
-						onDragStart={(e: React.DragEvent) => {
-							e.preventDefault();
-							e.stopPropagation();
-						}}
-					>
-						<Plus className="h-4 w-4" />
-					</Button>
+				<div className="space-y-2 shrink-0">
+					<div className="flex items-center gap-2">
+						<Popover>
+							<PopoverTrigger asChild>
+								<Button
+									variant="outline"
+									size="sm"
+									className="flex-1 justify-start text-left font-normal"
+									onMouseDown={(e: React.MouseEvent) => {
+										e.stopPropagation();
+									}}
+									onDragStart={(e: React.DragEvent) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+								>
+									<Calendar className="h-4 w-4 mr-2" />
+									{format(selectedDate, "PPP", { locale: fr })}
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent className="w-auto p-0" align="start">
+								<DatePicker
+									selected={selectedDate}
+									onSelect={(date) => {
+										if (date) setSelectedDate(date);
+									}}
+									captionLayout="dropdown"
+								/>
+							</PopoverContent>
+						</Popover>
+						<Button
+							size="sm"
+							variant={showRecentEntries ? "default" : "outline"}
+							onClick={() => setShowRecentEntries(!showRecentEntries)}
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+							title="Afficher les dernières entrées"
+						>
+							<FileText className="h-4 w-4" />
+						</Button>
+						<Button
+							size="sm"
+							onClick={() => setIsDialogOpen(true)}
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+						>
+							<Plus className="h-4 w-4" />
+						</Button>
+					</div>
+					{entries.length > 0 && (
+						<div className="text-xs text-muted-foreground">
+							{entries.length} entrée{entries.length > 1 ? "s" : ""} au total
+						</div>
+					)}
 				</div>
 			)}
 
-			{/* Entry Content */}
+			{/* Entry Content - Vue date ou récentes */}
 			<div className="flex-1 overflow-y-auto">
-				{selectedEntry ? (
+				{showRecentEntries && isFull ? (
+					// Vue des dernières entrées
+					<div className="space-y-2">
+						{recentEntries.length === 0 ? (
+							<div className="text-sm text-muted-foreground text-center py-8">
+								Aucune entrée
+							</div>
+						) : (
+							recentEntries.map((entry) => (
+								<motion.div
+									key={entry.id}
+									initial={{ opacity: 0, y: 10 }}
+									animate={{ opacity: 1, y: 0 }}
+									className="p-2 rounded-md border cursor-pointer hover:bg-accent transition-colors"
+									onClick={() => {
+										setSelectedDate(new Date(entry.date));
+										setShowRecentEntries(false);
+									}}
+								>
+									<div className="flex items-start justify-between gap-2">
+										<div className="flex-1 min-w-0">
+											<div className="flex items-center gap-2 mb-1">
+												<Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+												<span className="text-xs text-muted-foreground">
+													{format(new Date(entry.date), "PPP", { locale: fr })}
+												</span>
+											</div>
+											<div className="font-medium truncate">{entry.title}</div>
+											{entry.content && (
+												<div className="text-xs text-muted-foreground line-clamp-2 mt-1">
+													{entry.content}
+												</div>
+											)}
+										</div>
+									</div>
+								</motion.div>
+							))
+						)}
+					</div>
+				) : selectedEntry ? (
+					// Vue entrée sélectionnée
 					<motion.div
 						initial={{ opacity: 0, y: 10 }}
 						animate={{ opacity: 1, y: 0 }}
