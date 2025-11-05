@@ -88,6 +88,12 @@ export const useDashboardStore = create<DashboardState>()(
 						bookmarks: { w: 4, h: 6, minW: 3, minH: 4 },
 						habits: { w: 4, h: 6, minW: 3, minH: 4 },
 						journal: { w: 4, h: 6, minW: 3, minH: 4 },
+						finance: { w: 4, h: 6, minW: 3, minH: 4 },
+						pomodoro: { w: 3, h: 4, minW: 2, minH: 3 },
+						stats: { w: 4, h: 6, minW: 3, minH: 4 },
+						rss: { w: 4, h: 6, minW: 3, minH: 4 },
+						quote: { w: 3, h: 3, minW: 2, minH: 2 },
+						graphiques: { w: 4, h: 6, minW: 3, minH: 4 },
 					};
 
 					const defaultSize = sizes[type] || { w: 4, h: 4, minW: 2, minH: 2 };

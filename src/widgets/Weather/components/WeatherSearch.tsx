@@ -127,7 +127,7 @@ function WeatherSearchComponent({
 													ac.reset();
 												}
 											}}
-											onClick={(e) => {
+											onClick={(e: React.MouseEvent) => {
 												e.stopPropagation();
 												if (onSelectSuggestion) {
 													onSelectSuggestion(s);

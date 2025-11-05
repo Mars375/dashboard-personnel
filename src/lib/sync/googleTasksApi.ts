@@ -263,7 +263,11 @@ export async function updateTask(
 	}
 
 	const rawData = await response.json();
-	return safeValidateGoogleTask(rawData);
+	const validated = safeValidateGoogleTask(rawData);
+	if (!validated) {
+		throw new Error("Tâche créée invalide");
+	}
+	return validated;
 }
 
 /**

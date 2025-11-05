@@ -1,6 +1,6 @@
 import type { ComponentType, LazyExoticComponent } from "react";
 import { lazy } from "react";
-import { Cloud, CheckSquare, Calendar, Bookmark, Target, BookOpen } from "lucide-react";
+import { Cloud, CheckSquare, Calendar, Bookmark, Target, BookOpen, DollarSign, Timer, BarChart3, Rss, Quote, LineChart } from "lucide-react";
 import type { WidgetProps } from "./widgetSize";
 
 // Lazy loading des widgets pour optimiser le bundle size
@@ -37,6 +37,42 @@ const HabitsWidget = lazy(() =>
 const JournalWidget = lazy(() =>
 	import("@/widgets/Journal/JournalWidget").then((module) => ({
 		default: module.JournalWidget,
+	}))
+);
+
+const FinanceWidget = lazy(() =>
+	import("@/widgets/Finance/FinanceWidget").then((module) => ({
+		default: module.FinanceWidget,
+	}))
+);
+
+const PomodoroWidget = lazy(() =>
+	import("@/widgets/Pomodoro/PomodoroWidget").then((module) => ({
+		default: module.PomodoroWidget,
+	}))
+);
+
+const StatsWidget = lazy(() =>
+	import("@/widgets/Stats/StatsWidget").then((module) => ({
+		default: module.StatsWidget,
+	}))
+);
+
+const RSSWidget = lazy(() =>
+	import("@/widgets/RSS/RSSWidget").then((module) => ({
+		default: module.RSSWidget,
+	}))
+);
+
+const QuoteWidget = lazy(() =>
+	import("@/widgets/Quote/QuoteWidget").then((module) => ({
+		default: module.QuoteWidget,
+	}))
+);
+
+const GraphiquesWidget = lazy(() =>
+	import("@/widgets/Graphiques/GraphiquesWidget").then((module) => ({
+		default: module.GraphiquesWidget,
 	}))
 );
 
@@ -108,6 +144,66 @@ export const widgetRegistry: WidgetDefinition[] = [
 		description: "Écrivez votre journal quotidien",
 		icon: BookOpen,
 		component: JournalWidget,
+		defaultSize: { w: 4, h: 6 },
+		minSize: { w: 3, h: 4 },
+		maxSize: { w: 8, h: 10 },
+	},
+	{
+		id: "finance",
+		name: "Finance",
+		description: "Suivez vos revenus et dépenses",
+		icon: DollarSign,
+		component: FinanceWidget,
+		defaultSize: { w: 4, h: 6 },
+		minSize: { w: 3, h: 4 },
+		maxSize: { w: 8, h: 10 },
+	},
+	{
+		id: "pomodoro",
+		name: "Pomodoro",
+		description: "Technique Pomodoro pour la productivité",
+		icon: Timer,
+		component: PomodoroWidget,
+		defaultSize: { w: 3, h: 4 },
+		minSize: { w: 2, h: 3 },
+		maxSize: { w: 6, h: 6 },
+	},
+	{
+		id: "stats",
+		name: "Statistiques",
+		description: "Statistiques globales du dashboard",
+		icon: BarChart3,
+		component: StatsWidget,
+		defaultSize: { w: 4, h: 6 },
+		minSize: { w: 3, h: 4 },
+		maxSize: { w: 8, h: 10 },
+	},
+	{
+		id: "rss",
+		name: "RSS",
+		description: "Lecteur de flux RSS",
+		icon: Rss,
+		component: RSSWidget,
+		defaultSize: { w: 4, h: 6 },
+		minSize: { w: 3, h: 4 },
+		maxSize: { w: 8, h: 10 },
+	},
+	{
+		id: "quote",
+		name: "Citation",
+		description: "Citations inspirantes quotidiennes",
+		icon: Quote,
+		component: QuoteWidget,
+		defaultSize: { w: 3, h: 3 },
+		minSize: { w: 2, h: 2 },
+		maxSize: { w: 6, h: 6 },
+	},
+	{
+		id: "graphiques",
+		name: "Graphiques",
+		description: "Créez des graphiques personnalisés",
+		icon: LineChart,
+		component: GraphiquesWidget,
 		defaultSize: { w: 4, h: 6 },
 		minSize: { w: 3, h: 4 },
 		maxSize: { w: 8, h: 10 },
