@@ -35,6 +35,7 @@ import {
 import { ButtonGroup } from "@/components/ui/button-group";
 import { useCalendar } from "@/hooks/useCalendar";
 import { useState, useEffect, useRef, useCallback, memo, useMemo } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
 	Plus,
 	CalendarIcon,
@@ -826,6 +827,28 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 		: [];
 
 	const padding = isCompact ? "p-2" : isMedium ? "px-3 pb-3 pt-1" : "p-4";
+	
+	// Refs pour virtualisation
+	const todayEventsScrollRef = useRef<HTMLDivElement>(null);
+	const selectedEventsScrollRef = useRef<HTMLDivElement>(null);
+	
+	const sortedSelectedDateEvents = useMemo(() => {
+		return [...selectedDateEvents].sort((a, b) => {
+			if (!a.time && !b.time) return 0;
+			if (!a.time) return 1;
+			if (!b.time) return -1;
+			return a.time.localeCompare(b.time);
+		});
+	}, [selectedDateEvents]);
+
+	// Virtualisation pour selectedDateEvents si plus de 50
+	const shouldVirtualizeSelected = sortedSelectedDateEvents.length > 50;
+	const selectedEventsVirtualizer = shouldVirtualizeSelected && selectedEventsScrollRef.current ? useVirtualizer({
+		count: sortedSelectedDateEvents.length,
+		getScrollElement: () => selectedEventsScrollRef.current,
+		estimateSize: () => 80,
+		overscan: 3,
+	}) : null;
 
 	// Forcer la vue "month" en mode compact et medium
 	useEffect(() => {
@@ -846,11 +869,27 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 					// Toujours afficher aujourd'hui
 					const today = new Date();
 					today.setHours(0, 0, 0, 0);
-					const todayEvents = events.filter((e) => {
-						const eventDate = new Date(e.date);
-						eventDate.setHours(0, 0, 0, 0);
-						return eventDate.getTime() === today.getTime();
-					});
+					const todayEvents = useMemo(() => {
+						return events.filter((e) => {
+							const eventDate = new Date(e.date);
+							eventDate.setHours(0, 0, 0, 0);
+							return eventDate.getTime() === today.getTime();
+						}).sort((a, b) => {
+							if (!a.time && !b.time) return 0;
+							if (!a.time) return 1;
+							if (!b.time) return -1;
+							return a.time.localeCompare(b.time);
+						});
+					}, [events]);
+
+					// Virtualisation si plus de 50 événements
+					const shouldVirtualizeToday = todayEvents.length > 50;
+					const todayVirtualizer = shouldVirtualizeToday ? useVirtualizer({
+						count: todayEvents.length,
+						getScrollElement: () => todayEventsScrollRef.current,
+						estimateSize: () => 60,
+						overscan: 3,
+					}) : null;
 
 					return (
 						<div className='flex flex-col h-full justify-center gap-2'>
@@ -869,24 +908,36 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 							</div>
 
 							{/* Événements d'aujourd'hui */}
-							<div className='flex-1 min-h-0 overflow-y-auto'>
+							<div 
+								ref={todayEventsScrollRef}
+								className='flex-1 min-h-0 overflow-y-auto'
+							>
 								{todayEvents.length === 0 ? (
 									<div className='text-xs text-muted-foreground text-center py-4'>
 										Aucun événement aujourd'hui
 									</div>
-								) : (
-									<div className='flex flex-col gap-1.5'>
-										{todayEvents
-											.sort((a, b) => {
-												if (!a.time && !b.time) return 0;
-												if (!a.time) return 1;
-												if (!b.time) return -1;
-												return a.time.localeCompare(b.time);
-											})
-											.map((event) => (
+								) : shouldVirtualizeToday && todayVirtualizer ? (
+									<div
+										style={{
+											height: `${todayVirtualizer.getTotalSize()}px`,
+											width: '100%',
+											position: 'relative',
+										}}
+									>
+										{todayVirtualizer.getVirtualItems().map((virtualItem: { index: number; size: number; start: number }) => {
+											const event = todayEvents[virtualItem.index];
+											return (
 												<div
 													key={event.id}
-													className='flex items-start gap-2 p-2 border rounded-md hover:bg-accent transition-colors'
+													style={{
+														position: 'absolute',
+														top: 0,
+														left: 0,
+														width: '100%',
+														height: `${virtualItem.size}px`,
+														transform: `translateY(${virtualItem.start}px)`,
+													}}
+													className='flex items-start gap-2 p-2 border rounded-md hover:bg-accent transition-colors mb-1.5'
 												>
 													{event.time && (
 														<div className='text-xs font-medium text-muted-foreground shrink-0 min-w-[45px]'>
@@ -904,7 +955,33 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 														)}
 													</div>
 												</div>
-											))}
+											);
+										})}
+									</div>
+								) : (
+									<div className='flex flex-col gap-1.5'>
+										{todayEvents.map((event) => (
+											<div
+												key={event.id}
+												className='flex items-start gap-2 p-2 border rounded-md hover:bg-accent transition-colors'
+											>
+												{event.time && (
+													<div className='text-xs font-medium text-muted-foreground shrink-0 min-w-[45px]'>
+														{event.time}
+													</div>
+												)}
+												<div className='flex-1 min-w-0'>
+													<div className='text-xs font-medium'>
+														{event.title}
+													</div>
+													{event.description && (
+														<div className='text-[10px] text-muted-foreground mt-0.5 line-clamp-1'>
+															{event.description}
+														</div>
+													)}
+												</div>
+											</div>
+										))}
 									</div>
 								)}
 							</div>
@@ -1819,19 +1896,61 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 								</div>
 
 								{/* Événements */}
-								<div className='flex w-full flex-col gap-2'>
-									{selectedDateEvents.length === 0 ? (
+								<div 
+									ref={selectedEventsScrollRef}
+									className='flex w-full flex-col gap-2'
+								>
+									{sortedSelectedDateEvents.length === 0 ? (
 										<p className='text-sm text-muted-foreground'>
 											Aucun événement
 										</p>
+									) : shouldVirtualizeSelected && selectedEventsVirtualizer ? (
+										<div
+											style={{
+												height: `${selectedEventsVirtualizer.getTotalSize()}px`,
+												width: '100%',
+												position: 'relative',
+											}}
+										>
+											{selectedEventsVirtualizer.getVirtualItems().map((virtualItem: { index: number; size: number; start: number }) => {
+												const event = sortedSelectedDateEvents[virtualItem.index];
+												return (
+													<div
+														key={event.id}
+														style={{
+															position: 'absolute',
+															top: 0,
+															left: 0,
+															width: '100%',
+															height: `${virtualItem.size}px`,
+															transform: `translateY(${virtualItem.start}px)`,
+														}}
+														className='mb-2'
+													>
+														<EventItem
+															event={event}
+															onEdit={() => handleEditEvent(event)}
+															onDelete={async () => {
+																pushEventToGoogle(event, "delete").catch((err) => {
+																	logger.error("Erreur push Google:", err);
+																});
+																deleteEvent(event.id);
+															}}
+															onDragStart={() => handleEventDragStart(event.id)}
+															onDragEnd={handleEventDragEnd}
+															isDragging={draggedEventId === event.id}
+														/>
+													</div>
+												);
+											})}
+										</div>
 									) : (
-										selectedDateEvents.map((event) => (
+										sortedSelectedDateEvents.map((event: typeof sortedSelectedDateEvents[0]) => (
 											<EventItem
 												key={event.id}
 												event={event}
 												onEdit={() => handleEditEvent(event)}
 												onDelete={async () => {
-													// Pousser la suppression vers Google Calendar en arrière-plan
 													pushEventToGoogle(event, "delete").catch((err) => {
 														logger.error("Erreur push Google:", err);
 													});
