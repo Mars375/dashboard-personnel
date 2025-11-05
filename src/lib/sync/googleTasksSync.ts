@@ -4,6 +4,7 @@ import type { Todo } from "@/store/todoStorage";
 import type { SyncProvider, SyncResult, SyncConfig } from "./apiSync";
 import { getOAuthManager } from "@/lib/auth/oauthManager";
 import { format, parseISO } from "date-fns";
+import { logger } from "@/lib/logger";
 
 // Types Google Tasks API
 interface GoogleTask {
@@ -52,12 +53,12 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			const stored = localStorage.getItem(this.STORAGE_KEY);
 			if (stored) {
 				this.taskListId = stored;
-				console.log(
+				logger.debug(
 					`📦 taskListId chargé depuis localStorage: ${this.taskListId}`
 				);
 			}
 		} catch (error) {
-			console.warn(
+			logger.warn(
 				"Impossible de charger taskListId depuis localStorage:",
 				error
 			);
@@ -86,7 +87,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 						error.message.includes("429"));
 
 				if (isRetryable) {
-					console.log(
+					logger.debug(
 						`🔄 Tentative de retry (${this.MAX_RETRIES - retries + 1}/${this.MAX_RETRIES})...`
 					);
 					await new Promise((resolve) =>
@@ -106,9 +107,9 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 		try {
 			localStorage.setItem(this.STORAGE_KEY, taskListId);
 			this.taskListId = taskListId;
-			console.log(`💾 taskListId sauvegardé dans localStorage: ${taskListId}`);
+				logger.debug(`💾 taskListId sauvegardé dans localStorage: ${taskListId}`);
 		} catch (error) {
-			console.warn(
+                    logger.warn(
 				"Impossible de sauvegarder taskListId dans localStorage:",
 				error
 			);
@@ -169,7 +170,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 			return taskLists;
 		} catch (error) {
-			console.error(
+                    logger.error(
 				"Erreur lors de la récupération des listes de tâches:",
 				error
 			);
@@ -184,7 +185,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 	async getOrCreateDefaultTaskList(): Promise<string> {
 		// Vérifier si le taskListId enregistré existe encore
 		if (this.taskListId) {
-			console.log(
+                    logger.debug(
 				`✅ Tentative de réutilisation de la liste (ID: ${this.taskListId})`
 			);
 			// Tester si la liste existe encore
@@ -202,24 +203,24 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				);
 
 				if (testResponse.ok) {
-					console.log(`✅ Liste (ID: ${this.taskListId}) toujours valide`);
+					logger.debug(`✅ Liste (ID: ${this.taskListId}) toujours valide`);
 					return this.taskListId;
 				} else if (testResponse.status === 404) {
-					console.warn(
+					logger.warn(
 						`⚠️ Liste sauvegardée (ID: ${this.taskListId}) n'existe plus, réinitialisation...`
 					);
 					// La liste n'existe plus, réinitialiser taskListId
 					this.taskListId = null;
 					localStorage.removeItem(this.STORAGE_KEY);
 				} else {
-					console.warn(
+					logger.warn(
 						`⚠️ Erreur lors de la vérification de la liste (${testResponse.status}), réinitialisation...`
 					);
 					this.taskListId = null;
 					localStorage.removeItem(this.STORAGE_KEY);
 				}
 			} catch (error) {
-				console.warn(
+				logger.warn(
 					`⚠️ Erreur lors de la vérification de la liste, réinitialisation...`,
 					error
 				);
@@ -233,7 +234,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 			// D'abord, récupérer toutes les listes existantes pour éviter les doublons
 			const taskLists = await this.getAllTaskLists();
-			console.log(
+                    logger.debug(
 				`📋 ${taskLists.length} liste(s) trouvée(s):`,
 				taskLists.map((l) => l.title)
 			);
@@ -244,7 +245,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			);
 
 			if (defaultList) {
-				console.log(
+				logger.debug(
 					`✅ Liste "Dashboard Personnel" existante trouvée (ID: ${defaultList.id})`
 				);
 				this.saveTaskListId(defaultList.id);
@@ -260,7 +261,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			);
 
 			if (defaultList) {
-				console.log(
+				logger.debug(
 					`✅ Liste "${defaultList.title}" trouvée (ID: ${defaultList.id})`
 				);
 				this.saveTaskListId(defaultList.id);
@@ -281,23 +282,23 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				);
 
 				if (testResponse.ok) {
-					console.log("✅ Utilisation de la liste @default (Mes Tâches)");
+					logger.debug("✅ Utilisation de la liste @default (Mes Tâches)");
 					this.saveTaskListId("@default");
 					return this.taskListId!;
 				} else {
 					const errorData = await testResponse.json().catch(() => ({}));
-					console.warn(
+					logger.warn(
 						`⚠️ @default non accessible (${testResponse.status}):`,
 						errorData
 					);
 				}
 			} catch (testError) {
-				console.warn("⚠️ Erreur lors du test de @default:", testError);
+				logger.warn("⚠️ Erreur lors du test de @default:", testError);
 			}
 
 			// 4. Dernier recours : créer une nouvelle liste seulement si vraiment nécessaire
 			// MAIS on vérifie d'abord qu'on n'a pas déjà une liste "Dashboard Personnel" créée récemment
-			console.warn(
+                    logger.warn(
 				"⚠️ Aucune liste par défaut trouvée, vérification finale avant création..."
 			);
 
@@ -309,7 +310,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			);
 
 			if (existingDashboardList) {
-				console.log(
+				logger.debug(
 					`✅ Liste "Dashboard Personnel" trouvée lors de la re-vérification (ID: ${existingDashboardList.id})`
 				);
 				this.saveTaskListId(existingDashboardList.id);
@@ -317,7 +318,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			}
 
 			// Créer une nouvelle liste seulement si vraiment aucune autre option ne fonctionne
-			console.warn("⚠️ Création d'une nouvelle liste 'Dashboard Personnel'...");
+                    logger.warn("⚠️ Création d'une nouvelle liste 'Dashboard Personnel'...");
 			const response = await fetch(
 				"https://www.googleapis.com/tasks/v1/users/@me/lists",
 				{
@@ -342,13 +343,13 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			}
 
 			const newList = (await response.json()) as GoogleTaskList;
-			console.log(
+                    logger.debug(
 				`✅ Nouvelle liste créée: "${newList.title}" (ID: ${newList.id})`
 			);
 			this.taskListId = newList.id;
 			return this.taskListId;
 		} catch (error) {
-			console.error(
+                    logger.error(
 				"Erreur lors de la récupération/création de la liste:",
 				error
 			);
@@ -373,7 +374,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					deadline = googleTask.due;
 				}
 			} catch {
-				console.warn("Erreur lors du parsing de la date:", googleTask.due);
+				logger.warn("Erreur lors du parsing de la date:", googleTask.due);
 				deadline = undefined;
 			}
 		}
@@ -435,7 +436,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				}
 				
 				if (isNaN(date.getTime())) {
-					console.warn(
+					logger.warn(
 						`Date invalide pour "${todo.title}": ${todo.deadline}`
 					);
 				} else {
@@ -444,7 +445,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					googleTask.due = date.toISOString();
 				}
 			} catch (error) {
-				console.warn(
+				logger.warn(
 					`Erreur lors de la conversion de la deadline pour "${todo.title}": ${todo.deadline}`,
 					error
 				);
@@ -494,16 +495,16 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				);
 
 				if (testResponse.ok) {
-					console.log(`✅ Liste Google Tasks "${localListName}" trouvée (ID: ${googleListId})`);
+					logger.debug(`✅ Liste Google Tasks "${localListName}" trouvée (ID: ${googleListId})`);
 					return googleListId;
 				} else if (testResponse.status === 404) {
-					console.warn(`⚠️ Liste Google Tasks "${localListName}" n'existe plus, recréation...`);
+					logger.warn(`⚠️ Liste Google Tasks "${localListName}" n'existe plus, recréation...`);
 					// La liste n'existe plus, on va la recréer
 					delete listMapping[localListName];
 					this.saveListMapping(listMapping);
 				}
 			} catch (error) {
-				console.warn(`⚠️ Erreur lors de la vérification de la liste "${localListName}", recréation...`, error);
+				logger.warn(`⚠️ Erreur lors de la vérification de la liste "${localListName}", recréation...`, error);
 				delete listMapping[localListName];
 				this.saveListMapping(listMapping);
 			}
@@ -518,7 +519,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			const existingList = allLists.find((list) => list.title === localListName);
 			
 			if (existingList) {
-				console.log(`✅ Liste Google Tasks "${localListName}" existante trouvée (ID: ${existingList.id})`);
+				logger.debug(`✅ Liste Google Tasks "${localListName}" existante trouvée (ID: ${existingList.id})`);
 				// Sauvegarder le mapping
 				listMapping[localListName] = existingList.id;
 				this.saveListMapping(listMapping);
@@ -526,7 +527,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			}
 
 			// Créer une nouvelle liste
-			console.log(`📝 Création d'une nouvelle liste Google Tasks: "${localListName}"`);
+                    logger.debug(`📝 Création d'une nouvelle liste Google Tasks: "${localListName}"`);
 			const response = await fetch(
 				"https://www.googleapis.com/tasks/v1/users/@me/lists",
 				{
@@ -549,7 +550,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			}
 
 			const newList = (await response.json()) as GoogleTaskList;
-			console.log(`✅ Nouvelle liste Google Tasks créée: "${newList.title}" (ID: ${newList.id})`);
+                    logger.debug(`✅ Nouvelle liste Google Tasks créée: "${newList.title}" (ID: ${newList.id})`);
 			
 			// Sauvegarder le mapping
 			listMapping[localListName] = newList.id;
@@ -557,7 +558,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			
 			return newList.id;
 		} catch (error) {
-			console.error(`Erreur lors de la récupération/création de la liste "${localListName}":`, error);
+                    logger.error(`Erreur lors de la récupération/création de la liste "${localListName}":`, error);
 			throw error;
 		}
 	}
@@ -618,7 +619,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 			return missingLists;
 		} catch (error) {
-			console.error("Erreur lors de la récupération des listes manquantes:", error);
+                    logger.error("Erreur lors de la récupération des listes manquantes:", error);
 			throw error;
 		}
 	}
@@ -638,7 +639,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			? await this.getOrCreateTaskList(localListName)
 			: (await this.getOrCreateDefaultTaskList());
 		
-		console.log(`📋 Utilisation de la liste Google Tasks "${localListName || 'default'}" (ID: ${taskListId})`);
+                    logger.debug(`📋 Utilisation de la liste Google Tasks "${localListName || 'default'}" (ID: ${taskListId})`);
 		const accessToken = await this.getAccessToken();
 		const todos: Todo[] = [];
 		let pageToken: string | undefined;
@@ -670,13 +671,13 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 				if (!response.ok) {
 					if (response.status === 404) {
-						console.warn(`⚠️ Liste de tâches ${taskListId} non trouvée (404)`);
+						logger.warn(`⚠️ Liste de tâches ${taskListId} non trouvée (404)`);
 						// La liste n'existe plus, réinitialiser taskListId
 						this.taskListId = null;
 						localStorage.removeItem(this.STORAGE_KEY);
 						// Réessayer avec une nouvelle liste
 						const newTaskListId = await this.getOrCreateDefaultTaskList();
-						console.log(
+						logger.debug(
 							`🔄 Nouvelle liste obtenue (ID: ${newTaskListId}), réessai...`
 						);
 						return await this.pullTodos(newTaskListId);
@@ -705,18 +706,18 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 						}
 						todos.push(localTodo);
 					} catch (error) {
-						console.error("Erreur lors de la conversion d'une tâche:", error);
+						logger.error("Erreur lors de la conversion d'une tâche:", error);
 					}
 				}
 
 				pageToken = data.nextPageToken;
 			} catch (error) {
-				console.error("Erreur lors de la récupération des tâches:", error);
+				logger.error("Erreur lors de la récupération des tâches:", error);
 				break;
 			}
 		} while (pageToken);
 
-		console.log(`✅ ${todos.length} tâche(s) récupérée(s) depuis Google Tasks`);
+                    logger.debug(`✅ ${todos.length} tâche(s) récupérée(s) depuis Google Tasks`);
 		return todos;
 	}
 
@@ -738,7 +739,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			? await this.getOrCreateTaskList(localListName)
 			: (await this.getOrCreateDefaultTaskList());
 		
-		console.log(`📋 Utilisation de la liste Google Tasks "${localListName || 'default'}" (ID: ${taskListId})`);
+                    logger.debug(`📋 Utilisation de la liste Google Tasks "${localListName || 'default'}" (ID: ${taskListId})`);
 		const accessToken = await this.getAccessToken();
 
 		for (const todo of todos) {
@@ -747,7 +748,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				
 				// Debug: log googleTask avant nettoyage (pour débogage seulement)
 				if (process.env.NODE_ENV === "development") {
-					console.log(`🔍 googleTask avant nettoyage:`, googleTask);
+					logger.debug(`🔍 googleTask avant nettoyage:`, googleTask);
 				}
 
 				// Si la tâche a un ID Google, mettre à jour
@@ -790,7 +791,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 									taskToUpdate.due = date.toISOString();
 								}
 							} catch {
-								console.warn(`⚠️ Format de date invalide pour PATCH: ${googleTask.due}`);
+								logger.warn(`⚠️ Format de date invalide pour PATCH: ${googleTask.due}`);
 							}
 						}
 					}
@@ -799,7 +800,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 						taskToUpdate.notes = googleTask.notes;
 					}
 
-					console.log(`🔄 Mise à jour de la tâche ${googleTaskId}:`, JSON.stringify(taskToUpdate, null, 2));
+					logger.debug(`🔄 Mise à jour de la tâche ${googleTaskId}:`, JSON.stringify(taskToUpdate, null, 2));
 
 					const response = await this.retryWithBackoff(async () => {
 						return await fetch(
@@ -819,7 +820,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 					if (!response.ok && response.status !== 404) {
 						const error = await response.json().catch(() => ({}));
-						console.error(`❌ Erreur lors de la mise à jour (${response.status}):`, error);
+						logger.error(`❌ Erreur lors de la mise à jour (${response.status}):`, error);
 						throw new Error(
 							`Erreur lors de la mise à jour: ${
 								error.error?.message || response.statusText
@@ -828,7 +829,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					}
 					
 					if (response.ok) {
-						console.log(`✅ Tâche ${googleTaskId} mise à jour avec succès`);
+						logger.debug(`✅ Tâche ${googleTaskId} mise à jour avec succès`);
 					}
 				} else {
 					// Sinon, créer une nouvelle tâche
@@ -839,7 +840,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					if (googleTask.title && googleTask.title.trim()) {
 						taskToCreate.title = googleTask.title.trim();
 					} else {
-						console.warn("⚠️ Tentative de créer une tâche sans titre, ignorée");
+						logger.warn("⚠️ Tentative de créer une tâche sans titre, ignorée");
 						continue; // Passer à la tâche suivante
 					}
 					
@@ -876,12 +877,12 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 								if (!isNaN(date.getTime())) {
 									taskToCreate.due = date.toISOString();
 								} else {
-									console.warn(
+									logger.warn(
 										`⚠️ Format de date invalide, ignoré: ${googleTask.due}`
 									);
 								}
 							} catch {
-								console.warn(
+								logger.warn(
 									`⚠️ Format de date invalide, ignoré: ${googleTask.due}`
 								);
 							}
@@ -906,11 +907,11 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					}
 					
 					// Log détaillé pour débogage
-					console.log(
+					logger.debug(
 						`📤 Création d'une tâche dans Google Tasks (taskToCreate nettoyé):`,
 						JSON.stringify(taskToCreate, null, 2)
 					);
-					console.log(
+					logger.debug(
 						`📤 Payload qui sera envoyé (stringified):`,
 						JSON.stringify(taskToCreate)
 					);
@@ -923,7 +924,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 					const response = await this.retryWithBackoff(async () => {
 						const payload = JSON.stringify(finalPayload);
-						console.log(`📤 Envoi POST avec payload final:`, payload);
+						logger.debug(`📤 Envoi POST avec payload final:`, payload);
 						return await fetch(
 							`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
 								taskListId
@@ -943,10 +944,10 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 						const errorData = await response.json().catch(() => ({}));
 						const errorMessage =
 							errorData.error?.message || response.statusText;
-						console.error(`❌ Erreur lors de la création:`, errorData);
-						console.error(`📋 Payload envoyé:`, JSON.stringify(taskToCreate, null, 2));
+						logger.error(`❌ Erreur lors de la création:`, errorData);
+						logger.error(`📋 Payload envoyé:`, JSON.stringify(taskToCreate, null, 2));
 						if (errorData.error?.errors) {
-							console.error(`📋 Détails des erreurs:`, errorData.error.errors);
+							logger.error(`📋 Détails des erreurs:`, errorData.error.errors);
 						}
 						throw new Error(`Erreur lors de la création: ${errorMessage}`);
 					}
@@ -955,21 +956,21 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					try {
 						const createdTask = (await response.json()) as GoogleTask;
 						if (createdTask.id) {
-							console.log(
+							logger.debug(
 								`✅ Tâche créée dans Google Tasks avec l'ID: ${createdTask.id}`
 							);
 							// Stocker le mapping de l'ID local vers l'ID Google
 							idMap.set(todo.id, `google-${createdTask.id}`);
 						}
 					} catch (parseError) {
-						console.warn(
+						logger.warn(
 							"Impossible de parser la réponse de création:",
 							parseError
 						);
 					}
 				}
 			} catch (error) {
-				console.error(`Erreur lors du push de la tâche ${todo.id}:`, error);
+				logger.error(`Erreur lors du push de la tâche ${todo.id}:`, error);
 				// Continuer avec les autres tâches
 			}
 		}
@@ -1010,7 +1011,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			if (!response.ok && response.status !== 404) {
 				const error = await response.json().catch(() => ({}));
 				const errorMessage = error.error?.message || response.statusText;
-				console.error(
+				logger.error(
 					`❌ Erreur lors de la suppression de la tâche Google Tasks (${response.status}):`,
 					error
 				);
@@ -1024,7 +1025,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				throw error;
 			}
 			// Pour les autres erreurs (réseau, etc.), on log mais on ne bloque pas la suppression locale
-			console.error(
+                    logger.error(
 				"⚠️ Erreur lors de la suppression de la tâche Google Tasks (suppression locale effectuée):",
 				error
 			);

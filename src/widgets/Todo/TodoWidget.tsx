@@ -52,6 +52,8 @@ import { cn } from "@/lib/utils";
 import { getOAuthManager } from "@/lib/auth/oauthManager";
 import { GoogleTasksSyncProvider } from "@/lib/sync/googleTasksSync";
 import type { SyncConfig } from "@/lib/sync/apiSync";
+import { getCurrentTodos, getTodoByTitle } from "@/lib/todoUtils";
+import { logger } from "@/lib/logger";
 import {
 	Star,
 	Trash2,
@@ -259,38 +261,61 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 
 			// Créer immédiatement dans Google Tasks si connecté (synchronisation instantanée)
 			if (googleTasksProvider && googleTasksProvider.enabled) {
-				// Synchroniser immédiatement avec plusieurs tentatives pour trouver la tâche
+				// Synchroniser immédiatement en utilisant une subscription pour détecter la nouvelle tâche
 				(async () => {
 					try {
-						// Essayer plusieurs fois avec des délais progressifs pour trouver la tâche
-						// Utiliser une fonction pour récupérer les todos à jour à chaque tentative
+						// Utiliser une approche plus efficace avec subscription au lieu de polling
 						let newTodo: Todo | undefined;
-						const maxAttempts = 5;
-						const delays = [100, 150, 200, 250, 300]; // Délais progressifs
+						let unsubscribe: (() => void) | undefined;
 						
-						for (let attempt = 0; attempt < maxAttempts && !newTodo; attempt++) {
-							await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
-							// Récupérer les todos à jour depuis le store à chaque tentative
-							// On utilise une fonction qui sera appelée à chaque fois pour avoir les todos les plus récents
-							const getCurrentTodos = () => {
-								// Récupérer directement depuis le store pour avoir les valeurs à jour
-								const store = useTodoStore.getState();
-								return store.present;
-							};
-							const allTodos = getCurrentTodos();
-							newTodo = allTodos
-								.filter(
-									(t) => t.title === todoTitle && !t.completed && !t.id.startsWith("google-")
-								)
-								.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]; // La plus récente
+						// Attendre un court délai pour que la tâche soit ajoutée au store
+						await new Promise((resolve) => setTimeout(resolve, 100));
+						
+						// Essayer de trouver la tâche (max 2 tentatives avec délais plus courts)
+						for (let attempt = 0; attempt < 2 && !newTodo; attempt++) {
+							if (attempt > 0) {
+								await new Promise((resolve) => setTimeout(resolve, 100));
+							}
+							// Utiliser la fonction utilitaire pour récupérer la tâche
+							newTodo = getTodoByTitle(todoTitle, true);
+						}
+						
+						// Si toujours pas trouvée, utiliser une subscription pour écouter les changements
+						if (!newTodo) {
+							const findTodoPromise = new Promise<Todo | undefined>((resolve) => {
+								unsubscribe = useTodoStore.subscribe(
+									(state) => state.present,
+									(todos) => {
+										const found = todos
+											.filter(
+												(t) => t.title === todoTitle && !t.completed && !t.id.startsWith("google-")
+											)
+											.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
+										if (found) {
+											resolve(found);
+										}
+									}
+								);
+								
+								// Timeout après 500ms
+								setTimeout(() => {
+									if (unsubscribe) {
+										unsubscribe();
+										unsubscribe = undefined;
+									}
+									resolve(undefined);
+								}, 500);
+							});
 							
-							if (newTodo) {
-								break;
+							newTodo = await findTodoPromise;
+							if (unsubscribe) {
+								unsubscribe();
+								unsubscribe = undefined;
 							}
 						}
 						
 						if (newTodo) {
-							console.log(`🚀 Synchronisation immédiate dans Google Tasks: "${newTodo.title}"`);
+							logger.debug(`🚀 Synchronisation immédiate dans Google Tasks: "${newTodo.title}"`);
 							// Récupérer le nom de la liste actuelle pour synchroniser dans la bonne liste Google Tasks
 							const currentList = lists.find((l) => l.id === currentListId);
 							const listName = currentList?.name;
@@ -299,20 +324,16 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 							if (idMap.has(newTodo.id)) {
 								const googleId = idMap.get(newTodo.id)!;
 								updateTodoId(newTodo.id, googleId);
-								console.log(`🔄 ID de tâche mis à jour: ${newTodo.id} → ${googleId}`);
+								logger.debug(`🔄 ID de tâche mis à jour: ${newTodo.id} → ${googleId}`);
 								toast.success("Tâche synchronisée", {
 									description: `"${newTodo.title}" a été créée dans Google Tasks`,
 								});
 							} else {
-								console.warn(`⚠️ Aucun ID Google retourné pour la tâche "${newTodo.title}"`);
+								logger.warn(`⚠️ Aucun ID Google retourné pour la tâche "${newTodo.title}"`);
 							}
 						} else {
-							// Si toujours pas trouvé après toutes les tentatives, synchroniser toutes les tâches locales non synchronisées
-							console.warn(`⚠️ Tâche "${todoTitle}" non trouvée, synchronisation de toutes les tâches locales...`);
-							const getCurrentTodos = () => {
-								const store = useTodoStore.getState();
-								return store.present;
-							};
+							// Si toujours pas trouvé, synchroniser toutes les tâches locales non synchronisées
+							logger.warn(`⚠️ Tâche "${todoTitle}" non trouvée, synchronisation de toutes les tâches locales...`);
 							const allTodos = getCurrentTodos();
 							const localOnlyTodos = allTodos.filter(
 								(t) => !t.id.startsWith("google-")
@@ -331,7 +352,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 							}
 						}
 					} catch (error) {
-						console.error(
+						logger.error(
 							"Erreur lors de la synchronisation avec Google Tasks:",
 							error
 						);
@@ -389,10 +410,10 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 					const currentList = lists.find((l) => l.id === currentListId);
 					const listName = currentList?.name;
 					await googleTasksProvider.pushTodos([todoToSync], listName);
-						console.log(`✅ Tâche "${todoToSync.title}" mise à jour dans Google Tasks`);
+						logger.debug(`✅ Tâche "${todoToSync.title}" mise à jour dans Google Tasks`);
 					}
 				} catch (error) {
-					console.error(
+					logger.error(
 						"Erreur lors de la synchronisation avec Google Tasks:",
 						error
 					);
@@ -434,12 +455,12 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 					const currentList = lists.find((l) => l.id === currentListId);
 					const listName = currentList?.name;
 					await googleTasksProvider.pushTodos([todoToSync], listName);
-					console.log(
+					logger.debug(
 						`✅ Tâche "${todoToSync.title}" ${newCompleted ? "complétée" : "réactivée"} dans Google Tasks`
 					);
 				}
 			} catch (error) {
-				console.error(
+				logger.error(
 					"Erreur lors de la synchronisation avec Google Tasks:",
 					error
 				);
@@ -482,7 +503,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 			const missingGoogleLists = await googleTasksProvider.getMissingLocalLists(localListNames);
 			
 			if (missingGoogleLists.length > 0) {
-				console.log(`📋 ${missingGoogleLists.length} liste(s) Google Tasks trouvée(s) sans correspondance locale`);
+				logger.debug(`📋 ${missingGoogleLists.length} liste(s) Google Tasks trouvée(s) sans correspondance locale`);
 				
 				for (const googleList of missingGoogleLists) {
 					// Déterminer le nom de la liste locale à créer
@@ -496,11 +517,11 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 					const listAlreadyExists = currentLocalLists.some((l) => l.name === listName);
 					
 					if (listAlreadyExists) {
-						console.log(`ℹ️ Liste "${listName}" existe déjà, ignorée`);
+						logger.debug(`ℹ️ Liste "${listName}" existe déjà, ignorée`);
 						continue;
 					}
 					
-					console.log(`➕ Création de la liste locale: "${listName}" (depuis Google Tasks: ${googleList.title})`);
+					logger.debug(`➕ Création de la liste locale: "${listName}" (depuis Google Tasks: ${googleList.title})`);
 					addList(listName);
 					
 					// Attendre un peu pour que la liste soit créée et que le store soit mis à jour
@@ -541,13 +562,13 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 							);
 						}
 						
-						console.log(`✅ ${pulledTodosFromList.length} tâche(s) ajoutée(s) à la liste "${listName}"`);
+						logger.debug(`✅ ${pulledTodosFromList.length} tâche(s) ajoutée(s) à la liste "${listName}"`);
 						
 						// Revenir à la liste précédente après avoir ajouté les tâches
 						setCurrentList(previousListId);
 						await new Promise((resolve) => setTimeout(resolve, 100));
 					} else {
-						console.warn(`⚠️ Liste "${listName}" non trouvée après création`);
+						logger.warn(`⚠️ Liste "${listName}" non trouvée après création`);
 					}
 				}
 			}
@@ -559,7 +580,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 			const listName = currentList?.name;
 			const pulledTodos = await googleTasksProvider.pullTodos(listName);
 
-			console.log(
+			logger.debug(
 				`📥 ${pulledTodos.length} tâche(s) récupérée(s) depuis Google Tasks`
 			);
 
@@ -594,7 +615,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 					);
 					
 					addedCount++;
-					console.log(
+					logger.debug(
 						`✅ Tâche ajoutée: "${pulledTodo.title}"${
 							pulledTodo.deadline ? ` (deadline: ${pulledTodo.deadline})` : ""
 						}`
@@ -622,7 +643,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 					}
 					if (needsUpdate) {
 						updatedCount++;
-						console.log(`🔄 Tâche mise à jour: "${pulledTodo.title}"`);
+						logger.debug(`🔄 Tâche mise à jour: "${pulledTodo.title}"`);
 					}
 				}
 			}
@@ -666,7 +687,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 						if (existingPulledTodo) {
 							// Si les deadlines correspondent (ou toutes les deux absentes), considérer comme doublon
 							if (todo.deadline === existingPulledTodo.deadline) {
-								console.log(`⚠️ Tâche "${todo.title}" existe déjà dans Google Tasks, ignorée`);
+								logger.debug(`⚠️ Tâche "${todo.title}" existe déjà dans Google Tasks, ignorée`);
 								return false;
 							}
 						}
@@ -677,7 +698,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 			);
 
 			if (localOnlyTodos.length > 0) {
-				console.log(
+				logger.debug(
 					`📤 Push de ${localOnlyTodos.length} tâche(s) locale(s) vers Google Tasks`
 				);
 				// Récupérer le nom de la liste actuelle pour synchroniser dans la bonne liste Google Tasks
@@ -687,10 +708,10 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				// Mettre à jour les IDs locaux avec les IDs Google créés
 				for (const [localId, googleId] of idMap.entries()) {
 					updateTodoId(localId, googleId);
-					console.log(`🔄 ID de tâche mis à jour: ${localId} → ${googleId}`);
+					logger.debug(`🔄 ID de tâche mis à jour: ${localId} → ${googleId}`);
 				}
 			} else {
-				console.log(`✅ Aucune tâche locale à synchroniser`);
+				logger.debug(`✅ Aucune tâche locale à synchroniser`);
 			}
 
 			// Message de succès avec détails
@@ -711,7 +732,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				toast.success("Synchronisation réussie");
 			}
 		} catch (error) {
-			console.error("Erreur lors de la synchronisation:", error);
+			logger.error("Erreur lors de la synchronisation:", error);
 			toast.error("Erreur lors de la synchronisation", {
 				description: error instanceof Error ? error.message : "Erreur inconnue",
 			});
@@ -750,12 +771,12 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				const provider = new GoogleTasksSyncProvider(config);
 				setGoogleTasksProvider(provider);
 				providerInitializedRef.current = true;
-				console.log("✅ Google Tasks provider initialisé");
+				logger.debug("✅ Google Tasks provider initialisé");
 			} else if (!connected && providerInitializedRef.current) {
 				// Supprimer le provider si déconnecté
 				setGoogleTasksProvider(null);
 				providerInitializedRef.current = false;
-				console.log("❌ Google Tasks provider supprimé");
+				logger.debug("❌ Google Tasks provider supprimé");
 			}
 		};
 
@@ -788,7 +809,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 					try {
 						await handleSync();
 					} catch (error) {
-						console.error("Erreur lors de la synchronisation initiale:", error);
+						logger.error("Erreur lors de la synchronisation initiale:", error);
 					}
 				}
 			}, 2000);
@@ -798,10 +819,10 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 				async () => {
 					if (googleTasksProvider && googleTasksProvider.enabled && !isSyncing) {
 						try {
-							console.log("🔄 Synchronisation automatique Google Tasks...");
+							logger.debug("🔄 Synchronisation automatique Google Tasks...");
 							await handleSync();
 						} catch (error) {
-							console.error(
+							logger.error(
 								"Erreur lors de la synchronisation périodique:",
 								error
 							);
@@ -959,13 +980,13 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 						const currentList = lists.find((l) => l.id === currentListId);
 						const listName = currentList?.name;
 						await googleTasksProvider.deleteTask(todo.id, listName);
-						console.log(`✅ Tâche "${todo.title}" supprimée de Google Tasks`);
+						logger.debug(`✅ Tâche "${todo.title}" supprimée de Google Tasks`);
 					}
 				} catch (error) {
 					// Si c'est une erreur d'authentification, informer l'utilisateur
 					const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
 					if (errorMessage.includes("Token invalide") || errorMessage.includes("expiré")) {
-						console.error(
+						logger.error(
 							"Erreur d'authentification lors de la suppression sur Google Tasks:",
 							error
 						);
@@ -973,7 +994,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 							description: "La suppression sur Google Tasks a échoué (token expiré). Veuillez vous reconnecter.",
 						});
 					} else {
-						console.error(
+						logger.error(
 							"Erreur lors de la suppression sur Google Tasks:",
 							error
 						);
