@@ -41,9 +41,9 @@ const mockExportICS = vi.fn();
 const mockImportJSON = vi.fn();
 
 vi.mock("@/lib/calendarExport", () => ({
-	exportCalendarToJSON: mockExportJSON,
-	exportCalendarToICS: mockExportICS,
-	importCalendarFromJSON: mockImportJSON,
+	exportCalendarToJSON: (...args: any[]) => mockExportJSON(...args),
+	exportCalendarToICS: (...args: any[]) => mockExportICS(...args),
+	importCalendarFromJSON: (...args: any[]) => mockImportJSON(...args),
 }));
 
 // Mocks communs
@@ -62,10 +62,16 @@ vi.mock("@/components/ui/button", () => ({
 	),
 }), { virtual: true });
 
-vi.mock("@/components/ui/calendar", () => ({
+vi.mock("@/components/ui/calendar-full", () => ({
 	Calendar: ({ selected, onSelect, ...p }: any) => (
 		<div data-testid="calendar" {...p}>
 			<div>Calendar Component</div>
+		</div>
+	),
+	DatePicker: ({ selected, onSelect, ...p }: any) => (
+		<div data-testid="date-picker" {...p}>
+			<div>DatePicker Component</div>
+			{selected && <div data-testid="selected-date">{selected.toISOString()}</div>}
 		</div>
 	),
 }), { virtual: true });
@@ -133,14 +139,17 @@ describe("CalendarWidget - Export/Import", () => {
 	});
 
 	it("renders export dropdown", () => {
-		render(<CalendarWidget />);
-		const exportButton = screen.queryByTitle(/Exporter/i) || screen.queryByText(/Exporter/i);
-		expect(exportButton || screen.getByTestId("calendar")).toBeTruthy();
+		render(<CalendarWidget size="full" />);
+		// Il peut y avoir plusieurs boutons avec "Exporter", utilisons getAllByTitle ou cherchons le calendar
+		const exportButtons = screen.queryAllByTitle(/Exporter/i);
+		const exportTextButtons = screen.queryAllByText(/Exporter/i);
+		// Si on trouve des boutons export ou le calendar, le test passe
+		expect(exportButtons.length > 0 || exportTextButtons.length > 0 || screen.queryByTestId("calendar")).toBeTruthy();
 	});
 
 	it("calls exportCalendarToJSON when clicking export JSON", async () => {
 		const user = userEvent.setup();
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		
 		const exportJSONOption = screen.queryByText(/Exporter JSON/i);
 		if (exportJSONOption) {
@@ -155,7 +164,7 @@ describe("CalendarWidget - Export/Import", () => {
 
 	it("calls exportCalendarToICS when clicking export ICS", async () => {
 		const user = userEvent.setup();
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		
 		const exportICSOption = screen.queryByText(/Exporter .ics/i);
 		if (exportICSOption) {
@@ -170,7 +179,7 @@ describe("CalendarWidget - Export/Import", () => {
 
 	it("handles file import", async () => {
 		const user = userEvent.setup();
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		
 		// Créer un fichier mock
 		const file = new File(['{"events":[]}'], "calendar.json", { type: "application/json" });
@@ -195,7 +204,7 @@ describe("CalendarWidget - Export/Import", () => {
 		});
 
 		const user = userEvent.setup();
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		
 		const file = new File(['invalid'], "bad.json", { type: "application/json" });
 		const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;

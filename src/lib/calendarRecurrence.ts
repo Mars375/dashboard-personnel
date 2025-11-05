@@ -1,6 +1,6 @@
 // Utilitaires pour gérer la répétition d'événements
 import type { CalendarEvent } from "@/widgets/Calendar/types";
-import { addDays, isBefore, isSameDay } from "date-fns";
+import { addDays, isBefore, isSameDay, startOfDay } from "date-fns";
 
 // Fonction utilitaire pour formater une date en YYYY-MM-DD
 function formatDateLocal(date: Date): string {
@@ -85,26 +85,28 @@ export function isDateInRecurrence(
 		return event.date === formatDateLocal(date);
 	}
 
-	const startDate = new Date(event.date);
+	// Normaliser les dates au début de la journée pour éviter les problèmes de timezone
+	const normalizedDate = startOfDay(date);
+	const startDate = startOfDay(new Date(event.date));
 	const recurrence = event.recurrence;
 	const interval = recurrence.interval || 1;
 
 	// Vérifier que la date est après la date de début
-	if (isBefore(date, startDate)) {
+	if (isBefore(normalizedDate, startDate)) {
 		return false;
 	}
 
 	// Vérifier la date de fin si elle existe
 	if (recurrence.endDate) {
-		const endDate = new Date(recurrence.endDate);
-		if (isBefore(endDate, date)) {
+		const endDate = startOfDay(new Date(recurrence.endDate));
+		if (isBefore(endDate, normalizedDate)) {
 			return false;
 		}
 	}
 
 	// Vérifier selon le type de répétition
 	const daysDiff = Math.floor(
-		(date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+		(normalizedDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
 	);
 
 	switch (recurrence.type) {
@@ -112,17 +114,17 @@ export function isDateInRecurrence(
 			return daysDiff >= 0 && daysDiff % interval === 0;
 		case "weekly": {
 			const weeksDiff = Math.floor(daysDiff / 7);
-			return weeksDiff >= 0 && weeksDiff % interval === 0 && date.getDay() === startDate.getDay();
+			return weeksDiff >= 0 && weeksDiff % interval === 0 && normalizedDate.getDay() === startDate.getDay();
 		}
 		case "monthly":
 			// Vérifier que c'est le même jour du mois
-			if (date.getDate() !== startDate.getDate()) return false;
-			const monthsDiff = (date.getFullYear() - startDate.getFullYear()) * 12 + (date.getMonth() - startDate.getMonth());
+			if (normalizedDate.getDate() !== startDate.getDate()) return false;
+			const monthsDiff = (normalizedDate.getFullYear() - startDate.getFullYear()) * 12 + (normalizedDate.getMonth() - startDate.getMonth());
 			return monthsDiff >= 0 && monthsDiff % interval === 0;
 		case "yearly":
 			// Vérifier que c'est le même jour et mois
-			if (date.getMonth() !== startDate.getMonth() || date.getDate() !== startDate.getDate()) return false;
-			const yearsDiff = date.getFullYear() - startDate.getFullYear();
+			if (normalizedDate.getMonth() !== startDate.getMonth() || normalizedDate.getDate() !== startDate.getDate()) return false;
+			const yearsDiff = normalizedDate.getFullYear() - startDate.getFullYear();
 			return yearsDiff >= 0 && yearsDiff % interval === 0;
 		default:
 			return false;

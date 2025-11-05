@@ -4,7 +4,7 @@ export interface SyncProvider {
 	name: string;
 	enabled: boolean;
 	sync: () => Promise<SyncResult>;
-	pushTodos: (todos: Todo[], listId: string) => Promise<void>;
+	pushTodos: (todos: Todo[], listId?: string) => Promise<Map<string, string> | void>;
 	pullTodos: (listId: string) => Promise<Todo[]>;
 }
 

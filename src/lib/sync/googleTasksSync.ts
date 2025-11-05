@@ -5,37 +5,24 @@ import type { SyncProvider, SyncResult, SyncConfig } from "./apiSync";
 import { getOAuthManager } from "@/lib/auth/oauthManager";
 import { format, parseISO } from "date-fns";
 import { logger } from "@/lib/logger";
+import { SyncError, SyncErrorCode } from "@/lib/errors";
+import {
+	validateGoogleTasksResponse,
+	validateGoogleTasksListResponse,
+	validateGoogleTaskList,
+	safeValidateGoogleTask,
+	type GoogleTask,
+	type GoogleTaskList,
+} from "./googleTasksValidation";
+import {
+	groupTasksByOperation,
+	executeCreateBatch,
+	executeUpdateBatch,
+	type TaskOperationGroup,
+	type TaskOperationResult,
+} from "./googleTasksBatch";
 
-// Types Google Tasks API
-interface GoogleTask {
-	id?: string;
-	title?: string;
-	notes?: string;
-	status?: "needsAction" | "completed";
-	due?: string; // RFC 3339 format (YYYY-MM-DDTHH:mm:ss.sssZ) ou date seule (YYYY-MM-DD)
-	completed?: string; // RFC 3339 format
-	updated?: string; // RFC 3339 format
-	position?: string; // Position dans la liste
-	parent?: string; // ID de la tâche parente (pour sous-tâches)
-	deleted?: boolean;
-	hidden?: boolean;
-}
-
-interface GoogleTaskList {
-	id: string;
-	title: string;
-	updated?: string;
-}
-
-interface GoogleTasksListResponse {
-	items: GoogleTaskList[];
-	nextPageToken?: string;
-}
-
-interface GoogleTasksResponse {
-	items: GoogleTask[];
-	nextPageToken?: string;
-}
+// Types Google Tasks API sont maintenant définis dans googleTasksValidation.ts
 
 export class GoogleTasksSyncProvider implements SyncProvider {
 	name = "Google Tasks";
@@ -75,28 +62,24 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 		try {
 			return await fn();
 		} catch (error) {
-			if (retries > 0) {
-				// Vérifier si c'est une erreur réseau ou temporaire
-				const isRetryable =
-					error instanceof Error &&
-					(error.message.includes("network") ||
-						error.message.includes("timeout") ||
-						error.message.includes("fetch") ||
-						error.message.includes("500") ||
-						error.message.includes("503") ||
-						error.message.includes("429"));
+			// Convertir l'erreur en SyncError si nécessaire
+			const syncError = SyncError.fromError(error);
 
-				if (isRetryable) {
-					logger.debug(
-						`🔄 Tentative de retry (${this.MAX_RETRIES - retries + 1}/${this.MAX_RETRIES})...`
-					);
-					await new Promise((resolve) =>
-						setTimeout(resolve, this.RETRY_DELAY * (this.MAX_RETRIES - retries + 1))
-					);
-					return this.retryWithBackoff(fn, retries - 1);
-				}
+			if (retries > 0 && syncError.retryable) {
+				logger.debug(
+					`🔄 Tentative de retry (${this.MAX_RETRIES - retries + 1}/${
+						this.MAX_RETRIES
+					})...`
+				);
+				await new Promise((resolve) =>
+					setTimeout(
+						resolve,
+						this.RETRY_DELAY * (this.MAX_RETRIES - retries + 1)
+					)
+				);
+				return this.retryWithBackoff(fn, retries - 1);
 			}
-			throw error;
+			throw syncError;
 		}
 	}
 
@@ -107,9 +90,9 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 		try {
 			localStorage.setItem(this.STORAGE_KEY, taskListId);
 			this.taskListId = taskListId;
-				logger.debug(`💾 taskListId sauvegardé dans localStorage: ${taskListId}`);
+			logger.debug(`💾 taskListId sauvegardé dans localStorage: ${taskListId}`);
 		} catch (error) {
-                    logger.warn(
+			logger.warn(
 				"Impossible de sauvegarder taskListId dans localStorage:",
 				error
 			);
@@ -158,19 +141,22 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				);
 
 				if (!response.ok) {
-					throw new Error(
-						`Erreur lors de la récupération des listes: ${response.statusText}`
+					throw SyncError.fromError(
+						new Error(
+							`Erreur lors de la récupération des listes: ${response.statusText}`
+						)
 					);
 				}
 
-				const data = (await response.json()) as GoogleTasksListResponse;
+				const rawData = await response.json();
+				const data = validateGoogleTasksListResponse(rawData);
 				taskLists.push(...data.items);
 				pageToken = data.nextPageToken;
 			} while (pageToken);
 
 			return taskLists;
 		} catch (error) {
-                    logger.error(
+			logger.error(
 				"Erreur lors de la récupération des listes de tâches:",
 				error
 			);
@@ -185,7 +171,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 	async getOrCreateDefaultTaskList(): Promise<string> {
 		// Vérifier si le taskListId enregistré existe encore
 		if (this.taskListId) {
-                    logger.debug(
+			logger.debug(
 				`✅ Tentative de réutilisation de la liste (ID: ${this.taskListId})`
 			);
 			// Tester si la liste existe encore
@@ -234,7 +220,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 			// D'abord, récupérer toutes les listes existantes pour éviter les doublons
 			const taskLists = await this.getAllTaskLists();
-                    logger.debug(
+			logger.debug(
 				`📋 ${taskLists.length} liste(s) trouvée(s):`,
 				taskLists.map((l) => l.title)
 			);
@@ -298,7 +284,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 			// 4. Dernier recours : créer une nouvelle liste seulement si vraiment nécessaire
 			// MAIS on vérifie d'abord qu'on n'a pas déjà une liste "Dashboard Personnel" créée récemment
-                    logger.warn(
+			logger.warn(
 				"⚠️ Aucune liste par défaut trouvée, vérification finale avant création..."
 			);
 
@@ -318,7 +304,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			}
 
 			// Créer une nouvelle liste seulement si vraiment aucune autre option ne fonctionne
-                    logger.warn("⚠️ Création d'une nouvelle liste 'Dashboard Personnel'...");
+			logger.warn("⚠️ Création d'une nouvelle liste 'Dashboard Personnel'...");
 			const response = await fetch(
 				"https://www.googleapis.com/tasks/v1/users/@me/lists",
 				{
@@ -342,14 +328,15 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				);
 			}
 
-			const newList = (await response.json()) as GoogleTaskList;
-                    logger.debug(
+			const rawData = await response.json();
+			const newList = validateGoogleTaskList(rawData);
+			logger.debug(
 				`✅ Nouvelle liste créée: "${newList.title}" (ID: ${newList.id})`
 			);
 			this.taskListId = newList.id;
 			return this.taskListId;
 		} catch (error) {
-                    logger.error(
+			logger.error(
 				"Erreur lors de la récupération/création de la liste:",
 				error
 			);
@@ -411,7 +398,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			// Ne PAS définir status ici par défaut - on le gère dans pushTodos
 			// status sera défini seulement si la tâche est complétée
 		};
-		
+
 		// Définir status seulement si la tâche est complétée
 		// Pour les nouvelles tâches, on n'inclura pas status (valeur par défaut: needsAction)
 		if (todo.completed) {
@@ -434,11 +421,9 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					// Format déjà parsable, utiliser parseISO
 					date = parseISO(todo.deadline);
 				}
-				
+
 				if (isNaN(date.getTime())) {
-					logger.warn(
-						`Date invalide pour "${todo.title}": ${todo.deadline}`
-					);
+					logger.warn(`Date invalide pour "${todo.title}": ${todo.deadline}`);
 				} else {
 					// Utiliser le format RFC 3339 complet (YYYY-MM-DDTHH:mm:ss.sssZ)
 					// Même si seule la date est utilisée, l'API peut exiger ce format
@@ -476,7 +461,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 		// Charger le mapping des listes
 		const listMapping = this.loadListMapping();
-		
+
 		// Vérifier si on a déjà un mapping pour cette liste
 		if (listMapping[localListName]) {
 			const googleListId = listMapping[localListName];
@@ -495,16 +480,23 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				);
 
 				if (testResponse.ok) {
-					logger.debug(`✅ Liste Google Tasks "${localListName}" trouvée (ID: ${googleListId})`);
+					logger.debug(
+						`✅ Liste Google Tasks "${localListName}" trouvée (ID: ${googleListId})`
+					);
 					return googleListId;
 				} else if (testResponse.status === 404) {
-					logger.warn(`⚠️ Liste Google Tasks "${localListName}" n'existe plus, recréation...`);
+					logger.warn(
+						`⚠️ Liste Google Tasks "${localListName}" n'existe plus, recréation...`
+					);
 					// La liste n'existe plus, on va la recréer
 					delete listMapping[localListName];
 					this.saveListMapping(listMapping);
 				}
 			} catch (error) {
-				logger.warn(`⚠️ Erreur lors de la vérification de la liste "${localListName}", recréation...`, error);
+				logger.warn(
+					`⚠️ Erreur lors de la vérification de la liste "${localListName}", recréation...`,
+					error
+				);
 				delete listMapping[localListName];
 				this.saveListMapping(listMapping);
 			}
@@ -514,12 +506,16 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 		try {
 			const accessToken = await this.getAccessToken();
 			const allLists = await this.getAllTaskLists();
-			
+
 			// Chercher une liste existante avec le même nom
-			const existingList = allLists.find((list) => list.title === localListName);
-			
+			const existingList = allLists.find(
+				(list) => list.title === localListName
+			);
+
 			if (existingList) {
-				logger.debug(`✅ Liste Google Tasks "${localListName}" existante trouvée (ID: ${existingList.id})`);
+				logger.debug(
+					`✅ Liste Google Tasks "${localListName}" existante trouvée (ID: ${existingList.id})`
+				);
 				// Sauvegarder le mapping
 				listMapping[localListName] = existingList.id;
 				this.saveListMapping(listMapping);
@@ -527,7 +523,9 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			}
 
 			// Créer une nouvelle liste
-                    logger.debug(`📝 Création d'une nouvelle liste Google Tasks: "${localListName}"`);
+			logger.debug(
+				`📝 Création d'une nouvelle liste Google Tasks: "${localListName}"`
+			);
 			const response = await fetch(
 				"https://www.googleapis.com/tasks/v1/users/@me/lists",
 				{
@@ -545,20 +543,28 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			if (!response.ok) {
 				const errorData = await response.json().catch(() => ({}));
 				throw new Error(
-					`Erreur lors de la création de la liste: ${response.statusText} - ${JSON.stringify(errorData)}`
+					`Erreur lors de la création de la liste: ${
+						response.statusText
+					} - ${JSON.stringify(errorData)}`
 				);
 			}
 
-			const newList = (await response.json()) as GoogleTaskList;
-                    logger.debug(`✅ Nouvelle liste Google Tasks créée: "${newList.title}" (ID: ${newList.id})`);
-			
+			const rawData = await response.json();
+			const newList = validateGoogleTaskList(rawData);
+			logger.debug(
+				`✅ Nouvelle liste Google Tasks créée: "${newList.title}" (ID: ${newList.id})`
+			);
+
 			// Sauvegarder le mapping
 			listMapping[localListName] = newList.id;
 			this.saveListMapping(listMapping);
-			
+
 			return newList.id;
 		} catch (error) {
-                    logger.error(`Erreur lors de la récupération/création de la liste "${localListName}":`, error);
+			logger.error(
+				`Erreur lors de la récupération/création de la liste "${localListName}":`,
+				error
+			);
 			throw error;
 		}
 	}
@@ -594,7 +600,9 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 	 * @param localListNames Noms des listes locales existantes
 	 * @returns Liste des noms de listes Google Tasks qui n'existent pas localement
 	 */
-	async getMissingLocalLists(localListNames: string[]): Promise<GoogleTaskList[]> {
+	async getMissingLocalLists(
+		localListNames: string[]
+	): Promise<GoogleTaskList[]> {
 		if (!this.enabled) {
 			throw new Error("Google Tasks sync is disabled");
 		}
@@ -602,24 +610,25 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 		try {
 			const allGoogleLists = await this.getAllTaskLists();
 			const localListNamesSet = new Set(localListNames);
-			
+
 			// Filtrer les listes Google Tasks qui n'ont pas de correspondance locale
 			// Ignorer la liste "@default" car elle est gérée séparément
-			const missingLists = allGoogleLists.filter(
-				(googleList) => {
-					// Ignorer @default qui est géré par getOrCreateDefaultTaskList
-					if (googleList.id === "@default") {
-						// Pour @default, on utilise le titre "Mes Tâches" ou similaire
-						const defaultListName = googleList.title || "Mes Tâches";
-						return !localListNamesSet.has(defaultListName);
-					}
-					return !localListNamesSet.has(googleList.title);
+			const missingLists = allGoogleLists.filter((googleList) => {
+				// Ignorer @default qui est géré par getOrCreateDefaultTaskList
+				if (googleList.id === "@default") {
+					// Pour @default, on utilise le titre "Mes Tâches" ou similaire
+					const defaultListName = googleList.title || "Mes Tâches";
+					return !localListNamesSet.has(defaultListName);
 				}
-			);
+				return !localListNamesSet.has(googleList.title);
+			});
 
 			return missingLists;
 		} catch (error) {
-                    logger.error("Erreur lors de la récupération des listes manquantes:", error);
+			logger.error(
+				"Erreur lors de la récupération des listes manquantes:",
+				error
+			);
 			throw error;
 		}
 	}
@@ -635,11 +644,15 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 		// Si une liste locale est spécifiée, utiliser la liste Google Tasks correspondante
 		// Sinon, utiliser la liste par défaut (pour compatibilité)
-		const taskListId = localListName 
+		const taskListId = localListName
 			? await this.getOrCreateTaskList(localListName)
-			: (await this.getOrCreateDefaultTaskList());
-		
-                    logger.debug(`📋 Utilisation de la liste Google Tasks "${localListName || 'default'}" (ID: ${taskListId})`);
+			: await this.getOrCreateDefaultTaskList();
+
+		logger.debug(
+			`📋 Utilisation de la liste Google Tasks "${
+				localListName || "default"
+			}" (ID: ${taskListId})`
+		);
 		const accessToken = await this.getAccessToken();
 		const todos: Todo[] = [];
 		let pageToken: string | undefined;
@@ -690,7 +703,8 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					);
 				}
 
-				const data = (await response.json()) as GoogleTasksResponse;
+				const rawData = await response.json();
+				const data = validateGoogleTasksResponse(rawData);
 
 				for (const googleTask of data.items || []) {
 					try {
@@ -717,7 +731,9 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			}
 		} while (pageToken);
 
-                    logger.debug(`✅ ${todos.length} tâche(s) récupérée(s) depuis Google Tasks`);
+		logger.debug(
+			`✅ ${todos.length} tâche(s) récupérée(s) depuis Google Tasks`
+		);
 		return todos;
 	}
 
@@ -727,7 +743,10 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 	 * @param localListName Nom de la liste locale pour laquelle synchroniser les tâches
 	 * @returns Map des IDs locaux vers les IDs Google créés (pour les nouvelles tâches)
 	 */
-	async pushTodos(todos: Todo[], localListName?: string): Promise<Map<string, string>> {
+	async pushTodos(
+		todos: Todo[],
+		localListName?: string
+	): Promise<Map<string, string>> {
 		const idMap = new Map<string, string>();
 		if (!this.enabled) {
 			throw new Error("Google Tasks sync is disabled");
@@ -735,246 +754,190 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 
 		// Si une liste locale est spécifiée, utiliser la liste Google Tasks correspondante
 		// Sinon, utiliser la liste par défaut (pour compatibilité)
-		const taskListId = localListName 
+		const taskListId = localListName
 			? await this.getOrCreateTaskList(localListName)
-			: (await this.getOrCreateDefaultTaskList());
-		
-                    logger.debug(`📋 Utilisation de la liste Google Tasks "${localListName || 'default'}" (ID: ${taskListId})`);
+			: await this.getOrCreateDefaultTaskList();
+
+		logger.debug(
+			`📋 Utilisation de la liste Google Tasks "${
+				localListName || "default"
+			}" (ID: ${taskListId})`
+		);
 		const accessToken = await this.getAccessToken();
 
-		for (const todo of todos) {
-			try {
-				const googleTask = this.convertToGoogleTask(todo);
-				
-				// Debug: log googleTask avant nettoyage (pour débogage seulement)
-				if (process.env.NODE_ENV === "development") {
-					logger.debug(`🔍 googleTask avant nettoyage:`, googleTask);
-				}
+		// Grouper les tâches par type d'opération (création vs mise à jour)
+		const { creates, updates } = groupTasksByOperation(todos, (todo) =>
+			this.convertToGoogleTask(todo)
+		);
 
-				// Si la tâche a un ID Google, mettre à jour
-				if (todo.id && todo.id.startsWith("google-")) {
-					const googleTaskId = todo.id.replace("google-", "");
+		logger.debug(
+			`📦 Groupe des tâches: ${creates.length} création(s), ${updates.length} mise(s) à jour`
+		);
 
-					// Nettoyer l'objet googleTask pour n'inclure que les champs valides pour PATCH
-					const taskToUpdate: Partial<GoogleTask> = {};
-					
-					if (googleTask.title) {
-						taskToUpdate.title = googleTask.title;
-					}
-					
-					if (googleTask.status === "completed") {
-						taskToUpdate.status = "completed";
-						if (googleTask.completed) {
-							taskToUpdate.completed = googleTask.completed;
-						}
-					} else if (googleTask.status === "needsAction" || !todo.completed) {
-						// Si la tâche n'est pas complétée, on doit envoyer status: "needsAction"
-						// pour "décompléter" une tâche qui était complétée
-						taskToUpdate.status = "needsAction";
-					}
-					
-					if (googleTask.due) {
-						// S'assurer que le format est RFC 3339
-						const isRFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/.test(googleTask.due);
-						if (isRFC3339) {
-							taskToUpdate.due = googleTask.due;
-						} else {
-							try {
-								let date: Date;
-								if (googleTask.due.match(/^\d{4}-\d{2}-\d{2}$/)) {
-									const [year, month, day] = googleTask.due.split("-").map(Number);
-									date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-								} else {
-									date = parseISO(googleTask.due);
-								}
-								if (!isNaN(date.getTime())) {
-									taskToUpdate.due = date.toISOString();
-								}
-							} catch {
-								logger.warn(`⚠️ Format de date invalide pour PATCH: ${googleTask.due}`);
-							}
-						}
-					}
-					
-					if (googleTask.notes !== undefined) {
-						taskToUpdate.notes = googleTask.notes;
-					}
+		// Exécuter les créations en parallèle par batches
+		const createResults = await executeCreateBatch(
+			creates,
+			taskListId,
+			accessToken,
+			async (task, taskListId, accessToken) => {
+				return await this.executeCreateTask(task, taskListId, accessToken);
+			}
+		);
 
-					logger.debug(`🔄 Mise à jour de la tâche ${googleTaskId}:`, JSON.stringify(taskToUpdate, null, 2));
+		// Exécuter les mises à jour en parallèle par batches
+		const updateResults = await executeUpdateBatch(
+			updates,
+			taskListId,
+			accessToken,
+			async (task, taskListId, accessToken) => {
+				return await this.executeUpdateTask(task, taskListId, accessToken);
+			}
+		);
 
-					const response = await this.retryWithBackoff(async () => {
-						return await fetch(
-							`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
-								taskListId
-							)}/tasks/${googleTaskId}`,
-							{
-								method: "PATCH",
-								headers: {
-									Authorization: `Bearer ${accessToken}`,
-									"Content-Type": "application/json",
-								},
-								body: JSON.stringify(taskToUpdate),
-							}
-						);
-					});
-
-					if (!response.ok && response.status !== 404) {
-						const error = await response.json().catch(() => ({}));
-						logger.error(`❌ Erreur lors de la mise à jour (${response.status}):`, error);
-						throw new Error(
-							`Erreur lors de la mise à jour: ${
-								error.error?.message || response.statusText
-							}`
-						);
-					}
-					
-					if (response.ok) {
-						logger.debug(`✅ Tâche ${googleTaskId} mise à jour avec succès`);
-					}
-				} else {
-					// Sinon, créer une nouvelle tâche
-					// Nettoyer l'objet googleTask pour n'inclure que les champs valides
-					const taskToCreate: Partial<GoogleTask> = {};
-					
-					// Titre (requis)
-					if (googleTask.title && googleTask.title.trim()) {
-						taskToCreate.title = googleTask.title.trim();
-					} else {
-						logger.warn("⚠️ Tentative de créer une tâche sans titre, ignorée");
-						continue; // Passer à la tâche suivante
-					}
-					
-					// Ne PAS inclure status si c'est 'needsAction' (valeur par défaut)
-					// Google Tasks API retourne une erreur 400 si on inclut status: 'needsAction' lors de la création
-					// On n'inclut status QUE si c'est "completed"
-					// IMPORTANT: googleTask.status peut être undefined maintenant (car on ne le définit plus par défaut)
-					if (googleTask.status === "completed") {
-						taskToCreate.status = "completed";
-					}
-					// Sinon, on ne met PAS status du tout (needsAction est la valeur par défaut de Google Tasks)
-					// Si googleTask.status est undefined ou 'needsAction', on ne l'inclut pas
-					
-					// Date d'échéance (optionnelle)
-					// Selon la doc Google: format RFC 3339 complet requis
-					// Format: YYYY-MM-DDTHH:mm:ss.sssZ
-					if (googleTask.due) {
-						// Vérifier que le format est RFC 3339 (doit contenir T et Z ou timezone)
-						const isRFC3339 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/.test(googleTask.due);
-						if (isRFC3339) {
-							taskToCreate.due = googleTask.due;
-						} else {
-							// Essayer de convertir en RFC 3339
-							try {
-								let date: Date;
-								if (googleTask.due.match(/^\d{4}-\d{2}-\d{2}$/)) {
-									// Format YYYY-MM-DD, créer une date à minuit UTC
-									const [year, month, day] = googleTask.due.split("-").map(Number);
-									date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-								} else {
-									date = parseISO(googleTask.due);
-								}
-								
-								if (!isNaN(date.getTime())) {
-									taskToCreate.due = date.toISOString();
-								} else {
-									logger.warn(
-										`⚠️ Format de date invalide, ignoré: ${googleTask.due}`
-									);
-								}
-							} catch {
-								logger.warn(
-									`⚠️ Format de date invalide, ignoré: ${googleTask.due}`
-								);
-							}
-						}
-					}
-					
-					// Date de complétion (seulement si complétée)
-					if (googleTask.completed) {
-						taskToCreate.completed = googleTask.completed;
-					}
-					
-					// Notes (optionnelles)
-					if (googleTask.notes) {
-						taskToCreate.notes = googleTask.notes;
-					}
-
-					// Vérification finale : ne JAMAIS inclure status si c'est needsAction
-					// Selon la doc Google Tasks: lors de la création (insert), on n'envoie que title et notes
-					// Le status est géré automatiquement par Google Tasks (valeur par défaut: needsAction)
-					if (taskToCreate.status === "needsAction" || (!taskToCreate.status && googleTask.status === "needsAction")) {
-						delete taskToCreate.status;
-					}
-					
-					// Log détaillé pour débogage
-					logger.debug(
-						`📤 Création d'une tâche dans Google Tasks (taskToCreate nettoyé):`,
-						JSON.stringify(taskToCreate, null, 2)
-					);
-					logger.debug(
-						`📤 Payload qui sera envoyé (stringified):`,
-						JSON.stringify(taskToCreate)
-					);
-					
-					// Vérification finale : s'assurer qu'on n'envoie pas status si undefined ou needsAction
-					const finalPayload = JSON.parse(JSON.stringify(taskToCreate));
-					if (finalPayload.status === "needsAction" || finalPayload.status === undefined) {
-						delete finalPayload.status;
-					}
-
-					const response = await this.retryWithBackoff(async () => {
-						const payload = JSON.stringify(finalPayload);
-						logger.debug(`📤 Envoi POST avec payload final:`, payload);
-						return await fetch(
-							`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
-								taskListId
-							)}/tasks`,
-							{
-								method: "POST",
-								headers: {
-									Authorization: `Bearer ${accessToken}`,
-									"Content-Type": "application/json",
-								},
-								body: payload,
-							}
-						);
-					});
-
-					if (!response.ok) {
-						const errorData = await response.json().catch(() => ({}));
-						const errorMessage =
-							errorData.error?.message || response.statusText;
-						logger.error(`❌ Erreur lors de la création:`, errorData);
-						logger.error(`📋 Payload envoyé:`, JSON.stringify(taskToCreate, null, 2));
-						if (errorData.error?.errors) {
-							logger.error(`📋 Détails des erreurs:`, errorData.error.errors);
-						}
-						throw new Error(`Erreur lors de la création: ${errorMessage}`);
-					}
-
-					// Si la création réussit, récupérer la tâche créée et stocker l'ID
-					try {
-						const createdTask = (await response.json()) as GoogleTask;
-						if (createdTask.id) {
-							logger.debug(
-								`✅ Tâche créée dans Google Tasks avec l'ID: ${createdTask.id}`
-							);
-							// Stocker le mapping de l'ID local vers l'ID Google
-							idMap.set(todo.id, `google-${createdTask.id}`);
-						}
-					} catch (parseError) {
-						logger.warn(
-							"Impossible de parser la réponse de création:",
-							parseError
-						);
-					}
-				}
-			} catch (error) {
-				logger.error(`Erreur lors du push de la tâche ${todo.id}:`, error);
-				// Continuer avec les autres tâches
+		// Construire la map d'IDs à partir des résultats
+		for (const result of [...createResults, ...updateResults]) {
+			if (result.success && result.googleId) {
+				idMap.set(result.todoId, result.googleId);
+			} else if (!result.success) {
+				logger.error(
+					`❌ Erreur lors de ${
+						result.todoId.startsWith("google-") ? "mise à jour" : "création"
+					} de la tâche ${result.todoId}: ${result.error}`
+				);
 			}
 		}
+
 		return idMap;
+	}
+
+	/**
+	 * Exécute la création d'une tâche
+	 */
+	private async executeCreateTask(
+		task: TaskOperationGroup,
+		taskListId: string,
+		accessToken: string
+	): Promise<TaskOperationResult> {
+		try {
+			const finalPayload = JSON.parse(JSON.stringify(task.taskToSend));
+			// Vérification finale : s'assurer qu'on n'envoie pas status si undefined ou needsAction
+			if (
+				finalPayload.status === "needsAction" ||
+				finalPayload.status === undefined
+			) {
+				delete finalPayload.status;
+			}
+
+			const response = await this.retryWithBackoff(async () => {
+				return await fetch(
+					`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
+						taskListId
+					)}/tasks`,
+					{
+						method: "POST",
+						headers: {
+							Authorization: `Bearer ${accessToken}`,
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify(finalPayload),
+					}
+				);
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				const errorMessage = errorData.error?.message || response.statusText;
+				throw new SyncError(
+					`Erreur lors de la création: ${errorMessage}`,
+					SyncErrorCode.SYNC_FAILED,
+					false,
+					errorData
+				);
+			}
+
+			const rawData = await response.json();
+			const createdTask = safeValidateGoogleTask(rawData);
+			if (!createdTask || !createdTask.id) {
+				throw new SyncError(
+					"La tâche créée n'a pas un format valide",
+					SyncErrorCode.VALIDATION_ERROR,
+					false
+				);
+			}
+
+			return {
+				todoId: task.todo.id,
+				success: true,
+				googleId: `google-${createdTask.id}`,
+			};
+		} catch (error) {
+			const syncError = SyncError.fromError(error);
+			return {
+				todoId: task.todo.id,
+				success: false,
+				error: syncError.message,
+			};
+		}
+	}
+
+	/**
+	 * Exécute la mise à jour d'une tâche
+	 */
+	private async executeUpdateTask(
+		task: TaskOperationGroup,
+		taskListId: string,
+		accessToken: string
+	): Promise<TaskOperationResult> {
+		try {
+			if (!task.googleTaskId) {
+				throw new SyncError(
+					"ID Google manquant pour la mise à jour",
+					SyncErrorCode.VALIDATION_ERROR,
+					false
+				);
+			}
+
+			const response = await this.retryWithBackoff(async () => {
+				return await fetch(
+					`https://www.googleapis.com/tasks/v1/lists/${encodeURIComponent(
+						taskListId
+					)}/tasks/${task.googleTaskId}`,
+					{
+						method: "PATCH",
+						headers: {
+							Authorization: `Bearer ${accessToken}`,
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify(task.taskToSend),
+					}
+				);
+			});
+
+			if (!response.ok && response.status !== 404) {
+				const error = await response.json().catch(() => ({}));
+				throw new SyncError(
+					`Erreur lors de la mise à jour: ${
+						error.error?.message || response.statusText
+					}`,
+					SyncErrorCode.SYNC_FAILED,
+					false,
+					error
+				);
+			}
+
+			return {
+				todoId: task.todo.id,
+				success: response.ok,
+				googleId: task.todo.id, // L'ID reste le même pour les mises à jour
+			};
+		} catch (error) {
+			const syncError = SyncError.fromError(error);
+			return {
+				todoId: task.todo.id,
+				success: false,
+				error: syncError.message,
+			};
+		}
 	}
 
 	/**
@@ -1015,9 +978,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 					`❌ Erreur lors de la suppression de la tâche Google Tasks (${response.status}):`,
 					error
 				);
-				throw new Error(
-					`Erreur lors de la suppression: ${errorMessage}`
-				);
+				throw new Error(`Erreur lors de la suppression: ${errorMessage}`);
 			}
 		} catch (error) {
 			// Si c'est une erreur d'authentification (token invalide), on la propage avec un message clair
@@ -1025,7 +986,7 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				throw error;
 			}
 			// Pour les autres erreurs (réseau, etc.), on log mais on ne bloque pas la suppression locale
-                    logger.error(
+			logger.error(
 				"⚠️ Erreur lors de la suppression de la tâche Google Tasks (suppression locale effectuée):",
 				error
 			);

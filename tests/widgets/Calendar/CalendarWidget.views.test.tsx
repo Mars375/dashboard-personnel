@@ -60,10 +60,16 @@ vi.mock("@/components/ui/button", () => ({
 	),
 }), { virtual: true });
 
-vi.mock("@/components/ui/calendar", () => ({
+vi.mock("@/components/ui/calendar-full", () => ({
 	Calendar: ({ selected, onSelect, ...p }: any) => (
 		<div data-testid="calendar" {...p}>
 			<div>Calendar Component</div>
+		</div>
+	),
+	DatePicker: ({ selected, onSelect, ...p }: any) => (
+		<div data-testid="date-picker" {...p}>
+			<div>DatePicker Component</div>
+			{selected && <div data-testid="selected-date">{selected.toISOString()}</div>}
 		</div>
 	),
 }), { virtual: true });
@@ -135,14 +141,14 @@ describe("CalendarWidget - Views", () => {
 	});
 
 	it("renders month view by default", () => {
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		const calendar = screen.getByTestId("calendar");
 		expect(calendar).toBeTruthy();
 	});
 
 	it("renders week view when view is week", () => {
 		currentView = "week";
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		// La vue semaine devrait afficher une grille
 		const weekContent = screen.queryByText(/janv/i) || screen.getByTestId("calendar");
 		expect(weekContent).toBeTruthy();
@@ -150,7 +156,7 @@ describe("CalendarWidget - Views", () => {
 
 	it("renders day view when view is day", () => {
 		currentView = "day";
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		// La vue jour devrait être rendue
 		const dayContent = screen.queryByText(/lundi/i) || screen.getByTestId("calendar");
 		expect(dayContent).toBeTruthy();
@@ -159,7 +165,7 @@ describe("CalendarWidget - Views", () => {
 	it("displays events in week view", () => {
 		currentView = "week";
 		mockGetEventsForDate.mockReturnValue(mockEvents);
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		
 		// Les événements devraient être affichés (ou au moins le widget rendu)
 		expect(document.body.textContent).toBeTruthy();
@@ -168,7 +174,7 @@ describe("CalendarWidget - Views", () => {
 	it("displays events in day view", () => {
 		currentView = "day";
 		mockGetEventsForDate.mockReturnValue(mockEvents);
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		
 		// Le widget devrait être rendu
 		expect(document.body.textContent).toBeTruthy();
@@ -186,7 +192,7 @@ describe("CalendarWidget - Views", () => {
 			},
 		];
 		mockGetEventsForDate.mockReturnValue(eventsWithoutTime);
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		
 		// L'événement sans heure devrait être affiché dans la section "Événements sans heure"
 		const eventTitles = screen.queryAllByText(/Event No Time/i);

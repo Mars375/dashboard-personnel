@@ -38,10 +38,16 @@ vi.mock("@/components/ui/button", () => ({
 	),
 }), { virtual: true });
 
-vi.mock("@/components/ui/calendar", () => ({
+vi.mock("@/components/ui/calendar-full", () => ({
 	Calendar: ({ selected, onSelect, ...p }: any) => (
 		<div data-testid="calendar" {...p}>
 			<div>Calendar Component</div>
+			{selected && <div data-testid="selected-date">{selected.toISOString()}</div>}
+		</div>
+	),
+	DatePicker: ({ selected, onSelect, ...p }: any) => (
+		<div data-testid="date-picker" {...p}>
+			<div>DatePicker Component</div>
 			{selected && <div data-testid="selected-date">{selected.toISOString()}</div>}
 		</div>
 	),
@@ -98,7 +104,7 @@ describe("CalendarWidget", () => {
 	});
 
 	it("displays calendar component", () => {
-		const { getByTestId } = render(<CalendarWidget />);
+		const { getByTestId } = render(<CalendarWidget size="full" />);
 		expect(getByTestId("calendar")).toBeTruthy();
 	});
 

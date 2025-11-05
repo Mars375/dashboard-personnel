@@ -27,12 +27,17 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		provider = new GoogleTasksSyncProvider(validConfig);
 		
-		// Mock localStorage
-		Storage.prototype.getItem = vi.fn();
+		// Mock localStorage - ensure it returns null/undefined to avoid cached state
+		Storage.prototype.getItem = vi.fn().mockReturnValue(null);
 		Storage.prototype.setItem = vi.fn();
 		Storage.prototype.removeItem = vi.fn();
+		
+		// Reset fetch mock completely before each test
+		(global.fetch as any).mockReset();
+		(global.fetch as any).mockClear();
+		
+		provider = new GoogleTasksSyncProvider(validConfig);
 	});
 
 	afterEach(() => {
@@ -61,20 +66,19 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				status: "needsAction",
 			};
 
-			// Push: create task in Google
-			// Note: getAllTaskLists -> test @default -> POST create task
+			// Push: getOrCreateDefaultTaskList calls getAllTaskLists, finds "Mes tâches", tests @default, then creates task
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: vi.fn().mockResolvedValue(mockTaskListResponse), // getAllTaskLists - finds "Mes tâches"
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
+					json: vi.fn().mockResolvedValue({}), // test @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockCreatedTask,
+					json: vi.fn().mockResolvedValue(mockCreatedTask), // pushTodos creates task
 				});
 
 			const idMap = await provider.pushTodos([localTodo]);
@@ -94,18 +98,15 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				nextPageToken: undefined,
 			};
 
+			// Pull: taskListId is cached, so it validates @default first, then pullTodos
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: vi.fn().mockResolvedValue({ items: [] }), // Validate @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: async () => mockTasksResponse,
+					json: vi.fn().mockResolvedValue(mockTasksResponse), // pullTodos
 				});
 
 			const pulledTodos = await provider.pullTodos();
@@ -128,19 +129,19 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				status: "needsAction",
 			};
 
-			// Pull initial task
+			// Pull initial task: getOrCreateDefaultTaskList calls getAllTaskLists, finds "Mes tâches", tests @default, then pullTodos
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: vi.fn().mockResolvedValue(mockTaskListResponse), // getAllTaskLists - finds "Mes tâches"
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
+					json: vi.fn().mockResolvedValue({}), // test @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [initialTask], nextPageToken: undefined }),
+					json: vi.fn().mockResolvedValue({ items: [initialTask], nextPageToken: undefined }), // pullTodos
 				});
 
 			const initialTodos = await provider.pullTodos();
@@ -155,19 +156,15 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				status: "completed",
 			};
 
-			// Pull updated task
+			// Pull updated task: taskListId is cached, so it validates @default first, then pullTodos
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: vi.fn().mockResolvedValue({ items: [] }), // Validate @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: async () => ({ items: [updatedTask], nextPageToken: undefined }),
+					json: vi.fn().mockResolvedValue({ items: [updatedTask], nextPageToken: undefined }), // pullTodos
 				});
 
 			const updatedTodos = await provider.pullTodos();
@@ -188,36 +185,33 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				status: "needsAction",
 			};
 
+			// Pull initial task: getOrCreateDefaultTaskList calls getAllTaskLists, finds "Mes tâches", tests @default, then pullTodos
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: vi.fn().mockResolvedValue(mockTaskListResponse), // getAllTaskLists - finds "Mes tâches"
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
+					json: vi.fn().mockResolvedValue({}), // test @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [existingTask], nextPageToken: undefined }),
+					json: vi.fn().mockResolvedValue({ items: [existingTask], nextPageToken: undefined }), // pullTodos
 				});
 
 			const todosBefore = await provider.pullTodos();
 			expect(todosBefore.length).toBe(1);
 
-			// Task deleted in Google (empty response)
+			// Task deleted in Google (empty response): taskListId is cached, so it validates @default first, then pullTodos
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: vi.fn().mockResolvedValue({ items: [] }), // Validate @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: async () => ({ items: [], nextPageToken: undefined }), // Task no longer exists
+					json: vi.fn().mockResolvedValue({ items: [], nextPageToken: undefined }), // pullTodos - Task no longer exists
 				});
 
 			const todosAfter = await provider.pullTodos();
@@ -248,37 +242,34 @@ describe("GoogleTasksSyncProvider - Bidirectional Sync", () => {
 				status: "completed",
 			};
 
-			// Push local changes
+			// Push local changes: getOrCreateDefaultTaskList calls getAllTaskLists, finds "Mes tâches", tests @default, then updates task
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: vi.fn().mockResolvedValue(mockTaskListResponse), // getAllTaskLists - finds "Mes tâches"
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
+					json: vi.fn().mockResolvedValue({}), // test @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => googleTask, // Update successful
+					json: vi.fn().mockResolvedValue(googleTask), // pushTodos updates task
 				});
 
 			const idMap = await provider.pushTodos([localTodo]);
 			expect(idMap.size).toBe(0); // No new ID, just update
 
 			// Pull Google version (should overwrite local)
+			// taskListId is cached, so it validates @default first, then pullTodos
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: vi.fn().mockResolvedValue({}), // Validate @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: async () => ({ items: [googleTask], nextPageToken: undefined }),
+					json: vi.fn().mockResolvedValue({ items: [googleTask], nextPageToken: undefined }), // pullTodos
 				});
 
 			const pulledTodos = await provider.pullTodos();

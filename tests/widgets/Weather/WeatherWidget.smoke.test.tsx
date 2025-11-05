@@ -22,6 +22,15 @@ vi.mock("@/components/ui/command", () => ({
   CommandEmpty: ({ children }: any) => <div>{children}</div>,
 }), { virtual: true });
 
+// Mock weatherStorage
+vi.mock("@/store/weatherStorage", () => ({
+  loadSavedCities: () => [{ name: "Paris", country: "FR" }],
+  loadLastCity: () => "Paris",
+  saveSavedCities: () => {},
+  addSavedCity: () => {},
+  removeSavedCity: () => {},
+}), { virtual: true });
+
 // Mock hooks
 vi.mock("@/hooks/useWeather", () => ({
   useWeather: () => ({

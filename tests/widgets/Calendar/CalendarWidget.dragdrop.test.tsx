@@ -55,7 +55,7 @@ vi.mock("@/components/ui/button", () => ({
 	),
 }), { virtual: true });
 
-vi.mock("@/components/ui/calendar", () => ({
+vi.mock("@/components/ui/calendar-full", () => ({
 	Calendar: ({ selected, onSelect, ...p }: any) => {
 		const handleDragOver = (e: React.DragEvent) => {
 			e.preventDefault();
@@ -88,6 +88,12 @@ vi.mock("@/components/ui/calendar", () => ({
 			</div>
 		);
 	},
+	DatePicker: ({ selected, onSelect, ...p }: any) => (
+		<div data-testid="date-picker" {...p}>
+			<div>DatePicker Component</div>
+			{selected && <div data-testid="selected-date">{selected.toISOString()}</div>}
+		</div>
+	),
 }), { virtual: true });
 
 vi.mock("@/components/ui/button-group", () => ({
@@ -153,13 +159,13 @@ describe("CalendarWidget - Drag & Drop", () => {
 	});
 
 	it("renders draggable event items", () => {
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		const eventItem = screen.queryByText(/Événement test/i);
 		expect(eventItem).toBeTruthy();
 	});
 
 	it("handles drag start on event", () => {
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		const eventItem = screen.queryByText(/Événement test/i);
 		
 		if (eventItem && eventItem.parentElement) {
@@ -176,7 +182,7 @@ describe("CalendarWidget - Drag & Drop", () => {
 	});
 
 	it("updates event date on drop", async () => {
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		const dayButton = screen.getByTestId("day-button");
 		
 		// Simuler un drop
@@ -199,7 +205,7 @@ describe("CalendarWidget - Drag & Drop", () => {
 	});
 
 	it("prevents default on drag over", () => {
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		const dayButton = screen.getByTestId("day-button");
 		
 		const dragOverEvent = new Event("dragover", { bubbles: true });

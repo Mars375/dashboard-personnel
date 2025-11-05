@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest";
 vi.mock("@/components/ui/card", () => ({ Card: ({ children, ...p }: any) => <div {...p}>{children}</div> }), { virtual: true });
 vi.mock("@/components/ui/button", () => ({ Button: ({ children, ...p }: any) => <button {...p}>{children}</button> }), { virtual: true });
 vi.mock("@/components/ui/input", () => ({ Input: (props: any) => <input {...props} /> }), { virtual: true });
-vi.mock("@/components/ui/skeleton", () => ({ Skeleton: (props: any) => <div role="status" {...props} /> }), { virtual: true });
+vi.mock("@/components/ui/skeleton", () => ({ Skeleton: (props: any) => <div role="status" aria-label="loading" {...props} /> }), { virtual: true });
 vi.mock("@/components/ui/popover", () => ({
   Popover: ({ children }: any) => <div>{children}</div>,
   PopoverTrigger: ({ children }: any) => <div>{children}</div>,
@@ -19,6 +19,15 @@ vi.mock("@/components/ui/command", () => ({
   ),
   CommandGroup: ({ children }: any) => <div>{children}</div>,
   CommandEmpty: ({ children }: any) => <div>{children}</div>,
+}), { virtual: true });
+
+// Mock weatherStorage - return a city so skeleton is rendered
+vi.mock("@/store/weatherStorage", () => ({
+  loadSavedCities: () => [{ name: "Paris", country: "FR" }],
+  loadLastCity: () => "Paris",
+  saveSavedCities: () => {},
+  addSavedCity: () => {},
+  removeSavedCity: () => {},
 }), { virtual: true });
 
 vi.mock("@/hooks/useWeather", () => ({
@@ -58,8 +67,8 @@ describe("WeatherWidget (loading)", () => {
     render(<WeatherWidget />);
     const statusElements = screen.getAllByRole("status");
     expect(statusElements.length).toBeGreaterThan(0);
-    // Vérifie qu'au moins un skeleton est présent
-    expect(statusElements[0].className).toContain("grid");
+    // Vérifie qu'au moins un skeleton est présent (il a une classe de taille)
+    expect(statusElements[0].className).toMatch(/h-\d+ w-\d+/);
   });
 });
 

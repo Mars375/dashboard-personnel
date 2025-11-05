@@ -1,7 +1,9 @@
 // Tests pour la recherche d'événements
+import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import "@testing-library/jest-dom/vitest";
 import { CalendarWidget } from "@/widgets/Calendar/CalendarWidget";
 import type { CalendarEvent } from "@/widgets/Calendar/types";
 
@@ -69,8 +71,14 @@ vi.mock("@/components/ui/card", () => ({
 	CardHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock("@/components/ui/calendar", () => ({
+vi.mock("@/components/ui/calendar-full", () => ({
 	Calendar: () => <div data-testid="calendar">Calendar</div>,
+	DatePicker: ({ selected, onSelect, ...p }: any) => (
+		<div data-testid="date-picker" {...p}>
+			<div>DatePicker Component</div>
+			{selected && <div data-testid="selected-date">{selected.toISOString()}</div>}
+		</div>
+	),
 }));
 
 describe("CalendarWidget - Recherche d'événements", () => {
@@ -79,7 +87,7 @@ describe("CalendarWidget - Recherche d'événements", () => {
 	});
 
 	it("affiche la barre de recherche", () => {
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 
 		const searchInput = screen.getByPlaceholderText(/rechercher un événement/i);
 		expect(searchInput).toBeInTheDocument();
@@ -87,7 +95,7 @@ describe("CalendarWidget - Recherche d'événements", () => {
 
 	it("filtre les événements par titre", async () => {
 		const user = userEvent.setup();
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 
 		const searchInput = screen.getByPlaceholderText(/rechercher un événement/i);
 		
@@ -105,7 +113,7 @@ describe("CalendarWidget - Recherche d'événements", () => {
 
 	it("filtre les événements par description", async () => {
 		const user = userEvent.setup();
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 
 		const searchInput = screen.getByPlaceholderText(/rechercher un événement/i);
 		
@@ -119,7 +127,7 @@ describe("CalendarWidget - Recherche d'événements", () => {
 
 	it("affiche 'Aucun événement trouvé' quand aucun résultat", async () => {
 		const user = userEvent.setup();
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 
 		const searchInput = screen.getByPlaceholderText(/rechercher un événement/i);
 		
@@ -130,7 +138,7 @@ describe("CalendarWidget - Recherche d'événements", () => {
 
 	it("affiche le nombre de résultats", async () => {
 		const user = userEvent.setup();
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 
 		const searchInput = screen.getByPlaceholderText(/rechercher un événement/i);
 		
@@ -142,7 +150,7 @@ describe("CalendarWidget - Recherche d'événements", () => {
 
 	it("affiche la date et l'heure des résultats", async () => {
 		const user = userEvent.setup();
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 
 		const searchInput = screen.getByPlaceholderText(/rechercher un événement/i);
 		
@@ -150,12 +158,12 @@ describe("CalendarWidget - Recherche d'événements", () => {
 
 		// Vérifier que la date est affichée
 		expect(screen.getByText(/2025/i)).toBeInTheDocument();
-		// Vérifier que l'heure est affichée si présente
-		expect(screen.getByText(/14:00/i)).toBeInTheDocument();
+		// Vérifier que l'heure est affichée si présente (il peut y avoir plusieurs occurrences)
+		expect(screen.getAllByText(/14:00/i).length).toBeGreaterThan(0);
 	});
 
 	it("affiche les événements du jour sélectionné quand pas de recherche", () => {
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 
 		// Quand pas de recherche, devrait afficher les événements normalement
 		const searchInput = screen.getByPlaceholderText(/rechercher un événement/i);

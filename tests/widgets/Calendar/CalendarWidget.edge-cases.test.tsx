@@ -92,12 +92,18 @@ vi.mock("@/components/ui/button", () => ({
 	),
 }), { virtual: true });
 
-vi.mock("@/components/ui/calendar", () => ({
+vi.mock("@/components/ui/calendar-full", () => ({
 	Calendar: ({ selected, onSelect, modifiers, ...p }: any) => (
 		<div data-testid="calendar" {...p}>
 			<div>Calendar Component</div>
 			{selected && <div data-testid="selected-date">{selected.toISOString()}</div>}
 			{modifiers?.hasEvents && <div data-testid="has-events">Has Events</div>}
+		</div>
+	),
+	DatePicker: ({ selected, onSelect, ...p }: any) => (
+		<div data-testid="date-picker" {...p}>
+			<div>DatePicker Component</div>
+			{selected && <div data-testid="selected-date">{selected.toISOString()}</div>}
 		</div>
 	),
 }), { virtual: true });
@@ -158,7 +164,7 @@ describe("CalendarWidget - Edge Cases", () => {
 	});
 
 	it("handles empty events list", () => {
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		const emptyMessage = screen.queryByText(/Aucun événement/i);
 		expect(emptyMessage || screen.getByTestId("calendar")).toBeTruthy();
 	});
@@ -166,17 +172,18 @@ describe("CalendarWidget - Edge Cases", () => {
 	it("handles many events on same date", () => {
 		mockEvents = manyEvents;
 		mockGetEventsForDate.mockReturnValue(mockEvents);
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		
 		// Le widget devrait gérer l'affichage de plusieurs événements
-		const event1 = screen.queryByText(/Event 1/i);
-		expect(event1 || screen.getByTestId("calendar")).toBeTruthy();
+		// Il peut y avoir plusieurs occurrences de "Event 1", utilisons getAllByText
+		const event1Elements = screen.queryAllByText(/Event 1/i);
+		expect(event1Elements.length > 0 || screen.getByTestId("calendar")).toBeTruthy();
 	});
 
 	it("handles events on different dates", () => {
 		mockEvents = eventsDifferentDates;
 		mockGetEventsForDate.mockReturnValue([mockEvents[0]]);
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		
 		// Les événements de différentes dates devraient être affichés correctement
 		expect(screen.getByTestId("calendar")).toBeTruthy();
@@ -185,7 +192,7 @@ describe("CalendarWidget - Edge Cases", () => {
 	it("displays events with custom colors", () => {
 		mockEvents = eventsWithColors;
 		mockGetEventsForDate.mockReturnValue(mockEvents);
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		
 		// Les événements avec couleurs devraient être affichés
 		const blueEvent = screen.queryByText(/Event Blue/i);
@@ -203,7 +210,7 @@ describe("CalendarWidget - Edge Cases", () => {
 			},
 		];
 		mockGetEventsForDate.mockReturnValue(mockEvents);
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		
 		// Les événements sans heure devraient être affichés
 		const eventNoTime = screen.queryByText(/Event No Time/i);
@@ -211,13 +218,13 @@ describe("CalendarWidget - Edge Cases", () => {
 	});
 
 	it("handles date selection edge cases", () => {
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		// Le calendrier devrait être rendu même avec des dates limites
 		expect(document.body).toBeTruthy();
 	});
 
 	it("handles view switching edge cases", () => {
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		// Le widget devrait gérer les changements de vue sans crash
 		expect(document.body).toBeTruthy();
 	});

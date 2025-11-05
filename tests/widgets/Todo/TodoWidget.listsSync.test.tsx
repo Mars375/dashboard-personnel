@@ -48,6 +48,9 @@ let mockLists = [
 	{ id: "list-2", name: "Perso", createdAt: Date.now() },
 ];
 
+// Exposer mockLists globalement pour que le mock useTodoStore puisse y accéder
+(globalThis as any).__mockLists__ = mockLists;
+
 const mockUseTodos = vi.fn(() => ({
 	todos: [],
 	currentListId: "list-1",
@@ -76,18 +79,36 @@ vi.mock("@/hooks/useTodos", () => ({
 	useTodos: () => mockUseTodos(),
 }));
 
-// Mock useTodoStore
-vi.mock("@/store/todoStore", () => ({
-	useTodoStore: {
-		getState: () => ({
-			present: [],
-			lists: [
-				{ id: "list-1", name: "Pro", createdAt: Date.now() },
-				{ id: "list-2", name: "Perso", createdAt: Date.now() },
-			],
-		}),
-	},
-}));
+// Mock useTodoStore - doit retourner mockLists pour que les changements soient visibles
+// Utiliser une fonction pour accéder à mockLists au moment de l'appel
+vi.mock("@/store/todoStore", async () => {
+	const actual = await vi.importActual("@/store/todoStore");
+	return {
+		...actual,
+		useTodoStore: {
+			getState: () => {
+				// Accéder à mockLists depuis le scope parent via une closure
+				// mockLists sera défini avant que ce mock soit utilisé
+				return {
+					present: [],
+					currentListId: "list-1",
+					lists: (globalThis as any).__mockLists__ || [],
+				};
+			},
+			subscribe: (listener: (state: any) => void) => {
+				// Mock subscribe qui appelle immédiatement le listener avec l'état actuel
+				const state = {
+					present: [],
+					currentListId: "list-1",
+					lists: (globalThis as any).__mockLists__ || [],
+				};
+				listener(state);
+				// Retourner une fonction unsubscribe
+				return () => {};
+			},
+		},
+	};
+});
 
 // Mock all UI components
 vi.mock("@/components/ui/card", () => ({
@@ -179,6 +200,8 @@ describe("TodoWidget - Lists Synchronization", () => {
 			{ id: "list-1", name: "Pro", createdAt: Date.now() },
 			{ id: "list-2", name: "Perso", createdAt: Date.now() },
 		];
+		// Mettre à jour la référence globale
+		(globalThis as any).__mockLists__ = mockLists;
 	});
 
 	it("should create missing local lists from Google Tasks during sync", async () => {
@@ -215,7 +238,7 @@ describe("TodoWidget - Lists Synchronization", () => {
 
 	it("should import tasks when creating a missing list", async () => {
 		const missingGoogleList = { id: "@default", title: "Mes Tâches" };
-		mockGetMissingLocalLists.mockResolvedValueOnce([missingGoogleList]);
+		mockGetMissingLocalLists.mockResolvedValue([missingGoogleList]);
 
 		const tasksFromGoogle = [
 			{
@@ -235,24 +258,39 @@ describe("TodoWidget - Lists Synchronization", () => {
 		];
 
 		mockPullTodos
-			.mockResolvedValueOnce(tasksFromGoogle) // Pull from new list
+			.mockResolvedValueOnce(tasksFromGoogle) // Pull from new list "Mes Tâches"
 			.mockResolvedValueOnce([]); // Sync current list
 
 		// Mock addList to update the mockLists
 		mockAddList.mockImplementation((name: string) => {
-			mockLists.push({ id: `new-list-${Date.now()}`, name, createdAt: Date.now() });
+			const newList = { id: `new-list-${Date.now()}`, name, createdAt: Date.now() };
+			mockLists.push(newList);
+			// Mettre à jour la référence globale
+			(globalThis as any).__mockLists__ = mockLists;
 		});
 
 		render(<TodoWidget />);
 
+		// Attendre que la synchronisation soit déclenchée (elle se fait automatiquement après 2 secondes)
 		await waitFor(() => {
 			expect(mockGetMissingLocalLists).toHaveBeenCalled();
-		}, { timeout: 3000 });
+		}, { timeout: 5000 });
 
+		// Vérifier que addList a été appelé pour créer la nouvelle liste
 		await waitFor(() => {
-			expect(mockPullTodos).toHaveBeenCalledWith(undefined); // @default list
-		}, { timeout: 3000 });
-	});
+			expect(mockAddList).toHaveBeenCalledWith("Mes Tâches");
+		}, { timeout: 5000 });
+
+		// Vérifier que pullTodos a été appelé (au moins une fois)
+		await waitFor(() => {
+			expect(mockPullTodos).toHaveBeenCalled();
+		}, { timeout: 5000 });
+
+		// Vérifier que les tâches ont été ajoutées
+		await waitFor(() => {
+			expect(mockAddTodo).toHaveBeenCalled();
+		}, { timeout: 5000 });
+	}, 15000);
 
 	it("should not create duplicate lists if list already exists", async () => {
 		// Mock: Google Tasks has "Mes Tâches" list

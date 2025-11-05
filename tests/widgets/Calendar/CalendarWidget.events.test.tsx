@@ -60,12 +60,18 @@ vi.mock("@/components/ui/button", () => ({
 	),
 }), { virtual: true });
 
-vi.mock("@/components/ui/calendar", () => ({
+vi.mock("@/components/ui/calendar-full", () => ({
 	Calendar: ({ selected, onSelect, ...p }: any) => (
 		<div data-testid="calendar" {...p}>
 			<div>Calendar Component</div>
 			{selected && <div data-testid="selected-date">{selected.toISOString()}</div>}
 			<button onClick={() => onSelect?.(new Date(2024, 0, 15))}>Select Date</button>
+		</div>
+	),
+	DatePicker: ({ selected, onSelect, ...p }: any) => (
+		<div data-testid="date-picker" {...p}>
+			<div>DatePicker Component</div>
+			{selected && <div data-testid="selected-date">{selected.toISOString()}</div>}
 		</div>
 	),
 }), { virtual: true });

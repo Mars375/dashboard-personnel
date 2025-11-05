@@ -55,10 +55,12 @@ logger.debug(`✅ ${todos.length} tâche(s) récupérée(s) depuis Google Tasks`
 ```
 
 **Comportement** :
+
 - ✅ **En développement** (`npm run dev`) : S'affiche dans la console
 - ❌ **En production** (`npm run build`) : **AUTOMATIQUEMENT DÉSACTIVÉ**
 
 **Exemple dans la console (dev)** :
+
 ```
 [DEBUG] 📦 taskListId chargé depuis localStorage: @default
 [DEBUG] 🚀 Synchronisation immédiate dans Google Tasks: "Acheter du pain"
@@ -66,6 +68,7 @@ logger.debug(`✅ ${todos.length} tâche(s) récupérée(s) depuis Google Tasks`
 ```
 
 **Exemple dans la console (production)** :
+
 ```
 (rien, ces logs ne s'affichent pas)
 ```
@@ -82,9 +85,11 @@ logger.info(`Utilisateur connecté: ${userId}`);
 ```
 
 **Comportement** :
+
 - ✅ **Toujours affiché** (dev et production)
 
 **Exemple dans la console** :
+
 ```
 [INFO] Synchronisation démarrée
 [INFO] Utilisateur connecté: user123
@@ -103,10 +108,12 @@ logger.warn("Impossible de charger taskListId depuis localStorage");
 ```
 
 **Comportement** :
+
 - ✅ **Toujours affiché** (dev et production)
 - Utilise `console.warn` (affiche en jaune dans la console)
 
 **Exemple dans la console** :
+
 ```
 [WARN] ⚠️ Liste "Mes Tâches" non trouvée après création
 [WARN] ⚠️ Aucun ID Google retourné pour la tâche "Acheter du pain"
@@ -120,15 +127,20 @@ logger.warn("Impossible de charger taskListId depuis localStorage");
 
 ```typescript
 logger.error("Erreur lors de la récupération des listes manquantes:", error);
-logger.error(`Erreur lors de la récupération/création de la liste "${listName}":`, error);
+logger.error(
+	`Erreur lors de la récupération/création de la liste "${listName}":`,
+	error
+);
 logger.error("Erreur lors de la synchronisation avec Google Tasks:", error);
 ```
 
 **Comportement** :
+
 - ✅ **Toujours affiché** (dev et production)
 - Utilise `console.error` (affiche en rouge dans la console)
 
 **Exemple dans la console** :
+
 ```
 [ERROR] Erreur lors de la récupération des listes manquantes: TypeError: ...
 [ERROR] Erreur lors de la synchronisation avec Google Tasks: NetworkError: ...
@@ -141,6 +153,7 @@ logger.error("Erreur lors de la synchronisation avec Google Tasks:", error);
 ### 1. **Console Propre en Production**
 
 **Avant** :
+
 ```
 📦 taskListId chargé depuis localStorage: @default
 ✅ Liste "Mes Tâches" trouvée
@@ -151,6 +164,7 @@ logger.error("Erreur lors de la synchronisation avec Google Tasks:", error);
 ```
 
 **Après** :
+
 ```
 (rien, sauf warnings et erreurs si nécessaire)
 ```
@@ -160,6 +174,7 @@ logger.error("Erreur lors de la synchronisation avec Google Tasks:", error);
 ### 2. **Meilleure Organisation**
 
 Tous les logs sont préfixés avec leur niveau :
+
 - `[DEBUG]` : Informations de debug
 - `[INFO]` : Informations importantes
 - `[WARN]` : Avertissements
@@ -172,6 +187,7 @@ Facilite la recherche dans la console avec `Ctrl+F` : chercher `[ERROR]` pour tr
 ### 3. **Performance**
 
 En production, les logs de debug ne sont **pas exécutés** (grâce à `if (isDev)`), ce qui :
+
 - Réduit les appels à `console.log`
 - Améliore légèrement les performances
 - Réduit la taille du bundle (si le code est tree-shaken)
@@ -196,7 +212,9 @@ logger.error("Erreur lors de la synchronisation avec Google Tasks:", error);
 
 ```typescript
 // ✅ Bon usage
-logger.debug(`📋 ${missingGoogleLists.length} liste(s) Google Tasks trouvée(s)`);
+logger.debug(
+	`📋 ${missingGoogleLists.length} liste(s) Google Tasks trouvée(s)`
+);
 logger.debug(`➕ Création de la liste locale: "${listName}"`);
 logger.warn(`⚠️ Liste "${listName}" non trouvée après création`);
 logger.error("Erreur lors de la récupération des listes manquantes:", error);
@@ -243,14 +261,13 @@ Le logger peut être étendu pour :
 
 ## 📊 Résumé
 
-| Niveau | Quand l'utiliser | En Dev | En Prod |
-|--------|------------------|--------|---------|
-| `debug` | Informations détaillées pour le développement | ✅ Oui | ❌ Non |
-| `info` | Informations importantes | ✅ Oui | ✅ Oui |
-| `warn` | Avertissements, situations suspectes | ✅ Oui | ✅ Oui |
-| `error` | Erreurs à investiguer | ✅ Oui | ✅ Oui |
+| Niveau  | Quand l'utiliser                              | En Dev | En Prod |
+| ------- | --------------------------------------------- | ------ | ------- |
+| `debug` | Informations détaillées pour le développement | ✅ Oui | ❌ Non  |
+| `info`  | Informations importantes                      | ✅ Oui | ✅ Oui  |
+| `warn`  | Avertissements, situations suspectes          | ✅ Oui | ✅ Oui  |
+| `error` | Erreurs à investiguer                         | ✅ Oui | ✅ Oui  |
 
 ---
 
 **En résumé** : Le logger permet de garder la console propre en production tout en gardant des logs détaillés en développement ! 🎯
-

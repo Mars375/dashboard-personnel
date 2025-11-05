@@ -21,6 +21,16 @@ vi.mock("@/components/ui/command", () => ({
   CommandEmpty: ({ children }: any) => <div>{children}</div>,
 }), { virtual: true });
 
+// Mock weatherStorage
+vi.mock("@/store/weatherStorage", () => ({
+  loadSavedCities: () => [],
+  loadLastCity: () => undefined,
+  saveSavedCities: () => {},
+  addSavedCity: () => {},
+  removeSavedCity: () => {},
+  saveLastCity: () => {},
+}), { virtual: true });
+
 vi.mock("@/hooks/useWeather", () => ({
   useWeather: () => ({
     city: "Par",
@@ -51,10 +61,6 @@ vi.mock("@/hooks/useAutocompleteCity", () => ({
   }),
 }), { virtual: true });
 
-vi.mock("@/store/weatherStorage", () => ({
-  loadLastCity: () => undefined,
-  saveLastCity: () => {},
-}), { virtual: true });
 
 import { WeatherWidget } from "@/widgets/Weather/WeatherWidget";
 

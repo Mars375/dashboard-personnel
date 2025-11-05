@@ -185,34 +185,39 @@ describe("notifications", () => {
 		});
 
 		it("should sort by daysUntil", () => {
-			// Use a fixed date early in the day to ensure "today" is still in the future
-			const baseDate = new Date("2024-12-15T00:00:00Z");
-			const today = new Date(baseDate);
-			today.setHours(0, 0, 0, 0);
-			const todayStr = today.toISOString().split("T")[0];
+			// Use a fixed date early in the day to ensure deadlines are in the future
+			const baseDate = new Date("2024-12-15T08:00:00Z"); // 8 AM UTC
+			const baseTime = baseDate.getTime();
 
-			const in3Days = new Date(today);
-			in3Days.setDate(in3Days.getDate() + 3);
-			in3Days.setHours(0, 0, 0, 0);
+			// Tomorrow's deadline at midnight (UTC)
+			const tomorrow = new Date(baseDate);
+			tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+			tomorrow.setUTCHours(0, 0, 0, 0);
+			const tomorrowStr = tomorrow.toISOString().split("T")[0];
+
+			// Deadline in 3 days at midnight (UTC)
+			const in3Days = new Date(baseDate);
+			in3Days.setUTCDate(in3Days.getUTCDate() + 3);
+			in3Days.setUTCHours(0, 0, 0, 0);
 			const in3DaysStr = in3Days.toISOString().split("T")[0];
 
-			// Mock Date.now() to return our fixed date time (at midnight)
+			// Mock Date.now() to return our fixed date time (8 AM UTC)
 			const originalNow = Date.now;
-			Date.now = vi.fn(() => baseDate.getTime());
+			Date.now = vi.fn(() => baseTime);
 
 			try {
 				const todos = [
 					createTodo("1", in3DaysStr), // 3 days
-					createTodo("2", todayStr), // 0 days (today at midnight, same as baseDate)
+					createTodo("2", tomorrowStr), // 1 day (tomorrow at midnight)
 				];
 
-				const upcoming = getTodosWithUpcomingDeadlines(todos, [0, 3]);
+				const upcoming = getTodosWithUpcomingDeadlines(todos, [1, 3]);
 				
-				// Both should be found since we're using [0, 3] which matches today and in 3 days
+				// Both should be found since we're using [1, 3] which matches tomorrow and in 3 days
 				expect(upcoming.length).toBe(2);
 				expect(upcoming[0].daysUntil).toBeLessThanOrEqual(upcoming[1].daysUntil);
-				// The first one should be today (0 days), second should be in 3 days
-				expect(upcoming[0].daysUntil).toBe(0);
+				// The first one should be tomorrow (1 day), second should be in 3 days
+				expect(upcoming[0].daysUntil).toBe(1);
 				expect(upcoming[1].daysUntil).toBe(3);
 			} finally {
 				Date.now = originalNow;

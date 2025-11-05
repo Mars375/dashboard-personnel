@@ -27,12 +27,17 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		provider = new GoogleTasksSyncProvider(validConfig);
 		
-		// Mock localStorage
-		Storage.prototype.getItem = vi.fn();
+		// Mock localStorage - ensure it returns null/undefined to avoid cached state
+		Storage.prototype.getItem = vi.fn().mockReturnValue(null);
 		Storage.prototype.setItem = vi.fn();
 		Storage.prototype.removeItem = vi.fn();
+		
+		// Reset fetch mock completely before each test
+		(global.fetch as any).mockReset();
+		(global.fetch as any).mockClear();
+		
+		provider = new GoogleTasksSyncProvider(validConfig);
 	});
 
 	afterEach(() => {
@@ -61,15 +66,15 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: vi.fn().mockResolvedValue(mockTaskListResponse), // getAllTaskLists
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }), // Test @default access
+					json: vi.fn().mockResolvedValue({ items: [] }), // Test @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTasksResponse,
+					json: vi.fn().mockResolvedValue(mockTasksResponse), // pullTodos
 				});
 
 			const todos1 = await provider.pullTodos();
@@ -83,11 +88,11 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }), // Test cached list validity
+					json: vi.fn().mockResolvedValue({ items: [] }), // Test cached list validity
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTasksResponse, // pullTodos
+					json: vi.fn().mockResolvedValue(mockTasksResponse), // pullTodos // pullTodos
 				});
 
 			const todos2 = await provider.pullTodos();
@@ -128,15 +133,15 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: vi.fn().mockResolvedValue(mockTaskListResponse), // getAllTaskLists
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }), // Test @default access
+					json: vi.fn().mockResolvedValue({ items: [] }), // Test @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTasksResponse1,
+					json: vi.fn().mockResolvedValue(mockTasksResponse1),
 				});
 
 			const todos1 = await provider.pullTodos();
@@ -144,19 +149,15 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 			expect(todos1[0].title).toBe("Task 1");
 			expect(todos1[0].completed).toBe(false);
 
-			// Second pull with updated content: getAllTaskLists -> test @default (fetch) -> pullTodos
+			// Second pull: taskListId is cached, so it validates @default first (1 fetch), then pullTodos (1 fetch)
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: vi.fn().mockResolvedValue({ items: [] }), // Validate @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }), // Test @default access
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: async () => mockTasksResponse2,
+					json: vi.fn().mockResolvedValue(mockTasksResponse2), // pullTodos
 				});
 
 			const todos2 = await provider.pullTodos();
@@ -187,18 +188,19 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 				status: "needsAction",
 			};
 
+			// getOrCreateDefaultTaskList: getAllTaskLists finds "Mes tâches", tests @default, then creates task
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: vi.fn().mockResolvedValue(mockTaskListResponse), // getAllTaskLists - finds "Mes tâches"
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
+					json: vi.fn().mockResolvedValue({}), // test @default access
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockCreatedTask,
+					json: vi.fn().mockResolvedValue(mockCreatedTask), // pushTodos creates task
 				});
 
 			const idMap = await provider.pushTodos([todo]);
@@ -227,18 +229,15 @@ describe("GoogleTasksSyncProvider - Duplicate Prevention", () => {
 				status: "needsAction",
 			};
 
+			// getAllTaskLists finds "Mes tâches", returns "@default" early, so no @default test needed
 			(global.fetch as any)
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => mockTaskListResponse,
+					json: vi.fn().mockResolvedValue(mockTaskListResponse), // getAllTaskLists // getAllTaskLists - finds "Mes tâches"
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ items: [] }),
-				})
-				.mockResolvedValueOnce({
-					ok: true,
-					json: async () => mockUpdatedTask,
+					json: vi.fn().mockResolvedValue(mockUpdatedTask), // pushTodos updates task
 				});
 
 			const idMap = await provider.pushTodos([todo]);

@@ -11,7 +11,7 @@ import * as React from "react";
 vi.mock("@/hooks/useCalendar");
 vi.mock("@/hooks/useTodos");
 vi.mock("@/components/ui/card");
-vi.mock("@/components/ui/calendar");
+vi.mock("@/components/ui/calendar-full");
 vi.mock("@/components/ui/button");
 vi.mock("@/components/ui/button-group");
 vi.mock("@/components/ui/dialog");
