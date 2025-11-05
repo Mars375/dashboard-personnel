@@ -87,6 +87,7 @@ export const useDashboardStore = create<DashboardState>()(
 						calendar: { w: 4, h: 6, minW: 3, minH: 5 },
 						notes: { w: 4, h: 6, minW: 3, minH: 4 },
 						habits: { w: 4, h: 6, minW: 3, minH: 4 },
+						journal: { w: 4, h: 6, minW: 3, minH: 4 },
 					};
 
 					const defaultSize = sizes[type] || { w: 4, h: 4, minW: 2, minH: 2 };
