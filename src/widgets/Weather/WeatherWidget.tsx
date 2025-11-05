@@ -1,7 +1,7 @@
 // src/widgets/Weather/WeatherWidget.tsx
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo, useCallback, useMemo } from "react";
 import {
 	loadLastCity,
 	type SavedCity,
@@ -19,7 +19,7 @@ import {
 } from "./components";
 import { useAutocompleteCity } from "@/hooks/useAutocompleteCity";
 
-export function WeatherWidget({ size = "medium" }: WidgetProps) {
+function WeatherWidgetComponent({ size = "medium" }: WidgetProps) {
 	const defaultCity = loadLastCity() ?? "Brumath";
 	const [savedCities, setSavedCities] = useState<SavedCity[]>(() => {
 		const saved = loadSavedCities();
@@ -45,7 +45,7 @@ export function WeatherWidget({ size = "medium" }: WidgetProps) {
 		setSavedCities(loadSavedCities());
 	}, []);
 
-	const handleAddCity = async (e?: React.FormEvent) => {
+	const handleAddCity = useCallback(async (e?: React.FormEvent) => {
 		e?.preventDefault();
 		if (!searchCity.trim()) return;
 		setNewCityLoading(true);
@@ -103,18 +103,23 @@ export function WeatherWidget({ size = "medium" }: WidgetProps) {
 		} finally {
 			setNewCityLoading(false);
 		}
-	};
+	}, [searchCity, ac]);
 
-	const handleRemoveCity = (cityName: string) => {
+	const handleRemoveCity = useCallback((cityName: string) => {
 		const updated = removeSavedCity(cityName);
 		setSavedCities(updated);
-	};
+	}, []);
 
 	// Traiter medium comme full (pas de mode medium)
-	const isCompact = size === "compact";
-	const isFull = size === "full" || size === "medium"; // Medium est traité comme full
-	const padding = isCompact ? "p-1.5" : "p-4";
-	const gap = isCompact ? "gap-1" : "gap-3";
+	const isCompact = useMemo(() => size === "compact", [size]);
+	const isFull = useMemo(() => size === "full" || size === "medium", [size]); // Medium est traité comme full
+	const padding = useMemo(() => isCompact ? "p-1.5" : "p-4", [isCompact]);
+	const gap = useMemo(() => isCompact ? "gap-1" : "gap-3", [isCompact]);
+	
+	const visibleCities = useMemo(() => 
+		savedCities.slice(compactStartIndex, compactStartIndex + CITIES_PER_PAGE),
+		[savedCities, compactStartIndex]
+	);
 
 	return (
 		<Card
@@ -181,12 +186,7 @@ export function WeatherWidget({ size = "medium" }: WidgetProps) {
 
 						{/* Liste des villes en format carte */}
 						<div className="flex gap-1.5 flex-1 overflow-hidden">
-							{savedCities
-								.slice(
-									compactStartIndex,
-									compactStartIndex + CITIES_PER_PAGE
-								)
-								.map((savedCity) => (
+							{visibleCities.map((savedCity) => (
 									<CityWeatherItem
 										key={`${savedCity.name}-${savedCity.country ?? ""}`}
 										cityName={savedCity.name}
@@ -267,3 +267,5 @@ export function WeatherWidget({ size = "medium" }: WidgetProps) {
 		</Card>
 	);
 }
+
+export const WeatherWidget = memo(WeatherWidgetComponent);

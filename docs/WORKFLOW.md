@@ -146,8 +146,6 @@ Avant de merger une branche, vérifier :
 
 ---
 
----
-
 ## 🎨 Exemples Pratiques
 
 ### Exemple 1 : Créer une Branche pour un Nouveau Widget
@@ -252,6 +250,7 @@ git push origin refactor/calendar-full
 ### Checklist pour le Reviewer
 
 #### Code Quality
+
 - [ ] Code lisible et bien commenté
 - [ ] Nommage cohérent et descriptif
 - [ ] Pas de code dupliqué
@@ -259,24 +258,28 @@ git push origin refactor/calendar-full
 - [ ] Types TypeScript corrects (pas de `any` inutiles)
 
 #### Architecture
+
 - [ ] Séparation des responsabilités
 - [ ] Composants réutilisables
 - [ ] Hooks personnalisés si nécessaire
 - [ ] Structure de fichiers cohérente
 
 #### Performance
+
 - [ ] Pas de re-renders inutiles
 - [ ] Lazy loading si nécessaire
 - [ ] Mémoization si calculs coûteux
 - [ ] Bundle size acceptable
 
 #### Tests
+
 - [ ] Tests unitaires pour la logique
 - [ ] Tests d'intégration si nécessaire
 - [ ] Couverture > 80% pour nouvelles features
 - [ ] Tests passent tous
 
 #### Documentation
+
 - [ ] JSDoc pour fonctions publiques
 - [ ] README mis à jour si nécessaire
 - [ ] Exemples si nouvelle API
@@ -287,11 +290,13 @@ git push origin refactor/calendar-full
 ## 🚨 Gestion des Conflits
 
 ### Prévention
+
 - Faire des `git pull origin main` régulièrement
 - Rester à jour avec les changements de main
 - Communiquer avec l'équipe sur les fichiers modifiés
 
 ### Résolution
+
 ```bash
 # 1. Mettre à jour la branche
 git checkout main
@@ -318,6 +323,7 @@ git merge main
 ## 📦 Release Process
 
 ### Versioning
+
 - **Major** (1.0.0) : Breaking changes
 - **Minor** (0.1.0) : Nouvelles fonctionnalités
 - **Patch** (0.0.1) : Corrections de bugs
@@ -343,11 +349,13 @@ git push origin v0.1.0
 ## 🐛 Debugging Guidelines
 
 ### Avant de Commencer
+
 1. Vérifier que le problème est reproductible
 2. Chercher dans les issues existantes
 3. Vérifier la documentation
 
 ### Processus de Debug
+
 1. **Isoler le problème** : Identifier où le bug se produit
 2. **Reproduire** : Créer un cas de test minimal
 3. **Analyser** : Utiliser les outils de debug (React DevTools, console, etc.)

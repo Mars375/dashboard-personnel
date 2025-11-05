@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { useCalendar } from "@/hooks/useCalendar";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo, useMemo } from "react";
 import {
 	Plus,
 	CalendarIcon,
@@ -84,9 +84,9 @@ function formatDateLocal(date: Date): string {
 	return `${year}-${month}-${day}`;
 }
 
-export function CalendarWidget({ size = "medium" }: WidgetProps) {
-	const isCompact = size === "compact";
-	const isMedium = size === "medium";
+function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
+	const isCompact = useMemo(() => size === "compact", [size]);
+	const isMedium = useMemo(() => size === "medium", [size]);
 	const isFull = size === "full";
 	const {
 		currentDate,
@@ -1861,6 +1861,8 @@ export function CalendarWidget({ size = "medium" }: WidgetProps) {
 		</Card>
 	);
 }
+
+export const CalendarWidget = memo(CalendarWidgetComponent);
 
 // WeekView et DayView sont maintenant intégrés dans calendar-full
 // Ces composants ont été supprimés et déplacés dans calendar-full.tsx

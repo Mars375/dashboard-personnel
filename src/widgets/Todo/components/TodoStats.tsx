@@ -7,7 +7,7 @@ import { memo, useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { PieChart as RechartsPieChart, Pie, Cell } from "recharts";
+import { LazyPieChart, LazyPie, LazyCell } from "@/components/ui/chart-lazy";
 import { BarChart3, PieChart } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -145,11 +145,11 @@ function TodoStatsComponent({
 								Par statut
 							</h4>
 							<ChartContainer config={chartConfig} className="h-[120px]">
-								<RechartsPieChart>
+								<LazyPieChart>
 									<ChartTooltip
 										content={<ChartTooltipContent hideLabel />}
 									/>
-									<Pie
+									<LazyPie
 										data={statusChartData}
 										dataKey="value"
 										nameKey="name"
@@ -158,10 +158,10 @@ function TodoStatsComponent({
 										outerRadius={50}
 									>
 										{statusChartData.map((entry, index) => (
-											<Cell key={`cell-${index}`} fill={entry.fill} />
+											<LazyCell key={`cell-${index}`} fill={entry.fill} />
 										))}
-									</Pie>
-								</RechartsPieChart>
+									</LazyPie>
+								</LazyPieChart>
 							</ChartContainer>
 						</div>
 
@@ -172,11 +172,11 @@ function TodoStatsComponent({
 									Par priorité
 								</h4>
 								<ChartContainer config={chartConfig} className="h-[120px]">
-									<RechartsPieChart>
+									<LazyPieChart>
 										<ChartTooltip
 											content={<ChartTooltipContent hideLabel />}
 										/>
-										<Pie
+										<LazyPie
 											data={priorityChartData}
 											dataKey="value"
 											nameKey="name"
@@ -185,10 +185,10 @@ function TodoStatsComponent({
 											outerRadius={50}
 										>
 											{priorityChartData.map((entry, index) => (
-												<Cell key={`cell-${index}`} fill={entry.fill} />
+												<LazyCell key={`cell-${index}`} fill={entry.fill} />
 											))}
-										</Pie>
-									</RechartsPieChart>
+										</LazyPie>
+									</LazyPieChart>
 								</ChartContainer>
 							</div>
 						)}
