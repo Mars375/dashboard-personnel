@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, memo, useCallback } from "react";
-import { Plus, Check, X, Flame, Calendar } from "lucide-react";
+import { Plus, Check, X, Flame, Calendar, Edit2, Trash2 } from "lucide-react";
 import type { WidgetProps } from "@/lib/widgetSize";
 import {
 	loadHabits,
@@ -111,7 +111,17 @@ function HabitsWidgetComponent({ size = "medium" }: WidgetProps) {
 			{isFull && (
 				<div className="flex items-center justify-between shrink-0">
 					<h3 className="text-sm font-semibold">Habitudes</h3>
-					<Button size="sm" onClick={handleAddHabit}>
+					<Button
+						size="sm"
+						onClick={handleAddHabit}
+						onMouseDown={(e: React.MouseEvent) => {
+							e.stopPropagation();
+						}}
+						onDragStart={(e: React.DragEvent) => {
+							e.preventDefault();
+							e.stopPropagation();
+						}}
+					>
 						<Plus className="h-4 w-4" />
 					</Button>
 				</div>
@@ -151,6 +161,13 @@ function HabitsWidgetComponent({ size = "medium" }: WidgetProps) {
 												e.stopPropagation();
 												handleToggleComplete(habit);
 											}}
+											onMouseDown={(e: React.MouseEvent) => {
+												e.stopPropagation();
+											}}
+											onDragStart={(e: React.DragEvent) => {
+												e.preventDefault();
+												e.stopPropagation();
+											}}
 										>
 											{isCompleted ? (
 												<Check className="h-4 w-4" />
@@ -180,17 +197,46 @@ function HabitsWidgetComponent({ size = "medium" }: WidgetProps) {
 											</div>
 										</div>
 										{isFull && (
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-6 w-6 shrink-0"
-												onClick={(e) => {
-													e.stopPropagation();
-													handleEditHabit(habit);
-												}}
-											>
-												<Plus className="h-4 w-4 rotate-45" />
-											</Button>
+											<div className="flex items-center gap-1 shrink-0">
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-6 w-6"
+													onClick={(e) => {
+														e.stopPropagation();
+														handleEditHabit(habit);
+													}}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+													aria-label="Modifier"
+												>
+													<Edit2 className="h-4 w-4" />
+												</Button>
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-6 w-6 text-destructive hover:text-destructive"
+													onClick={(e) => {
+														e.stopPropagation();
+														handleDeleteHabit(habit.id);
+													}}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+													aria-label="Supprimer"
+												>
+													<Trash2 className="h-4 w-4" />
+												</Button>
+											</div>
 										)}
 									</div>
 								</motion.div>
@@ -202,7 +248,18 @@ function HabitsWidgetComponent({ size = "medium" }: WidgetProps) {
 
 			{/* Compact Add Button */}
 			{isCompact && (
-				<Button size="sm" onClick={handleAddHabit} className="shrink-0">
+				<Button
+					size="sm"
+					onClick={handleAddHabit}
+					className="shrink-0"
+					onMouseDown={(e: React.MouseEvent) => {
+						e.stopPropagation();
+					}}
+					onDragStart={(e: React.DragEvent) => {
+						e.preventDefault();
+						e.stopPropagation();
+					}}
+				>
 					<Plus className="h-4 w-4" />
 				</Button>
 			)}
@@ -229,21 +286,50 @@ function HabitsWidgetComponent({ size = "medium" }: WidgetProps) {
 						/>
 					</div>
 					<DialogFooter>
+						{selectedHabit && (
+							<Button
+								variant="destructive"
+								onClick={() => {
+									handleDeleteHabit(selectedHabit.id);
+									setIsDialogOpen(false);
+								}}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+							>
+								<Trash2 className="h-4 w-4 mr-2" />
+								Supprimer
+							</Button>
+						)}
 						<Button
 							variant="outline"
-							onClick={() => {
-								if (selectedHabit) {
-									handleDeleteHabit(selectedHabit.id);
-								}
-								setIsDialogOpen(false);
+							onClick={() => setIsDialogOpen(false)}
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
 							}}
 						>
-							Supprimer
-						</Button>
-						<Button variant="outline" onClick={() => setIsDialogOpen(false)}>
 							Annuler
 						</Button>
-						<Button onClick={handleSaveHabit}>Enregistrer</Button>
+						<Button
+							onClick={handleSaveHabit}
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+						>
+							Enregistrer
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

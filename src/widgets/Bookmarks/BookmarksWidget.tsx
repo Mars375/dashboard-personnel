@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, memo, useCallback } from "react";
-import { Search, Plus, ExternalLink, Trash2, MoreVertical, Link2 } from "lucide-react";
+import { Search, Plus, ExternalLink, Trash2, Edit2, Link2 } from "lucide-react";
 import type { WidgetProps } from "@/lib/widgetSize";
 import {
 	loadBookmarks,
@@ -138,7 +138,17 @@ function BookmarksWidgetComponent({ size = "medium" }: WidgetProps) {
 						onChange={(e) => setSearchQuery(e.target.value)}
 						className="flex-1"
 					/>
-					<Button size="sm" onClick={handleAddBookmark}>
+					<Button
+						size="sm"
+						onClick={handleAddBookmark}
+						onMouseDown={(e: React.MouseEvent) => {
+							e.stopPropagation();
+						}}
+						onDragStart={(e: React.DragEvent) => {
+							e.preventDefault();
+							e.stopPropagation();
+						}}
+					>
 						<Plus className="h-4 w-4" />
 					</Button>
 				</div>
@@ -210,35 +220,65 @@ function BookmarksWidgetComponent({ size = "medium" }: WidgetProps) {
 										</div>
 									</div>
 									{isFull && (
-										<DropdownMenu>
-											<DropdownMenuTrigger asChild>
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-6 w-6"
-													onClick={(e) => e.stopPropagation()}
-												>
-													<MoreVertical className="h-4 w-4" />
-												</Button>
-											</DropdownMenuTrigger>
-											<DropdownMenuContent align="end">
-												<DropdownMenuItem onClick={() => handleOpenBookmark(bookmark.url)}>
-													<ExternalLink className="h-4 w-4 mr-2" />
-													Ouvrir
-												</DropdownMenuItem>
-												<DropdownMenuItem onClick={() => handleEditBookmark(bookmark)}>
-													Modifier
-												</DropdownMenuItem>
-												<DropdownMenuSeparator />
-												<DropdownMenuItem
-													onClick={() => handleDeleteBookmark(bookmark.id)}
-													className="text-destructive"
-												>
-													<Trash2 className="h-4 w-4 mr-2" />
-													Supprimer
-												</DropdownMenuItem>
-											</DropdownMenuContent>
-										</DropdownMenu>
+										<div className="flex items-center gap-1 shrink-0">
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-6 w-6"
+												onClick={(e) => {
+													e.stopPropagation();
+													handleOpenBookmark(bookmark.url);
+												}}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+												aria-label="Ouvrir"
+											>
+												<ExternalLink className="h-4 w-4" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-6 w-6"
+												onClick={(e) => {
+													e.stopPropagation();
+													handleEditBookmark(bookmark);
+												}}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+												aria-label="Modifier"
+											>
+												<Edit2 className="h-4 w-4" />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-6 w-6 text-destructive hover:text-destructive"
+												onClick={(e) => {
+													e.stopPropagation();
+													handleDeleteBookmark(bookmark.id);
+												}}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+												aria-label="Supprimer"
+											>
+												<Trash2 className="h-4 w-4" />
+											</Button>
+										</div>
 									)}
 								</div>
 							</motion.div>
@@ -249,7 +289,18 @@ function BookmarksWidgetComponent({ size = "medium" }: WidgetProps) {
 
 			{/* Compact Add Button */}
 			{isCompact && (
-				<Button size="sm" onClick={handleAddBookmark} className="shrink-0">
+				<Button
+					size="sm"
+					onClick={handleAddBookmark}
+					className="shrink-0"
+					onMouseDown={(e: React.MouseEvent) => {
+						e.stopPropagation();
+					}}
+					onDragStart={(e: React.DragEvent) => {
+						e.preventDefault();
+						e.stopPropagation();
+					}}
+				>
 					<Plus className="h-4 w-4" />
 				</Button>
 			)}
@@ -282,10 +333,30 @@ function BookmarksWidgetComponent({ size = "medium" }: WidgetProps) {
 						/>
 					</div>
 					<DialogFooter>
-						<Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+						<Button
+							variant="outline"
+							onClick={() => setIsDialogOpen(false)}
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+						>
 							Annuler
 						</Button>
-						<Button onClick={handleSaveBookmark} disabled={!editUrl.trim()}>
+						<Button
+							onClick={handleSaveBookmark}
+							disabled={!editUrl.trim()}
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+						>
 							<Link2 className="h-4 w-4 mr-2" />
 							Enregistrer
 						</Button>

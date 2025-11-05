@@ -15,7 +15,7 @@ import { DatePicker } from "@/components/ui/calendar-full";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, memo, useCallback } from "react";
-import { Plus, Calendar, Trash2 } from "lucide-react";
+import { Plus, Calendar, Trash2, Edit2 } from "lucide-react";
 import type { WidgetProps } from "@/lib/widgetSize";
 import {
 	loadJournalEntries,
@@ -106,7 +106,18 @@ function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
 				<div className="flex items-center gap-2 shrink-0">
 					<Popover>
 						<PopoverTrigger asChild>
-							<Button variant="outline" size="sm" className="flex-1 justify-start text-left font-normal">
+							<Button
+								variant="outline"
+								size="sm"
+								className="flex-1 justify-start text-left font-normal"
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+							>
 								<Calendar className="h-4 w-4 mr-2" />
 								{format(selectedDate, "PPP", { locale: fr })}
 							</Button>
@@ -121,7 +132,17 @@ function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
 							/>
 						</PopoverContent>
 					</Popover>
-					<Button size="sm" onClick={() => setIsDialogOpen(true)}>
+					<Button
+						size="sm"
+						onClick={() => setIsDialogOpen(true)}
+						onMouseDown={(e: React.MouseEvent) => {
+							e.stopPropagation();
+						}}
+						onDragStart={(e: React.DragEvent) => {
+							e.preventDefault();
+							e.stopPropagation();
+						}}
+					>
 						<Plus className="h-4 w-4" />
 					</Button>
 				</div>
@@ -135,9 +156,49 @@ function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
 						animate={{ opacity: 1, y: 0 }}
 						className={cn("space-y-2", isCompact && "text-xs")}
 					>
-						<div className="font-semibold text-lg">{selectedEntry.title}</div>
-						<div className="text-muted-foreground whitespace-pre-wrap">
-							{selectedEntry.content || "Aucun contenu"}
+						<div className="flex items-start justify-between gap-2">
+							<div className="flex-1">
+								<div className="font-semibold text-lg">{selectedEntry.title}</div>
+								<div className="text-muted-foreground whitespace-pre-wrap mt-2">
+									{selectedEntry.content || "Aucun contenu"}
+								</div>
+							</div>
+							{isFull && (
+								<div className="flex items-center gap-1 shrink-0">
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-6 w-6"
+										onClick={() => setIsDialogOpen(true)}
+										onMouseDown={(e: React.MouseEvent) => {
+											e.stopPropagation();
+										}}
+										onDragStart={(e: React.DragEvent) => {
+											e.preventDefault();
+											e.stopPropagation();
+										}}
+										aria-label="Modifier"
+									>
+										<Edit2 className="h-4 w-4" />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-6 w-6 text-destructive hover:text-destructive"
+										onClick={handleDeleteEntry}
+										onMouseDown={(e: React.MouseEvent) => {
+											e.stopPropagation();
+										}}
+										onDragStart={(e: React.DragEvent) => {
+											e.preventDefault();
+											e.stopPropagation();
+										}}
+										aria-label="Supprimer"
+									>
+										<Trash2 className="h-4 w-4" />
+									</Button>
+								</div>
+							)}
 						</div>
 					</motion.div>
 				) : (
@@ -149,7 +210,18 @@ function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
 
 			{/* Compact Add Button */}
 			{isCompact && (
-				<Button size="sm" onClick={() => setIsDialogOpen(true)} className="shrink-0">
+				<Button
+					size="sm"
+					onClick={() => setIsDialogOpen(true)}
+					className="shrink-0"
+					onMouseDown={(e: React.MouseEvent) => {
+						e.stopPropagation();
+					}}
+					onDragStart={(e: React.DragEvent) => {
+						e.preventDefault();
+						e.stopPropagation();
+					}}
+				>
 					<Plus className="h-4 w-4" />
 				</Button>
 			)}
@@ -195,15 +267,46 @@ function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
 					</div>
 					<DialogFooter>
 						{selectedEntry && (
-							<Button variant="destructive" onClick={handleDeleteEntry}>
+							<Button
+								variant="destructive"
+								onClick={handleDeleteEntry}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+							>
 								<Trash2 className="h-4 w-4 mr-2" />
 								Supprimer
 							</Button>
 						)}
-						<Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+						<Button
+							variant="outline"
+							onClick={() => setIsDialogOpen(false)}
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+						>
 							Annuler
 						</Button>
-						<Button onClick={handleSaveEntry}>Enregistrer</Button>
+						<Button
+							onClick={handleSaveEntry}
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+						>
+							Enregistrer
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
