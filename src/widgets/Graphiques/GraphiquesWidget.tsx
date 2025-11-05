@@ -126,10 +126,41 @@ function GraphiquesWidgetComponent({ size = "medium" }: WidgetProps) {
 			)}
 
 			{isCompact && (
-				<div className="flex flex-col items-center justify-center gap-1 flex-1">
-					<LineChart className="h-8 w-8 text-muted-foreground" />
-					<div className="text-xs font-bold">{charts.length}</div>
-					<div className="text-[10px] text-muted-foreground">graphique{charts.length > 1 ? "s" : ""}</div>
+				<div className="flex flex-col gap-2 flex-1 overflow-y-auto">
+					{charts.length === 0 ? (
+						<div className="flex flex-col items-center justify-center gap-2 flex-1 text-center">
+							<LineChart className="h-6 w-6 text-muted-foreground" />
+							<div className="text-xs text-muted-foreground">Aucun graphique</div>
+						</div>
+					) : (
+						charts.slice(0, 5).map((chart) => (
+							<div
+								key={chart.id}
+								className="p-2 rounded-md border bg-card hover:bg-accent transition-colors cursor-pointer"
+								onClick={() => {
+									// En mode compact, on affiche le graphique en full screen ou dialog
+									setSelectedChart(chart);
+									setIsDialogOpen(true);
+								}}
+							>
+								<div className="flex items-center gap-2">
+									<LineChart className="h-4 w-4 text-muted-foreground shrink-0" />
+									<div className="flex-1 min-w-0">
+										<div className="text-xs font-medium truncate">{chart.name}</div>
+										<div className="text-[10px] text-muted-foreground capitalize">{chart.type}</div>
+									</div>
+									<div className="text-[10px] text-muted-foreground shrink-0">
+										{chart.data.length} pts
+									</div>
+								</div>
+							</div>
+						))
+					)}
+					{charts.length > 5 && (
+						<div className="text-[10px] text-muted-foreground text-center">
+							+{charts.length - 5} autres
+						</div>
+					)}
 				</div>
 			)}
 

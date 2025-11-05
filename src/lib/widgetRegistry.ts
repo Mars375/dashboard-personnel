@@ -80,6 +80,8 @@ export interface WidgetDefinition {
 	id: string;
 	name: string;
 	description: string;
+	detailedDescription?: string; // Description détaillée pour le bouton info
+	features?: string[]; // Liste des fonctionnalités
 	icon: ComponentType<{ className?: string }>;
 	component: LazyExoticComponent<ComponentType<WidgetProps>>;
 	defaultSize: { w: number; h: number };

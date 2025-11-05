@@ -14,7 +14,7 @@ import {
 	CommandList,
 } from "@/components/ui/command";
 import { Command as CommandPrimitive } from "cmdk";
-import { Search, Plus, CheckSquare, Square } from "lucide-react";
+import { Search, Plus, CheckSquare, Square, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -30,6 +30,7 @@ function WidgetPickerComponent() {
 
 	const [selectedWidgets, setSelectedWidgets] = useState<Set<string>>(new Set());
 	const [multiSelectMode, setMultiSelectMode] = useState(false);
+	const [infoWidget, setInfoWidget] = useState<string | null>(null);
 
 	const addedWidgetTypes = new Set(widgets.map((w) => w.type));
 
@@ -212,12 +213,14 @@ function WidgetPickerComponent() {
 												{widget.description}
 											</p>
 										</div>
-										{!isAdded && !multiSelectMode && (
+										<div className='flex items-center gap-1 shrink-0'>
 											<Button
-												size='sm'
+												variant='ghost'
+												size='icon'
+												className='h-8 w-8'
 												onClick={(e) => {
 													e.stopPropagation();
-													handleSelect(widget.id);
+													setInfoWidget(widget.id);
 												}}
 												onMouseDown={(e: React.MouseEvent) => {
 													e.stopPropagation();
@@ -226,18 +229,120 @@ function WidgetPickerComponent() {
 													e.preventDefault();
 													e.stopPropagation();
 												}}
-												className='shrink-0'
+												title="Plus d'informations"
 											>
-												<Plus className='h-4 w-4 mr-1' />
-												Ajouter
+												<Info className='h-4 w-4' />
 											</Button>
-										)}
+											{!isAdded && !multiSelectMode && (
+												<Button
+													size='sm'
+													onClick={(e) => {
+														e.stopPropagation();
+														handleSelect(widget.id);
+													}}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+												>
+													<Plus className='h-4 w-4 mr-1' />
+													Ajouter
+												</Button>
+											)}
+										</div>
 									</CommandItem>
 								);
 							})}
 						</CommandGroup>
 					</CommandList>
 				</Command>
+				{/* Dialog Info Widget */}
+				{infoWidget && (() => {
+					const widget = widgetRegistry.find((w) => w.id === infoWidget);
+					if (!widget) return null;
+					return (
+						<Dialog open={!!infoWidget} onOpenChange={(open) => !open && setInfoWidget(null)}>
+							<DialogContent className="sm:max-w-[500px]">
+								<DialogHeader>
+									<div className="flex items-center gap-3">
+										<div className="flex items-center justify-center h-12 w-12 rounded-lg bg-primary/10">
+											<widget.icon className="h-6 w-6 text-primary" />
+										</div>
+										<div>
+											<DialogTitle>{widget.name}</DialogTitle>
+											<DialogDescription>{widget.description}</DialogDescription>
+										</div>
+									</div>
+								</DialogHeader>
+								<div className="space-y-4 py-4">
+									{widget.detailedDescription && (
+										<div>
+											<h4 className="text-sm font-semibold mb-2">Description</h4>
+											<p className="text-sm text-muted-foreground">{widget.detailedDescription}</p>
+										</div>
+									)}
+									{widget.features && widget.features.length > 0 && (
+										<div>
+											<h4 className="text-sm font-semibold mb-2">Fonctionnalités</h4>
+											<ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+												{widget.features.map((feature, idx) => (
+													<li key={idx}>{feature}</li>
+												))}
+											</ul>
+										</div>
+									)}
+									<div className="grid grid-cols-2 gap-4 pt-2 border-t">
+										<div>
+											<div className="text-xs text-muted-foreground">Taille par défaut</div>
+											<div className="text-sm font-medium">{widget.defaultSize.w} × {widget.defaultSize.h}</div>
+										</div>
+										<div>
+											<div className="text-xs text-muted-foreground">Taille minimale</div>
+											<div className="text-sm font-medium">{widget.minSize.w} × {widget.minSize.h}</div>
+										</div>
+									</div>
+								</div>
+								<DialogFooter>
+									<Button
+										variant="outline"
+										onClick={() => setInfoWidget(null)}
+										onMouseDown={(e: React.MouseEvent) => {
+											e.stopPropagation();
+										}}
+										onDragStart={(e: React.DragEvent) => {
+											e.preventDefault();
+											e.stopPropagation();
+										}}
+									>
+										Fermer
+									</Button>
+									{!addedWidgetTypes.has(widget.id) && (
+										<Button
+											onClick={() => {
+												handleSelect(widget.id);
+												setInfoWidget(null);
+											}}
+											onMouseDown={(e: React.MouseEvent) => {
+												e.stopPropagation();
+											}}
+											onDragStart={(e: React.DragEvent) => {
+												e.preventDefault();
+												e.stopPropagation();
+											}}
+										>
+											<Plus className="h-4 w-4 mr-2" />
+											Ajouter
+										</Button>
+									)}
+								</DialogFooter>
+							</DialogContent>
+						</Dialog>
+					);
+				})()}
+
 				{multiSelectMode && selectedWidgets.size > 0 && (
 					<DialogFooter className='border-t pt-4'>
 						<Button
