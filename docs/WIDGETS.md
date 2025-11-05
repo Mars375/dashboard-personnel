@@ -50,6 +50,26 @@ Un widget typique contient :
 - Refresh
 - Form submission
 
+## Bookmarks Widget 🔖
+
+### Fonctionnalités
+
+- Gestion de liens favoris avec URL
+- Favicons automatiques
+- Recherche par titre, URL, description ou tags
+- Description optionnelle
+- Tags optionnels
+- Ouverture dans nouvel onglet
+
+### Storage
+
+- `bookmarksStorage` : Persistance localStorage
+
+### Tests
+
+- Smoke tests : Rendering de base
+- Storage tests : CRUD complet
+
 ## Todo Widget ✅
 
 ### Fonctionnalités

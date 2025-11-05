@@ -85,7 +85,7 @@ export const useDashboardStore = create<DashboardState>()(
 						weather: { w: 4, h: 3, minW: 3, minH: 3 },
 						todo: { w: 4, h: 6, minW: 3, minH: 4 },
 						calendar: { w: 4, h: 6, minW: 3, minH: 5 },
-						notes: { w: 4, h: 6, minW: 3, minH: 4 },
+						bookmarks: { w: 4, h: 6, minW: 3, minH: 4 },
 						habits: { w: 4, h: 6, minW: 3, minH: 4 },
 						journal: { w: 4, h: 6, minW: 3, minH: 4 },
 					};

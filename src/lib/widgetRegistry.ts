@@ -1,6 +1,6 @@
 import type { ComponentType, LazyExoticComponent } from "react";
 import { lazy } from "react";
-import { Cloud, CheckSquare, Calendar, StickyNote, Target, BookOpen } from "lucide-react";
+import { Cloud, CheckSquare, Calendar, Bookmark, Target, BookOpen } from "lucide-react";
 import type { WidgetProps } from "./widgetSize";
 
 // Lazy loading des widgets pour optimiser le bundle size
@@ -22,9 +22,9 @@ const CalendarWidget = lazy(() =>
 	}))
 );
 
-const NotesWidget = lazy(() =>
-	import("@/widgets/Notes/NotesWidget").then((module) => ({
-		default: module.NotesWidget,
+const BookmarksWidget = lazy(() =>
+	import("@/widgets/Bookmarks/BookmarksWidget").then((module) => ({
+		default: module.BookmarksWidget,
 	}))
 );
 
@@ -83,11 +83,11 @@ export const widgetRegistry: WidgetDefinition[] = [
 		maxSize: { w: 8, h: 10 },
 	},
 	{
-		id: "notes",
-		name: "Notes",
-		description: "Prenez des notes rapides et organisez-les",
-		icon: StickyNote,
-		component: NotesWidget,
+		id: "bookmarks",
+		name: "Bookmarks",
+		description: "Gérez vos liens favoris et bookmarks",
+		icon: Bookmark,
+		component: BookmarksWidget,
 		defaultSize: { w: 4, h: 6 },
 		minSize: { w: 3, h: 4 },
 		maxSize: { w: 8, h: 10 },
