@@ -15,7 +15,7 @@ import { DatePicker } from "@/components/ui/calendar-full";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, memo, useCallback } from "react";
-import { Plus, Calendar, Edit2, Trash2 } from "lucide-react";
+import { Plus, Calendar, Trash2 } from "lucide-react";
 import type { WidgetProps } from "@/lib/widgetSize";
 import {
 	loadJournalEntries,
@@ -30,7 +30,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
-	const [entries, setEntries] = useState<JournalEntry[]>(() => loadJournalEntries());
+	const [, setEntries] = useState<JournalEntry[]>(() => loadJournalEntries());
 	const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 	const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
