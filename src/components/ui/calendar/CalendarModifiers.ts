@@ -3,13 +3,7 @@
  */
 
 import type { CalendarEvent } from "@/widgets/Calendar/types";
-
-function formatDateLocal(date: Date): string {
-	const year = date.getFullYear();
-	const month = String(date.getMonth() + 1).padStart(2, "0");
-	const day = String(date.getDate()).padStart(2, "0");
-	return `${year}-${month}-${day}`;
-}
+import { formatDateLocal } from "@/lib/utils";
 
 export interface CalendarModifiers {
 	hasEvents: (date: Date) => boolean;
@@ -88,4 +82,5 @@ export function getModifiersClassNames(): CalendarModifiersClassNames {
 			"relative before:absolute before:top-1 before:right-1 before:w-1.5 before:h-1.5 before:rounded-full before:bg-orange-500",
 	};
 }
+
 

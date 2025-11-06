@@ -26,7 +26,8 @@
 ### Phase 1 : Nettoyage ✅
 - ✅ **Tous les `console.log` remplacés par `logger`** (8 fichiers nettoyés, ~30 occurrences)
 - ✅ **Imports non utilisés supprimés** (`PERFORMANCE_LIMITS`, etc.)
-- ✅ **Documentation consolidée** (6 fichiers → 1)
+- ✅ **Code redondant centralisé** (`formatDateLocal` dans `utils.ts`)
+- ✅ **Fichiers inutilisés supprimés** (`widgetLibrary.ts`)
 
 ### Phase 2 : Refactoring des Composants ✅
 - ✅ **TodoWidget** : 2570 lignes (déjà réduit de 3191 → 2570, -21%)
@@ -132,6 +133,7 @@ build: {
 - ✅ `widgetRegistry.ts` : Tous les widgets
 - ✅ `App.tsx` : Dashboard et OAuthCallback
 - ✅ Composants avec `Suspense` et fallbacks
+- ✅ `chart-lazy.tsx` : Lazy loading des graphiques Recharts
 
 ### Virtualisation
 - ✅ `VirtualizedList` : Composant générique
@@ -168,7 +170,6 @@ build: {
 
 ## 🔗 Références
 
-- [IMPROVEMENT_ROADMAP.md](./IMPROVEMENT_ROADMAP.md) - Plan d'amélioration détaillé
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Architecture du projet
 - [WIDGETS.md](./WIDGETS.md) - Documentation des widgets
-
+- [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) - Structure du projet

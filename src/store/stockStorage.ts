@@ -2,6 +2,8 @@
  * Storage pour le widget Bourse
  */
 
+import { logger } from "@/lib/logger";
+
 export interface Stock {
 	symbol: string;
 	name: string;
@@ -31,7 +33,7 @@ export function loadWatchlist(): StockWatchlist[] {
 			return JSON.parse(stored);
 		}
 	} catch (error) {
-		console.error("Erreur lors du chargement de la watchlist:", error);
+		logger.error("Erreur lors du chargement de la watchlist:", error);
 	}
 	return [];
 }
@@ -40,7 +42,7 @@ export function saveWatchlist(watchlist: StockWatchlist[]): void {
 	try {
 		localStorage.setItem(STORAGE_KEY, JSON.stringify(watchlist));
 	} catch (error) {
-		console.error("Erreur lors de la sauvegarde de la watchlist:", error);
+		logger.error("Erreur lors de la sauvegarde de la watchlist:", error);
 	}
 }
 
@@ -86,7 +88,7 @@ export function getCachedStock(symbol: string): Stock | null {
 			}
 		}
 	} catch (error) {
-		console.error("Erreur lors de la récupération du cache:", error);
+		logger.error("Erreur lors de la récupération du cache:", error);
 	}
 	return null;
 }
@@ -98,7 +100,8 @@ export function cacheStock(symbol: string, stock: Stock): void {
 			timestamp: Date.now(),
 		}));
 	} catch (error) {
-		console.error("Erreur lors de la mise en cache:", error);
+		logger.error("Erreur lors de la mise en cache:", error);
 	}
 }
+
 

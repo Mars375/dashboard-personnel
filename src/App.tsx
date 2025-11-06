@@ -1,7 +1,9 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Loading } from "@/components/ui/loading";
 import { WidgetProvider } from "@/lib/widgetContext";
+import { widgetLibrary } from "@/lib/widgetLibrary";
+import { logger } from "@/lib/logger";
 
 // Lazy loading des composants lourds
 const Dashboard = lazy(() =>
@@ -17,6 +19,13 @@ const OAuthCallback = lazy(() =>
 );
 
 function App() {
+	// Initialiser la bibliothèque de widgets au démarrage
+	useEffect(() => {
+		widgetLibrary.initialize().catch((error) => {
+			logger.error("Erreur lors de l'initialisation de la bibliothèque de widgets:", error);
+		});
+	}, []);
+
 	// Détecter si on est sur la page de callback OAuth
 	const isOAuthCallback = window.location.pathname.startsWith("/oauth/");
 

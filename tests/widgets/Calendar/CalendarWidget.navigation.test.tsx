@@ -47,14 +47,29 @@ vi.mock("@/components/ui/button", () => ({
 }), { virtual: true });
 
 vi.mock("@/components/ui/calendar-full", () => ({
-	Calendar: ({ selected, onSelect, onMonthChange, month, ...p }: any) => (
+	Calendar: ({ 
+		currentDate, 
+		selectedDate, 
+		onDateChange, 
+		onSelectDate, 
+		onViewChange,
+		getEventsForDate,
+		onEventClick,
+		onEventUpdate,
+		onSync,
+		syncLoading,
+		captionLayout,
+		showOutsideDays,
+		todosWithDeadlines,
+		...p 
+	}: any) => (
 		<div data-testid="calendar" {...p}>
 			<div>Calendar Component</div>
-			{selected && <div data-testid="selected-date">{selected.toISOString()}</div>}
-			{month && <div data-testid="current-month">{month.toISOString()}</div>}
-			<button onClick={() => onSelect?.(new Date(2024, 5, 15))}>Select Date</button>
-			<button onClick={() => onMonthChange?.(new Date(2024, 6, 15))}>Next Month</button>
-			<button onClick={() => onMonthChange?.(new Date(2024, 4, 15))}>Previous Month</button>
+			{selectedDate && <div data-testid="selected-date">{selectedDate.toISOString()}</div>}
+			{currentDate && <div data-testid="current-month">{currentDate.toISOString()}</div>}
+			<button onClick={() => onSelectDate?.(new Date(2024, 5, 15))}>Select Date</button>
+			<button onClick={() => onDateChange?.(new Date(2024, 6, 15))}>Next Month</button>
+			<button onClick={() => onDateChange?.(new Date(2024, 4, 15))}>Previous Month</button>
 		</div>
 	),
 	DatePicker: ({ selected, onSelect, ...p }: any) => (

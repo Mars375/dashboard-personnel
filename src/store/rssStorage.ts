@@ -1,4 +1,5 @@
 /**
+import { logger } from "@/lib/logger";
  * Storage pour le widget RSS
  */
 
@@ -31,7 +32,7 @@ export function loadFeeds(): RSSFeed[] {
 			return JSON.parse(stored);
 		}
 	} catch (error) {
-		console.error("Erreur lors du chargement des flux:", error);
+		logger.error("Erreur lors du chargement des flux:", error);
 	}
 	return [];
 }
@@ -40,7 +41,7 @@ export function saveFeeds(feeds: RSSFeed[]): void {
 	try {
 		localStorage.setItem(STORAGE_KEY_FEEDS, JSON.stringify(feeds));
 	} catch (error) {
-		console.error("Erreur lors de la sauvegarde des flux:", error);
+		logger.error("Erreur lors de la sauvegarde des flux:", error);
 	}
 }
 
@@ -82,7 +83,7 @@ export function loadItems(): RSSItem[] {
 			return JSON.parse(stored);
 		}
 	} catch (error) {
-		console.error("Erreur lors du chargement des articles:", error);
+		logger.error("Erreur lors du chargement des articles:", error);
 	}
 	return [];
 }
@@ -91,7 +92,7 @@ export function saveItems(items: RSSItem[]): void {
 	try {
 		localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(items));
 	} catch (error) {
-		console.error("Erreur lors de la sauvegarde des articles:", error);
+		logger.error("Erreur lors de la sauvegarde des articles:", error);
 	}
 }
 
@@ -115,4 +116,5 @@ export function markItemAsRead(id: string): void {
 		saveItems(items);
 	}
 }
+
 

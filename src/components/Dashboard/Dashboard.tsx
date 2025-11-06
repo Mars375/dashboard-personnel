@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { WidgetGrid } from "./WidgetGrid";
 import { WidgetPicker } from "./WidgetPicker";
+import { WidgetLibraryManager } from "./WidgetLibraryManager";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, memo } from "react";
@@ -19,6 +20,12 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { getWidgetDefinition } from "@/lib/widgetRegistry";
 import { useTheme } from "@/hooks/useTheme";
 import { GoogleOAuthButton } from "@/components/ui/google-oauth-button";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 function DashboardComponent() {
 	const openPicker = useDashboardStore((state) => state.openPicker);
@@ -26,6 +33,7 @@ function DashboardComponent() {
 	const [isHoveringAdd, setIsHoveringAdd] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const { theme, toggleTheme } = useTheme();
+	const [isLibraryManagerOpen, setIsLibraryManagerOpen] = useState(false);
 
 	// Raccourcis clavier
 	useEffect(() => {
@@ -107,23 +115,83 @@ function DashboardComponent() {
 								>
 									Mon Dashboard
 								</h1>
-								<div className='flex items-center gap-2 flex-wrap mt-1'>
-									<p
-										className='text-xs sm:text-sm text-muted-foreground'
-										aria-live='polite'
-									>
-										{totalWidgets} widget{totalWidgets > 1 ? "s" : ""} •{" "}
-										{widgetTypesCount} type{widgetTypesCount > 1 ? "s" : ""}
-									</p>
-									{Object.entries(widgetStats).map(([type, count]) => {
-										const def = getWidgetDefinition(type);
-										if (!def) return null;
+								<div className='flex items-center gap-1 flex-wrap mt-1'>
+									<TooltipProvider>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<p
+													className='text-[10px] sm:text-xs text-muted-foreground cursor-help'
+													aria-live='polite'
+												>
+													{totalWidgets} widget{totalWidgets > 1 ? "s" : ""} •{" "}
+													{widgetTypesCount} type{widgetTypesCount > 1 ? "s" : ""}
+												</p>
+											</TooltipTrigger>
+											<TooltipContent 
+												side="bottom" 
+												className="max-w-xs bg-popover border border-border text-popover-foreground [&>svg]:bg-popover [&>svg]:fill-popover"
+											>
+												<div className="flex flex-wrap gap-1">
+													{Object.entries(widgetStats).map(([type, count]) => {
+														const def = getWidgetDefinition(type);
+														if (!def) return null;
+														return (
+															<Badge key={type} variant='secondary' className='text-[10px] px-1.5 py-0.5 h-5 leading-tight'>
+																{count}x {def.name}
+															</Badge>
+														);
+													})}
+												</div>
+											</TooltipContent>
+										</Tooltip>
+									</TooltipProvider>
+									{(() => {
+										const entries = Object.entries(widgetStats);
+										const maxVisible = 5; // Afficher maximum 5 tags
+										const visible = entries.slice(0, maxVisible);
+										const remaining = entries.length - maxVisible;
+										
 										return (
-											<Badge key={type} variant='secondary' className='text-xs'>
-												{count}x {def.name}
-											</Badge>
+											<>
+												{visible.map(([type, count]) => {
+													const def = getWidgetDefinition(type);
+													if (!def) return null;
+													return (
+														<Badge key={type} variant='secondary' className='text-[10px] px-1.5 py-0.5 h-5 leading-tight'>
+															{count}x {def.name}
+														</Badge>
+													);
+												})}
+												{remaining > 0 && (
+													<TooltipProvider>
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<Badge variant='secondary' className='text-[10px] px-1.5 py-0.5 h-5 leading-tight cursor-help'>
+																	+{remaining}
+																</Badge>
+															</TooltipTrigger>
+															<TooltipContent 
+																side="bottom" 
+																className="max-w-xs bg-popover border border-border text-popover-foreground [&>svg]:bg-popover [&>svg]:fill-popover"
+															>
+																<div className="flex flex-wrap gap-1">
+																	{entries.slice(maxVisible).map(([type, count]) => {
+																		const def = getWidgetDefinition(type);
+																		if (!def) return null;
+																		return (
+																			<Badge key={type} variant='secondary' className='text-[10px] px-1.5 py-0.5 h-5 leading-tight'>
+																				{count}x {def.name}
+																			</Badge>
+																		);
+																	})}
+																</div>
+															</TooltipContent>
+														</Tooltip>
+													</TooltipProvider>
+												)}
+											</>
 										);
-									})}
+									})()}
 								</div>
 							</div>
 						</motion.div>
@@ -172,6 +240,24 @@ function DashboardComponent() {
 									)}
 								</div>
 							</div>
+
+							{/* Bouton Bibliothèque */}
+							<Button
+								variant='outline'
+								size='sm'
+								onClick={() => setIsLibraryManagerOpen(true)}
+								onMouseDown={(e: React.MouseEvent) => {
+									e.stopPropagation();
+								}}
+								onDragStart={(e: React.DragEvent) => {
+									e.preventDefault();
+									e.stopPropagation();
+								}}
+								title="Gérer la bibliothèque de widgets"
+							>
+								<Sparkles className='h-4 w-4' />
+								<span className='ml-2 hidden sm:inline'>Bibliothèque</span>
+							</Button>
 
 							{/* Bouton Google OAuth */}
 							<GoogleOAuthButton
@@ -482,6 +568,7 @@ function DashboardComponent() {
 
 			{/* Dialog Widget Picker */}
 			<WidgetPicker />
+			<WidgetLibraryManager open={isLibraryManagerOpen} onOpenChange={setIsLibraryManagerOpen} />
 		</div>
 	);
 }

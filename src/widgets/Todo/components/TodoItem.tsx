@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Star, Trash2, Edit2, Calendar } from "lucide-react";
+import { Star, X, Edit2, Calendar } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { DatePicker } from "@/components/ui/calendar-full";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -33,7 +33,6 @@ interface TodoItemProps {
 	onCancelEdit: () => void;
 	onToggleDeadlinePicker: (open: boolean) => void;
 	onTogglePriority: (todo: Todo) => void;
-	onCreateEvent: (todo: Todo) => void;
 	isSyncing: boolean;
 	editInputRef: React.RefObject<HTMLInputElement | null> | React.RefObject<HTMLInputElement>;
 }
@@ -53,7 +52,6 @@ function TodoItemComponent({
 	onCancelEdit,
 	onToggleDeadlinePicker,
 	onTogglePriority,
-	onCreateEvent,
 	isSyncing,
 	editInputRef,
 }: TodoItemProps) {
@@ -203,23 +201,6 @@ function TodoItemComponent({
 				)}
 			</div>
 			<div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-				{!todo.completed && todo.deadline && (
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								variant="ghost"
-								size="sm"
-								className="h-6 w-6 p-0"
-								onClick={() => onCreateEvent(todo)}
-							>
-								<Calendar className="h-3 w-3" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							<p>Créer un événement</p>
-						</TooltipContent>
-					</Tooltip>
-				)}
 				<Button
 					variant="ghost"
 					size="sm"
@@ -249,7 +230,7 @@ function TodoItemComponent({
 					className="h-6 w-6 p-0 text-destructive"
 					onClick={() => onDelete(todo.id)}
 				>
-					<Trash2 className="h-3 w-3" />
+					<X className="h-3 w-3" />
 				</Button>
 			</div>
 		</motion.div>

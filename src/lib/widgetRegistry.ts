@@ -1,6 +1,6 @@
 import type { ComponentType, LazyExoticComponent } from "react";
 import { lazy } from "react";
-import { Cloud, CheckSquare, Calendar, Bookmark, Target, BookOpen, DollarSign, Timer, BarChart3, Rss, Quote, LineChart, TrendingUp } from "lucide-react";
+import { Cloud, CheckSquare, Calendar, Bookmark, Target, BookOpen, DollarSign, Timer, BarChart3, Rss, Quote, TrendingUp } from "lucide-react";
 import type { WidgetProps } from "./widgetSize";
 
 // Lazy loading des widgets pour optimiser le bundle size
@@ -70,12 +70,6 @@ const QuoteWidget = lazy(() =>
 	}))
 );
 
-const GraphiquesWidget = lazy(() =>
-	import("@/widgets/Graphiques/GraphiquesWidget").then((module) => ({
-		default: module.GraphiquesWidget,
-	}))
-);
-
 const StockWidget = lazy(() =>
 	import("@/widgets/Stock/StockWidget").then((module) => ({
 		default: module.StockWidget,
@@ -87,6 +81,7 @@ export interface WidgetDefinition {
 	name: string;
 	description: string;
 	detailedDescription?: string; // Description détaillée pour le bouton info
+	usageGuide?: string; // Guide d'utilisation du widget
 	features?: string[]; // Liste des fonctionnalités
 	icon: ComponentType<{ className?: string }>;
 	component: LazyExoticComponent<ComponentType<WidgetProps>>;
@@ -109,9 +104,13 @@ export const widgetRegistry: WidgetDefinition[] = [
 		],
 		icon: Cloud,
 		component: WeatherWidget,
-		defaultSize: { w: 4, h: 3 },
-		minSize: { w: 2, h: 3 },
-		maxSize: { w: 10, h: 8 },
+		// Tailles selon WIDGET_SIZE_THRESHOLDS :
+		// - Compact : w ≤ 3, h ≤ 3, aire ≤ 9 (ex: 2x3, 3x3)
+		// - Medium : w ≤ 5, h ≤ 6, aire ≤ 30 (ex: 4x4, 4x5, 5x5)
+		// - Full : w > 5 OU h > 6 OU aire > 30 (ex: 6x6, 8x4)
+		defaultSize: { w: 2, h: 3 }, // Compact (2x3=6) - même taille que Pomodoro
+		minSize: { w: 2, h: 3 }, // Même contraintes que Pomodoro (2x3 minimum)
+		maxSize: { w: 8, h: 8 },
 	},
 	{
 		id: "todo",
@@ -127,8 +126,12 @@ export const widgetRegistry: WidgetDefinition[] = [
 		],
 		icon: CheckSquare,
 		component: TodoWidget,
-		defaultSize: { w: 4, h: 6 },
-		minSize: { w: 3, h: 4 },
+		// Tailles selon WIDGET_SIZE_THRESHOLDS :
+		// - Compact : w ≤ 3, h ≤ 3, aire ≤ 9 (ex: 3x3) - limité car minH=4
+		// - Medium : w ≤ 5, h ≤ 6, aire ≤ 30 (ex: 4x4, 4x5, 4x6, 5x5, 5x6)
+		// - Full : w > 5 OU h > 6 OU aire > 30 (ex: 6x6, 6x8, 8x6)
+		defaultSize: { w: 4, h: 6 }, // Medium (4x6=24)
+		minSize: { w: 2, h: 4 },
 		maxSize: { w: 8, h: 10 },
 	},
 	{
@@ -145,9 +148,14 @@ export const widgetRegistry: WidgetDefinition[] = [
 		],
 		icon: Calendar,
 		component: CalendarWidget,
-		defaultSize: { w: 4, h: 6 },
-		minSize: { w: 2, h: 3 },
-		maxSize: { w: 8, h: 10 },
+		// Tailles selon WIDGET_SIZE_THRESHOLDS :
+		// - Compact : w ≤ 3, h ≤ 3, aire ≤ 9 (ex: 2x3, 3x3)
+		// - Medium : w ≤ 5, h ≤ 6, aire ≤ 30 (ex: 4x4, 4x5, 4x6, 5x5, 5x6)
+		// - Full : w > 5 OU h > 6 OU aire > 30 (ex: 6x6, 6x8, 8x6, 8x8, etc.)
+		// Redimensionnable librement (pas de contraintes strictes)
+		defaultSize: { w: 4, h: 6 }, // Medium (4x6=24)
+		minSize: { w: 2, h: 3 }, // Très permissif pour permettre tous les redimensionnements
+		maxSize: { w: 12, h: 12 }, // Très large pour permettre les grandes tailles
 	},
 	{
 		id: "bookmarks",
@@ -163,7 +171,7 @@ export const widgetRegistry: WidgetDefinition[] = [
 		icon: Bookmark,
 		component: BookmarksWidget,
 		defaultSize: { w: 4, h: 6 },
-		minSize: { w: 3, h: 4 },
+		minSize: { w: 2, h: 3 }, // Permet version compacte plus petite (grille 2x2 ou 2x3)
 		maxSize: { w: 8, h: 10 },
 	},
 	{
@@ -180,7 +188,7 @@ export const widgetRegistry: WidgetDefinition[] = [
 		icon: Target,
 		component: HabitsWidget,
 		defaultSize: { w: 4, h: 6 },
-		minSize: { w: 3, h: 4 },
+		minSize: { w: 2, h: 3 }, // Permet version compacte plus petite
 		maxSize: { w: 8, h: 10 },
 	},
 	{
@@ -197,7 +205,7 @@ export const widgetRegistry: WidgetDefinition[] = [
 		icon: BookOpen,
 		component: JournalWidget,
 		defaultSize: { w: 4, h: 6 },
-		minSize: { w: 3, h: 4 },
+		minSize: { w: 2, h: 3 }, // Permet version compacte plus petite
 		maxSize: { w: 8, h: 10 },
 	},
 	{
@@ -214,7 +222,7 @@ export const widgetRegistry: WidgetDefinition[] = [
 		icon: DollarSign,
 		component: FinanceWidget,
 		defaultSize: { w: 4, h: 6 },
-		minSize: { w: 3, h: 4 },
+		minSize: { w: 2, h: 3 }, // Permet version compacte plus petite
 		maxSize: { w: 8, h: 10 },
 	},
 	{
@@ -243,13 +251,14 @@ export const widgetRegistry: WidgetDefinition[] = [
 			"Statistiques globales",
 			"Tâches, habitudes, journal, finances",
 			"Vue d'ensemble",
-			"Version compacte avec grille",
+			"Version compacte minimaliste",
+			"Version medium avec détails",
 		],
 		icon: BarChart3,
 		component: StatsWidget,
 		defaultSize: { w: 4, h: 6 },
-		minSize: { w: 3, h: 4 },
-		maxSize: { w: 8, h: 10 },
+		minSize: { w: 2, h: 4 },
+		maxSize: { w: 5, h: 6 }, // Limité à medium (5x6=30, taille max de medium)
 	},
 	{
 		id: "rss",
@@ -265,7 +274,7 @@ export const widgetRegistry: WidgetDefinition[] = [
 		icon: Rss,
 		component: RSSWidget,
 		defaultSize: { w: 4, h: 6 },
-		minSize: { w: 3, h: 4 },
+		minSize: { w: 2, h: 3 }, // Permet version compacte plus petite
 		maxSize: { w: 8, h: 10 },
 	},
 	{
@@ -286,23 +295,6 @@ export const widgetRegistry: WidgetDefinition[] = [
 		maxSize: { w: 6, h: 6 },
 	},
 	{
-		id: "graphiques",
-		name: "Graphiques",
-		description: "Créez des graphiques personnalisés",
-		detailedDescription: "Créez et visualisez des graphiques personnalisés avec des données que vous pouvez saisir manuellement. Supporte les graphiques en ligne, barres, camembert et aires.",
-		features: [
-			"Création de graphiques personnalisés",
-			"Types: Ligne, Barres, Camembert, Aire",
-			"Ajout manuel de données",
-			"Visualisation interactive",
-		],
-		icon: LineChart,
-		component: GraphiquesWidget,
-		defaultSize: { w: 4, h: 6 },
-		minSize: { w: 3, h: 4 },
-		maxSize: { w: 8, h: 10 },
-	},
-	{
 		id: "stock",
 		name: "Bourse",
 		description: "Suivez les cours de la bourse en temps réel",
@@ -317,12 +309,54 @@ export const widgetRegistry: WidgetDefinition[] = [
 		icon: TrendingUp,
 		component: StockWidget,
 		defaultSize: { w: 4, h: 6 },
-		minSize: { w: 3, h: 4 },
+		minSize: { w: 2, h: 3 }, // Permet version compacte plus petite
 		maxSize: { w: 8, h: 10 },
 	},
 ];
 
 export function getWidgetDefinition(type: string): WidgetDefinition | undefined {
 	return widgetRegistry.find((widget) => widget.id === type);
+}
+
+/**
+ * Récupère toutes les définitions de widgets (internes + externes)
+ * Cette fonction doit être appelée après l'initialisation de widgetLibrary
+ */
+export async function getAllWidgetDefinitions(): Promise<WidgetDefinition[]> {
+	const { widgetLibrary } = await import("./widgetLibrary");
+	const externalWidgets = widgetLibrary.getExternalWidgets();
+	
+	// Convertir les widgets externes en WidgetDefinition
+	const externalDefinitions: WidgetDefinition[] = externalWidgets
+		.filter((w) => w.status === "loaded")
+		.map((w) => {
+			// Gérer l'icône (peut être une string ou un composant)
+			let icon: ComponentType<{ className?: string }>;
+			if (typeof w.icon === "string") {
+				// Si c'est une string, utiliser une icône par défaut
+				// TODO: Parser les noms d'icônes Lucide
+				icon = Calendar; // Icône par défaut
+			} else if (w.icon) {
+				icon = w.icon;
+			} else {
+				icon = Calendar; // Icône par défaut
+			}
+
+			return {
+				id: w.id,
+				name: w.name,
+				description: w.description,
+				detailedDescription: w.detailedDescription,
+				usageGuide: w.usageGuide,
+				features: w.features,
+				icon,
+				component: w.component,
+				defaultSize: w.defaultSize,
+				minSize: w.minSize,
+				maxSize: w.maxSize,
+			};
+		});
+
+	return [...widgetRegistry, ...externalDefinitions];
 }
 

@@ -75,11 +75,14 @@ describe("bookmarksStorage", () => {
 	});
 
 	describe("updateBookmark", () => {
-		it("should update an existing bookmark", () => {
+		it("should update an existing bookmark", async () => {
 			const bookmark = addBookmark({
 				title: "Original",
 				url: "https://example.com",
 			});
+
+			// Wait a bit to ensure different timestamp
+			await new Promise((resolve) => setTimeout(resolve, 10));
 
 			const updated = updateBookmark(bookmark.id, {
 				title: "Updated",
@@ -89,6 +92,7 @@ describe("bookmarksStorage", () => {
 			expect(updated).not.toBeNull();
 			expect(updated?.title).toBe("Updated");
 			expect(updated?.url).toBe("https://updated.com");
+			expect(updated?.updatedAt).toBeDefined();
 			expect(updated?.updatedAt).not.toBe(bookmark.updatedAt);
 		});
 
@@ -127,4 +131,5 @@ describe("bookmarksStorage", () => {
 		});
 	});
 });
+
 

@@ -14,7 +14,7 @@ import {
 	CommandList,
 } from "@/components/ui/command";
 import { Command as CommandPrimitive } from "cmdk";
-import { Search, Plus, CheckSquare, Square, Info } from "lucide-react";
+import { Search, Plus, CheckSquare, Square, Info, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,6 +26,7 @@ function WidgetPickerComponent() {
 	const isOpen = useDashboardStore((state) => state.isPickerOpen);
 	const closePicker = useDashboardStore((state) => state.closePicker);
 	const addWidget = useDashboardStore((state) => state.addWidget);
+	const removeWidget = useDashboardStore((state) => state.removeWidget);
 	const widgets = useDashboardStore((state) => state.widgets);
 
 	const [selectedWidgets, setSelectedWidgets] = useState<Set<string>>(new Set());
@@ -33,6 +34,19 @@ function WidgetPickerComponent() {
 	const [infoWidget, setInfoWidget] = useState<string | null>(null);
 
 	const addedWidgetTypes = new Set(widgets.map((w) => w.type));
+	
+	// Fonction pour obtenir les IDs des widgets d'un type donné
+	const getWidgetIdsByType = (type: string) => {
+		return widgets.filter((w) => w.type === type).map((w) => w.id);
+	};
+	
+	// Fonction pour supprimer tous les widgets d'un type
+	const handleRemoveWidget = (widgetType: string) => {
+		const widgetIds = getWidgetIdsByType(widgetType);
+		widgetIds.forEach((id) => {
+			removeWidget(id);
+		});
+	};
 
 	const handleSelect = (widgetId: string) => {
 		const isAdded = addedWidgetTypes.has(widgetId);
@@ -154,13 +168,25 @@ function WidgetPickerComponent() {
 									<CommandItem
 										key={widget.id}
 										value={`${widget.id} ${widget.name} ${widget.description}`}
-										onSelect={() => handleSelect(widget.id)}
-										disabled={isAdded}
-										className='flex items-center gap-3 p-3 cursor-pointer hover:bg-accent/50 transition-colors'
-										aria-label={`${widget.name}: ${widget.description}${isAdded ? " (déjà ajouté)" : ""}`}
-										aria-disabled={isAdded}
-										onMouseDown={(e: React.MouseEvent) => {
+										onSelect={() => {
 											if (!isAdded) {
+												handleSelect(widget.id);
+											}
+										}}
+										className={`flex items-center gap-3 p-3 transition-colors ${
+											isAdded ? 'cursor-default opacity-60' : 'cursor-pointer hover:bg-accent/50'
+										}`}
+										aria-label={`${widget.name}: ${widget.description}${isAdded ? " (déjà ajouté)" : ""}`}
+										onMouseDown={(e: React.MouseEvent) => {
+											// Si c'est un clic sur un bouton, ne rien faire (laisser le bouton gérer)
+											if ((e.target as HTMLElement).closest('button')) {
+												return;
+											}
+											// Si le widget est ajouté et que ce n'est pas un bouton, empêcher l'action
+											if (isAdded) {
+												e.preventDefault();
+												e.stopPropagation();
+											} else {
 												e.stopPropagation();
 											}
 										}}
@@ -199,7 +225,7 @@ function WidgetPickerComponent() {
 													{widget.name}
 												</span>
 												{isAdded && (
-													<Badge variant='secondary' className='text-xs'>
+													<Badge variant='secondary' className='text-xs opacity-60'>
 														Ajouté
 													</Badge>
 												)}
@@ -233,6 +259,27 @@ function WidgetPickerComponent() {
 											>
 												<Info className='h-4 w-4' />
 											</Button>
+											{isAdded && !multiSelectMode && (
+												<Button
+													variant='outline'
+													size='icon'
+													className='h-8 w-8 text-muted-foreground hover:text-destructive hover:border-destructive/50'
+													onClick={(e) => {
+														e.stopPropagation();
+														handleRemoveWidget(widget.id);
+													}}
+													onMouseDown={(e: React.MouseEvent) => {
+														e.stopPropagation();
+													}}
+													onDragStart={(e: React.DragEvent) => {
+														e.preventDefault();
+														e.stopPropagation();
+													}}
+													title="Retirer"
+												>
+													<Minus className='h-4 w-4' />
+												</Button>
+											)}
 											{!isAdded && !multiSelectMode && (
 												<Button
 													size='sm'
@@ -284,6 +331,12 @@ function WidgetPickerComponent() {
 											<p className="text-sm text-muted-foreground">{widget.detailedDescription}</p>
 										</div>
 									)}
+									{widget.usageGuide && (
+										<div>
+											<h4 className="text-sm font-semibold mb-2">Comment l'utiliser</h4>
+											<p className="text-sm text-muted-foreground whitespace-pre-line">{widget.usageGuide}</p>
+										</div>
+									)}
 									{widget.features && widget.features.length > 0 && (
 										<div>
 											<h4 className="text-sm font-semibold mb-2">Fonctionnalités</h4>
@@ -319,7 +372,27 @@ function WidgetPickerComponent() {
 									>
 										Fermer
 									</Button>
-									{!addedWidgetTypes.has(widget.id) && (
+									{addedWidgetTypes.has(widget.id) ? (
+										<Button
+											variant="outline"
+											size="icon"
+											className="h-9 w-9 text-muted-foreground hover:text-destructive hover:border-destructive/50"
+											onClick={() => {
+												handleRemoveWidget(widget.id);
+												setInfoWidget(null);
+											}}
+											onMouseDown={(e: React.MouseEvent) => {
+												e.stopPropagation();
+											}}
+											onDragStart={(e: React.DragEvent) => {
+												e.preventDefault();
+												e.stopPropagation();
+											}}
+											title="Retirer"
+										>
+											<Minus className="h-4 w-4" />
+										</Button>
+									) : (
 										<Button
 											onClick={() => {
 												handleSelect(widget.id);

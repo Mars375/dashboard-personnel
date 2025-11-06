@@ -8,7 +8,6 @@ import {
 import { Button } from "@/components/ui/button";
 import {
 	Calendar as CalendarFull,
-	DatePicker,
 } from "@/components/ui/calendar-full";
 import {
 	Dialog,
@@ -19,12 +18,6 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -38,8 +31,6 @@ import { useState, useEffect, useRef, useCallback, memo, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
 	Plus,
-	CalendarIcon,
-	Clock,
 	Download,
 	Upload,
 	Bell,
@@ -49,12 +40,7 @@ import {
 	List,
 	RefreshCw,
 	Search,
-	ChevronLeft,
-	ChevronRight,
-	Trash2,
 } from "lucide-react";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import type { CalendarEvent } from "./types";
@@ -75,15 +61,9 @@ import { isDateInRecurrence } from "@/lib/calendarRecurrence";
 import type { WidgetProps } from "@/lib/widgetSize";
 import { getOAuthManager } from "@/lib/auth/oauthManager";
 import { logger } from "@/lib/logger";
+import { formatDateLocal } from "@/lib/utils";
 import { EventForm, EventItem } from "./components";
 
-// Fonction utilitaire pour formater une date en YYYY-MM-DD en local (évite les problèmes de timezone)
-function formatDateLocal(date: Date): string {
-	const year = date.getFullYear();
-	const month = String(date.getMonth() + 1).padStart(2, "0");
-	const day = String(date.getDate()).padStart(2, "0");
-	return `${year}-${month}-${day}`;
-}
 
 function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 	const isCompact = useMemo(() => size === "compact", [size]);
@@ -832,6 +812,26 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 	const todayEventsScrollRef = useRef<HTMLDivElement>(null);
 	const selectedEventsScrollRef = useRef<HTMLDivElement>(null);
 	
+	// Événements d'aujourd'hui pour version compacte
+	const today = useMemo(() => {
+		const t = new Date();
+		t.setHours(0, 0, 0, 0);
+		return t;
+	}, []);
+	
+	const todayEvents = useMemo(() => {
+		return events.filter((e) => {
+			const eventDate = new Date(e.date);
+			eventDate.setHours(0, 0, 0, 0);
+			return eventDate.getTime() === today.getTime();
+		}).sort((a, b) => {
+			if (!a.time && !b.time) return 0;
+			if (!a.time) return 1;
+			if (!b.time) return -1;
+			return a.time.localeCompare(b.time);
+		});
+	}, [events, today]);
+	
 	const sortedSelectedDateEvents = useMemo(() => {
 		return [...selectedDateEvents].sort((a, b) => {
 			if (!a.time && !b.time) return 0;
@@ -841,14 +841,23 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 		});
 	}, [selectedDateEvents]);
 
+	// Virtualisation pour todayEvents si plus de 50
+	const shouldVirtualizeToday = todayEvents.length > 50;
+	const todayVirtualizer = useVirtualizer({
+		count: todayEvents.length,
+		getScrollElement: () => todayEventsScrollRef.current,
+		estimateSize: () => 60,
+		overscan: 3,
+	});
+
 	// Virtualisation pour selectedDateEvents si plus de 50
 	const shouldVirtualizeSelected = sortedSelectedDateEvents.length > 50;
-	const selectedEventsVirtualizer = shouldVirtualizeSelected && selectedEventsScrollRef.current ? useVirtualizer({
+	const selectedEventsVirtualizer = useVirtualizer({
 		count: sortedSelectedDateEvents.length,
 		getScrollElement: () => selectedEventsScrollRef.current,
 		estimateSize: () => 80,
 		overscan: 3,
-	}) : null;
+	});
 
 	// Forcer la vue "month" en mode compact et medium
 	useEffect(() => {
@@ -865,33 +874,6 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 		>
 			{/* COMPACT VERSION - Aujourd'hui et ses événements uniquement */}
 			{isCompact ? (
-				(() => {
-					// Toujours afficher aujourd'hui
-					const today = new Date();
-					today.setHours(0, 0, 0, 0);
-					const todayEvents = useMemo(() => {
-						return events.filter((e) => {
-							const eventDate = new Date(e.date);
-							eventDate.setHours(0, 0, 0, 0);
-							return eventDate.getTime() === today.getTime();
-						}).sort((a, b) => {
-							if (!a.time && !b.time) return 0;
-							if (!a.time) return 1;
-							if (!b.time) return -1;
-							return a.time.localeCompare(b.time);
-						});
-					}, [events]);
-
-					// Virtualisation si plus de 50 événements
-					const shouldVirtualizeToday = todayEvents.length > 50;
-					const todayVirtualizer = shouldVirtualizeToday ? useVirtualizer({
-						count: todayEvents.length,
-						getScrollElement: () => todayEventsScrollRef.current,
-						estimateSize: () => 60,
-						overscan: 3,
-					}) : null;
-
-					return (
 						<div className='flex flex-col h-full justify-center gap-2'>
 							{/* Date d'aujourd'hui */}
 							<div className='text-center'>
@@ -916,7 +898,7 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 									<div className='text-xs text-muted-foreground text-center py-4'>
 										Aucun événement aujourd'hui
 									</div>
-								) : shouldVirtualizeToday && todayVirtualizer ? (
+								) : shouldVirtualizeToday && todayEventsScrollRef.current ? (
 									<div
 										style={{
 											height: `${todayVirtualizer.getTotalSize()}px`,
@@ -986,9 +968,191 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 								)}
 							</div>
 						</div>
-					);
-				})()
-			) : isFull ? (
+			) : null}
+
+			{isMedium && (
+				// MEDIUM VERSION - Vue des 7 prochains jours
+				<div className="flex flex-col h-full gap-2">
+					{/* Header : Date + Bouton ajouter */}
+					<div className="shrink-0 flex items-center justify-between pb-2 border-b">
+						<div className="text-sm font-semibold">
+							{selectedDate ? (
+								selectedDate.toLocaleDateString("fr-FR", {
+									weekday: "long",
+									day: "numeric",
+									month: "long",
+								})
+							) : (
+								currentDate.toLocaleDateString("fr-FR", {
+									weekday: "long",
+									day: "numeric",
+									month: "long",
+								})
+							)}
+						</div>
+						<Button
+							size="sm"
+							variant="outline"
+							className="h-7 text-xs"
+							onClick={() => {
+								setNewEventDate(selectedDate || currentDate);
+								setIsDialogOpen(true);
+							}}
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+						>
+							<Plus className="h-3 w-3 mr-1.5" />
+							Ajouter
+						</Button>
+					</div>
+
+					{/* Grille des 7 prochains jours */}
+					<div className="shrink-0">
+						<div className="grid grid-cols-7 gap-1.5">
+							{Array.from({ length: 7 }).map((_, index) => {
+								const dayDate = new Date(today);
+								dayDate.setDate(dayDate.getDate() + index);
+								const dayEvents = getEventsForDate(dayDate);
+								const dayDateStr = formatDateLocal(dayDate);
+								const isSelected = selectedDate && formatDateLocal(selectedDate) === dayDateStr;
+								const isToday = dayDate.toDateString() === today.toDateString();
+								
+								return (
+									<div
+										key={dayDateStr}
+										className={`flex flex-col border rounded-md p-1.5 cursor-pointer transition-colors ${
+											isSelected 
+												? "bg-primary/10 border-primary" 
+												: "hover:bg-muted/50"
+										}`}
+										onClick={() => handleSelect(dayDate)}
+										onMouseDown={(e: React.MouseEvent) => {
+											e.stopPropagation();
+										}}
+										onDragStart={(e: React.DragEvent) => {
+											e.preventDefault();
+											e.stopPropagation();
+										}}
+									>
+										{/* Jour de la semaine */}
+										<div className={`text-[10px] font-medium text-center mb-0.5 ${
+											isToday ? "text-primary" : "text-muted-foreground"
+										}`}>
+											{dayDate.toLocaleDateString("fr-FR", { weekday: "short" })}
+										</div>
+										
+										{/* Numéro du jour */}
+										<div className={`text-xs font-semibold text-center mb-1 ${
+											isToday ? "text-primary" : ""
+										}`}>
+											{dayDate.getDate()}
+										</div>
+										
+										{/* Événements */}
+										<div className="space-y-0.5">
+											{dayEvents.length === 0 ? (
+												<div className="text-[9px] text-muted-foreground text-center py-1">
+													—
+												</div>
+											) : (
+												dayEvents
+													.sort((a, b) => {
+														if (!a.time && !b.time) return 0;
+														if (!a.time) return 1;
+														if (!b.time) return -1;
+														return a.time.localeCompare(b.time);
+													})
+													.slice(0, 2)
+													.map((event) => (
+														<div
+															key={event.id}
+															className="bg-muted rounded text-[9px] px-1 py-0.5 truncate"
+														>
+															{event.title}
+														</div>
+													))
+											)}
+											{dayEvents.length > 2 && (
+												<div className="text-[8px] text-muted-foreground text-center pt-0.5">
+													+{dayEvents.length - 2}
+												</div>
+											)}
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					</div>
+
+					{/* Liste des événements du jour sélectionné */}
+					{selectedDate && (
+						<div className="flex-1 min-h-0 overflow-y-auto border-t pt-2 mt-2">
+							<div className="space-y-2">
+								{sortedSelectedDateEvents.length === 0 ? (
+									<div className="text-center py-6 text-xs text-muted-foreground">
+										Aucun événement
+									</div>
+								) : (
+									sortedSelectedDateEvents.map((event) => {
+										const eventColor = event.color || "#3b82f6";
+										const hasEndTime = event.endTime && event.endTime !== event.time;
+										
+										return (
+											<div
+												key={event.id}
+												className="flex items-start gap-3 cursor-pointer group hover:bg-muted/50 rounded-md p-2 transition-colors"
+												onClick={() => handleEditEvent(event)}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+											>
+												{/* Ligne verticale colorée */}
+												<div 
+													className="w-1 rounded-full shrink-0 mt-1"
+													style={{ backgroundColor: eventColor }}
+												/>
+												
+												{/* Contenu de l'événement */}
+												<div className="flex-1 min-w-0">
+													<div className="flex items-start justify-between gap-2">
+														<div className="flex-1 min-w-0">
+															<div className="text-sm font-semibold mb-0.5">
+																{event.title}
+															</div>
+															{event.time && (
+																<div className="text-xs text-muted-foreground">
+																	{event.time}
+																	{hasEndTime && ` - ${event.endTime}`}
+																</div>
+															)}
+															{event.description && (
+																<div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+																	{event.description}
+																</div>
+															)}
+														</div>
+													</div>
+												</div>
+											</div>
+										);
+									})
+								)}
+							</div>
+						</div>
+					)}
+				</div>
+			)}
+
+		{isFull && (
 				<>
 					{/* CardHeader seulement en mode full */}
 					<CardHeader>
@@ -1213,531 +1377,12 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 						</div>
 					</CardHeader>
 				</>
-			) : null}
+			)}
 
-			{/* MEDIUM VERSION - Nouvelle conception */}
-			{isMedium ? (
-				<CardContent className='p-2 pt-0 flex flex-col h-full gap-2'>
-					{/* Header avec date et bouton ajouter */}
-					<div className='flex items-center justify-between shrink-0'>
-						<div>
-							<div className='text-sm font-semibold'>
-								{currentDate.toLocaleDateString("fr-FR", {
-									month: "long",
-									year: "numeric",
-								})}
-							</div>
-							{selectedDate && (
-								<div className='text-[10px] text-muted-foreground mt-0.5'>
-									{selectedDate.toLocaleDateString("fr-FR", {
-										weekday: "short",
-										day: "numeric",
-									})}
-								</div>
-							)}
-						</div>
-						<Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
-							<DialogTrigger asChild>
-								<Button
-									variant='outline'
-									size='sm'
-									className='h-7 text-xs px-2'
-									title='Ajouter un événement'
-									onMouseDown={(e: React.MouseEvent) => {
-										e.stopPropagation();
-									}}
-									onDragStart={(e: React.DragEvent) => {
-										e.preventDefault();
-										e.stopPropagation();
-									}}
-								>
-									<Plus className='h-3.5 w-3.5 mr-1' />
-									Événement
-								</Button>
-							</DialogTrigger>
-							<DialogContent className='max-w-md'>
-								<DialogHeader>
-									<DialogTitle className='text-base'>
-										{editingEvent ? "Modifier l'événement" : "Nouvel événement"}
-									</DialogTitle>
-								</DialogHeader>
-								<div className='flex flex-col gap-3 py-3'>
-									<div className='flex flex-col gap-1.5'>
-										<Label htmlFor='event-title-medium' className='text-sm'>
-											Titre *
-										</Label>
-										<Input
-											id='event-title-medium'
-											value={newEventTitle}
-											onChange={(e) => setNewEventTitle(e.target.value)}
-											placeholder="Nom de l'événement"
-											className='h-9 text-sm'
-										/>
-									</div>
-									<div className='flex flex-col gap-1.5'>
-										<Label className='text-sm'>Date *</Label>
-										<Popover>
-											<PopoverTrigger asChild>
-												<Button
-													variant='outline'
-													className='w-full justify-start text-left font-normal h-9 text-sm'
-													onMouseDown={(e: React.MouseEvent) => {
-														e.stopPropagation();
-													}}
-													onDragStart={(e: React.DragEvent) => {
-														e.preventDefault();
-														e.stopPropagation();
-													}}
-												>
-													<CalendarIcon className='mr-2 h-4 w-4' />
-													{newEventDate ? (
-														format(newEventDate, "PPP", { locale: fr })
-													) : (
-														<span>Sélectionner une date</span>
-													)}
-												</Button>
-											</PopoverTrigger>
-											<PopoverContent className='w-auto p-0' align='start'>
-												<DatePicker
-													selected={newEventDate}
-													onSelect={setNewEventDate}
-													captionLayout='dropdown'
-												/>
-											</PopoverContent>
-										</Popover>
-									</div>
-									<div className='flex flex-col gap-1.5'>
-										<Label htmlFor='event-time-medium' className='text-sm'>
-											Heure
-										</Label>
-										<div className='relative'>
-											<Clock className='absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
-											<Input
-												id='event-time-medium'
-												type='time'
-												value={newEventTime}
-												onChange={(e) => setNewEventTime(e.target.value)}
-												className='pl-9 h-9 text-sm'
-											/>
-										</div>
-									</div>
-									<div className='flex justify-end gap-2 mt-2'>
-										<Button
-											variant='outline'
-											size='sm'
-											onClick={() => handleDialogOpenChange(false)}
-											onMouseDown={(e: React.MouseEvent) => {
-												e.stopPropagation();
-											}}
-											onDragStart={(e: React.DragEvent) => {
-												e.preventDefault();
-												e.stopPropagation();
-											}}
-											className='h-8'
-										>
-											Annuler
-										</Button>
-										<Button
-											onClick={handleCreateEvent}
-											disabled={!newEventDate || !newEventTitle.trim()}
-											onMouseDown={(e: React.MouseEvent) => {
-												e.stopPropagation();
-											}}
-											onDragStart={(e: React.DragEvent) => {
-												e.preventDefault();
-												e.stopPropagation();
-											}}
-											size='sm'
-											className='h-8'
-										>
-											{editingEvent ? "Enregistrer" : "Créer"}
-										</Button>
-									</div>
-								</div>
-							</DialogContent>
-						</Dialog>
-					</div>
-
-					{/* Layout principal : Mini-calendrier + Liste des événements */}
-					<div className='flex gap-2 flex-1 min-h-0'>
-						{/* Mini-calendrier vertical compact */}
-						<div className='w-[150px] shrink-0 border rounded-lg p-1.5 flex flex-col'>
-							<div className='flex items-center justify-between mb-1'>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-6 w-6'
-									onClick={() => {
-										const prevMonth = new Date(currentDate);
-										prevMonth.setMonth(prevMonth.getMonth() - 1);
-										setCurrentDate(prevMonth);
-									}}
-									onMouseDown={(e: React.MouseEvent) => {
-										e.stopPropagation();
-									}}
-									onDragStart={(e: React.DragEvent) => {
-										e.preventDefault();
-										e.stopPropagation();
-									}}
-								>
-									<ChevronLeft className='h-4 w-4' />
-								</Button>
-								<div className='text-xs font-medium'>
-									{currentDate.toLocaleDateString("fr-FR", {
-										month: "short",
-										year: "2-digit",
-									})}
-								</div>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-6 w-6'
-									onClick={() => {
-										const nextMonth = new Date(currentDate);
-										nextMonth.setMonth(nextMonth.getMonth() + 1);
-										setCurrentDate(nextMonth);
-									}}
-									onMouseDown={(e: React.MouseEvent) => {
-										e.stopPropagation();
-									}}
-									onDragStart={(e: React.DragEvent) => {
-										e.preventDefault();
-										e.stopPropagation();
-									}}
-								>
-									<ChevronRight className='h-4 w-4' />
-								</Button>
-							</div>
-
-							{/* Grille de calendrier ultra compacte */}
-							<div className='grid grid-cols-7 gap-0.5 mb-0.5'>
-								{["L", "M", "M", "J", "V", "S", "D"].map((day, index) => (
-									<div
-										key={`day-header-${index}`}
-										className='text-[9px] text-muted-foreground text-center py-0.5'
-									>
-										{day}
-									</div>
-								))}
-							</div>
-							<div className='grid grid-cols-7 gap-0.5 flex-1'>
-								{Array.from({ length: 42 }).map((_, i) => {
-									const date = new Date(
-										currentDate.getFullYear(),
-										currentDate.getMonth(),
-										1
-									);
-									const dayOfWeek = date.getDay();
-									const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-									const dayNumber = i - adjustedDay + 1;
-									const isCurrentMonth =
-										dayNumber > 0 &&
-										dayNumber <=
-											new Date(
-												currentDate.getFullYear(),
-												currentDate.getMonth() + 1,
-												0
-											).getDate();
-									const dayDate = isCurrentMonth
-										? new Date(
-												currentDate.getFullYear(),
-												currentDate.getMonth(),
-												dayNumber
-										  )
-										: null;
-									const today = new Date();
-									const isToday =
-										dayDate && dayDate.toDateString() === today.toDateString();
-									const isSelected =
-										dayDate &&
-										selectedDate &&
-										dayDate.toDateString() === selectedDate.toDateString();
-									const hasEvents =
-										dayDate &&
-										events.some((e) => {
-											const eventDate = new Date(e.date);
-											return (
-												eventDate.toDateString() === dayDate.toDateString()
-											);
-										});
-
-									if (!isCurrentMonth && !dayDate) {
-										return <div key={i} className='aspect-square' />;
-									}
-
-									return (
-										<Button
-											key={i}
-											variant={isSelected ? "default" : "ghost"}
-											size='sm'
-											className={`h-5 w-5 p-0 text-[9px] font-normal relative ${
-												!isCurrentMonth ? "text-muted-foreground/30" : ""
-											} ${
-												isToday && !isSelected
-													? "bg-primary/30 text-primary-foreground hover:bg-primary/40"
-													: ""
-											}`}
-											onClick={() => dayDate && handleSelect(dayDate)}
-											onMouseDown={(e: React.MouseEvent) => {
-												e.stopPropagation();
-											}}
-											onDragStart={(e: React.DragEvent) => {
-												e.preventDefault();
-												e.stopPropagation();
-											}}
-										>
-											{isCurrentMonth ? dayNumber : dayDate ? dayNumber : ""}
-											{hasEvents && (
-												<span className='absolute bottom-0 left-1/2 -translate-x-1/2 w-0.5 h-0.5 rounded-full bg-primary' />
-											)}
-										</Button>
-									);
-								})}
-							</div>
-
-							{/* Bouton "Aujourd'hui" */}
-							<Button
-								variant='outline'
-								size='sm'
-								className='h-6 mt-1.5 text-[10px]'
-								onClick={() => {
-									const today = new Date();
-									setCurrentDate(today);
-									setSelectedDate(today);
-								}}
-								onMouseDown={(e: React.MouseEvent) => {
-									e.stopPropagation();
-								}}
-								onDragStart={(e: React.DragEvent) => {
-									e.preventDefault();
-									e.stopPropagation();
-								}}
-							>
-								Aujourd'hui
-							</Button>
-						</div>
-
-						{/* Liste des événements à venir */}
-						<div className='flex-1 min-w-0 flex flex-col'>
-							<div className='text-xs font-semibold mb-1 shrink-0'>
-								{selectedDate ? (
-									<>
-										Événements{" "}
-										{selectedDate.toDateString() === new Date().toDateString()
-											? "d'aujourd'hui"
-											: "du " +
-											  selectedDate.toLocaleDateString("fr-FR", {
-													day: "numeric",
-													month: "long",
-											  })}
-									</>
-								) : (
-									"Événements à venir"
-								)}
-							</div>
-							<div className='flex-1 min-h-0 overflow-y-auto'>
-								{selectedDate ? (
-									/* Événements de la date sélectionnée */
-									selectedDateEvents.length === 0 ? (
-										<div className='text-xs text-muted-foreground text-center py-4'>
-											Aucun événement
-										</div>
-									) : (
-										<div className='flex flex-col gap-1.5'>
-											{selectedDateEvents
-												.sort((a, b) => {
-													if (!a.time && !b.time) return 0;
-													if (!a.time) return 1;
-													if (!b.time) return -1;
-													return a.time.localeCompare(b.time);
-												})
-												.map((event) => (
-													<div
-														key={event.id}
-														className='bg-muted relative rounded-md p-2 pl-4 group hover:bg-muted/80 transition-colors cursor-pointer after:absolute after:inset-y-1.5 after:left-1.5 after:w-0.5 after:rounded-full after:bg-primary/70'
-														onClick={() => {
-															setEditingEvent(event);
-															setNewEventTitle(event.title);
-															setNewEventDate(new Date(event.date));
-															setNewEventTime(event.time || "");
-															setIsDialogOpen(true);
-														}}
-														onMouseDown={(e: React.MouseEvent) => {
-															e.stopPropagation();
-														}}
-														onDragStart={(e: React.DragEvent) => {
-															e.preventDefault();
-															e.stopPropagation();
-														}}
-													>
-														<div className='flex items-start justify-between gap-1.5'>
-															<div className='flex-1 min-w-0'>
-																<div className='font-medium text-xs'>
-																	{event.title}
-																</div>
-																{event.time && (
-																	<div className='text-[10px] text-muted-foreground mt-0.5'>
-																		{event.time}
-																	</div>
-																)}
-																{event.description && (
-																	<div className='text-[10px] text-muted-foreground mt-0.5 line-clamp-1'>
-																		{event.description}
-																	</div>
-																)}
-															</div>
-															<Button
-																variant='ghost'
-																size='icon'
-																className='h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0'
-																onClick={(e) => {
-																	e.stopPropagation();
-																	deleteEvent(event.id);
-																	toast.success("Événement supprimé");
-																}}
-																onMouseDown={(e: React.MouseEvent) => {
-																	e.stopPropagation();
-																}}
-																onDragStart={(e: React.DragEvent) => {
-																	e.preventDefault();
-																	e.stopPropagation();
-																}}
-															>
-																<Trash2 className='h-3 w-3' />
-															</Button>
-														</div>
-													</div>
-												))}
-										</div>
-									)
-								) : (
-									/* Événements à venir (prochains 7 jours) */
-									(() => {
-										const upcomingEvents = events
-											.filter((e) => {
-												const eventDate = new Date(e.date);
-												const today = new Date();
-												today.setHours(0, 0, 0, 0);
-												const sevenDaysLater = new Date(today);
-												sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
-												return (
-													eventDate >= today && eventDate <= sevenDaysLater
-												);
-											})
-											.sort((a, b) => {
-												const dateA = new Date(a.date);
-												const dateB = new Date(b.date);
-												if (dateA.getTime() !== dateB.getTime()) {
-													return dateA.getTime() - dateB.getTime();
-												}
-												if (!a.time && !b.time) return 0;
-												if (!a.time) return 1;
-												if (!b.time) return -1;
-												return a.time.localeCompare(b.time);
-											});
-
-										if (upcomingEvents.length === 0) {
-											return (
-												<div className='text-xs text-muted-foreground text-center py-4'>
-													Aucun événement à venir
-												</div>
-											);
-										}
-
-										return (
-											<div className='flex flex-col gap-1.5'>
-												{upcomingEvents.map((event) => {
-													const eventDate = new Date(event.date);
-													const isToday =
-														eventDate.toDateString() ===
-														new Date().toDateString();
-													return (
-														<div
-															key={event.id}
-															className='bg-muted relative rounded-md p-2 pl-4 group hover:bg-muted/80 transition-colors cursor-pointer after:absolute after:inset-y-1.5 after:left-1.5 after:w-0.5 after:rounded-full after:bg-primary/70'
-															onClick={() => {
-																setEditingEvent(event);
-																setNewEventTitle(event.title);
-																setNewEventDate(new Date(event.date));
-																setNewEventTime(event.time || "");
-																setIsDialogOpen(true);
-																setSelectedDate(eventDate);
-																setCurrentDate(eventDate);
-															}}
-															onMouseDown={(e: React.MouseEvent) => {
-																e.stopPropagation();
-															}}
-															onDragStart={(e: React.DragEvent) => {
-																e.preventDefault();
-																e.stopPropagation();
-															}}
-														>
-															<div className='flex items-start justify-between gap-1.5'>
-																<div className='flex-1 min-w-0'>
-																	<div className='flex items-center gap-1.5 mb-0.5'>
-																		<div className='text-[10px] font-medium text-muted-foreground'>
-																			{isToday
-																				? "Aujourd'hui"
-																				: eventDate.toLocaleDateString(
-																						"fr-FR",
-																						{
-																							weekday: "short",
-																							day: "numeric",
-																							month: "short",
-																						}
-																				  )}
-																		</div>
-																		{event.time && (
-																			<div className='text-[10px] text-muted-foreground'>
-																				{event.time}
-																			</div>
-																		)}
-																	</div>
-																	<div className='font-medium text-xs'>
-																		{event.title}
-																	</div>
-																	{event.description && (
-																		<div className='text-[10px] text-muted-foreground mt-0.5 line-clamp-1'>
-																			{event.description}
-																		</div>
-																	)}
-																</div>
-																<Button
-																	variant='ghost'
-																	size='icon'
-																	className='h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0'
-																	onClick={(e) => {
-																		e.stopPropagation();
-																		deleteEvent(event.id);
-																		toast.success("Événement supprimé");
-																	}}
-																	onMouseDown={(e: React.MouseEvent) => {
-																		e.stopPropagation();
-																	}}
-																	onDragStart={(e: React.DragEvent) => {
-																		e.preventDefault();
-																		e.stopPropagation();
-																	}}
-																>
-																	<Trash2 className='h-3 w-3' />
-																</Button>
-															</div>
-														</div>
-													);
-												})}
-											</div>
-										);
-									})()
-								)}
-							</div>
-						</div>
-					</div>
-				</CardContent>
-			) : (
-				!isCompact && (
-					/* FULL VERSION - Calendrier shadcn/ui */
-					<CardContent className='px-4'>
-						<motion.div
+			{/* FULL VERSION - Calendrier shadcn/ui */}
+			{isFull && (
+				<CardContent className='px-4'>
+					<motion.div
 							key={`${view}-${currentDate.getMonth()}-${currentDate.getFullYear()}`}
 							initial={{ opacity: 0, x: -10 }}
 							animate={{ opacity: 1, x: 0 }}
@@ -1767,9 +1412,8 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 									deadline: todo.deadline!,
 								}))}
 							/>
-						</motion.div>
-					</CardContent>
-				)
+					</motion.div>
+				</CardContent>
 			)}
 
 			{/* Zone d'affichage des événements - Full uniquement */}
@@ -1904,7 +1548,7 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 										<p className='text-sm text-muted-foreground'>
 											Aucun événement
 										</p>
-									) : shouldVirtualizeSelected && selectedEventsVirtualizer ? (
+									) : shouldVirtualizeSelected && selectedEventsScrollRef.current ? (
 										<div
 											style={{
 												height: `${selectedEventsVirtualizer.getTotalSize()}px`,

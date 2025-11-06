@@ -1,4 +1,5 @@
 /**
+import { logger } from "@/lib/logger";
  * Storage pour le widget Quote
  */
 
@@ -20,7 +21,7 @@ export function loadQuotes(): Quote[] {
 			return JSON.parse(stored);
 		}
 	} catch (error) {
-		console.error("Erreur lors du chargement des citations:", error);
+		logger.error("Erreur lors du chargement des citations:", error);
 	}
 	return [];
 }
@@ -29,7 +30,7 @@ export function saveQuotes(quotes: Quote[]): void {
 	try {
 		localStorage.setItem(STORAGE_KEY, JSON.stringify(quotes));
 	} catch (error) {
-		console.error("Erreur lors de la sauvegarde des citations:", error);
+		logger.error("Erreur lors de la sauvegarde des citations:", error);
 	}
 }
 
