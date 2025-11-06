@@ -3,6 +3,8 @@ import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CalendarWidget } from "@/widgets/Calendar/CalendarWidget";
+import type { ReactNode } from "react";
+import type { MockComponentProps } from "../../utils/mockTypes";
 
 const mockSetCurrentDate = vi.fn();
 const mockSetView = vi.fn();
@@ -32,14 +34,14 @@ vi.mock("@/hooks/useCalendar", () => ({
 
 // Mocks communs
 vi.mock("@/components/ui/card", () => ({
-	Card: ({ children, ...p }: any) => <div {...p}>{children}</div>,
-	CardHeader: ({ children, ...p }: any) => <div {...p}>{children}</div>,
-	CardContent: ({ children, ...p }: any) => <div {...p}>{children}</div>,
-	CardFooter: ({ children, ...p }: any) => <div {...p}>{children}</div>,
+	Card: ({ children, ...p }: MockComponentProps) => <div {...p}>{children}</div>,
+	CardHeader: ({ children, ...p }: MockComponentProps) => <div {...p}>{children}</div>,
+	CardContent: ({ children, ...p }: MockComponentProps) => <div {...p}>{children}</div>,
+	CardFooter: ({ children, ...p }: MockComponentProps) => <div {...p}>{children}</div>,
 }), { virtual: true });
 
 vi.mock("@/components/ui/button", () => ({
-	Button: ({ children, onClick, ...p }: any) => (
+	Button: ({ children, onClick, ...p }: MockComponentProps & { onClick?: () => void }) => (
 		<button onClick={onClick} {...p}>
 			{children}
 		</button>
@@ -62,7 +64,21 @@ vi.mock("@/components/ui/calendar-full", () => ({
 		showOutsideDays,
 		todosWithDeadlines,
 		...p 
-	}: any) => (
+	}: MockComponentProps & {
+		currentDate?: Date;
+		selectedDate?: Date;
+		onDateChange?: (date: Date) => void;
+		onSelectDate?: (date: Date) => void;
+		onViewChange?: (view: string) => void;
+		getEventsForDate?: (date: Date) => unknown[];
+		onEventClick?: (event: unknown) => void;
+		onEventUpdate?: (event: unknown) => void;
+		onSync?: () => void;
+		syncLoading?: boolean;
+		captionLayout?: string;
+		showOutsideDays?: boolean;
+		todosWithDeadlines?: unknown[];
+	}) => (
 		<div data-testid="calendar" {...p}>
 			<div>Calendar Component</div>
 			{selectedDate && <div data-testid="selected-date">{selectedDate.toISOString()}</div>}
@@ -72,7 +88,7 @@ vi.mock("@/components/ui/calendar-full", () => ({
 			<button onClick={() => onDateChange?.(new Date(2024, 4, 15))}>Previous Month</button>
 		</div>
 	),
-	DatePicker: ({ selected, onSelect, ...p }: any) => (
+	DatePicker: ({ selected, onSelect, ...p }: MockComponentProps & { selected?: Date; onSelect?: (date: Date) => void }) => (
 		<div data-testid="date-picker" {...p}>
 			<div>DatePicker Component</div>
 			{selected && <div data-testid="selected-date">{selected.toISOString()}</div>}
@@ -81,14 +97,14 @@ vi.mock("@/components/ui/calendar-full", () => ({
 }), { virtual: true });
 
 vi.mock("@/components/ui/button-group", () => ({
-	ButtonGroup: ({ children, ...p }: any) => <div {...p}>{children}</div>,
+	ButtonGroup: ({ children, ...p }: MockComponentProps) => <div {...p}>{children}</div>,
 }), { virtual: true });
 
 vi.mock("@/components/ui/dropdown-menu", () => ({
-	DropdownMenu: ({ children }: any) => <div>{children}</div>,
-	DropdownMenuTrigger: ({ children, asChild }: any) => <div>{children}</div>,
-	DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
-	DropdownMenuItem: ({ children, onClick }: any) => (
+	DropdownMenu: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+	DropdownMenuTrigger: ({ children, asChild }: { children?: ReactNode; asChild?: boolean }) => <div>{children}</div>,
+	DropdownMenuContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+	DropdownMenuItem: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
 		<div onClick={onClick}>{children}</div>
 	),
 	DropdownMenuSeparator: () => <hr />,
@@ -96,7 +112,7 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
 
 vi.mock("framer-motion", () => ({
 	motion: {
-		div: ({ children, ...p }: any) => <div {...p}>{children}</div>,
+		div: ({ children, ...p }: MockComponentProps) => <div {...p}>{children}</div>,
 	},
 }));
 
@@ -143,20 +159,20 @@ describe("CalendarWidget - Navigation", () => {
 				currentDate = dateOrFn;
 			}
 		});
-		mockSetView.mockImplementation((view: any) => {
+		mockSetView.mockImplementation((view: "month" | "week" | "day") => {
 			currentView = view;
 		});
 	});
 
 	it("renders today button", () => {
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		const todayButton = screen.getByText(/Aujourd'hui/i);
 		expect(todayButton).toBeTruthy();
 	});
 
 	it("calls setCurrentDate when clicking today button", async () => {
 		const user = userEvent.setup();
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		
 		const todayButton = screen.getByText(/Aujourd'hui/i);
 		await user.click(todayButton);
@@ -167,7 +183,7 @@ describe("CalendarWidget - Navigation", () => {
 	});
 
 	it("displays view selector dropdown", () => {
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		// Le dropdown devrait être présent dans le header (il peut y avoir plusieurs éléments avec ces textes)
 		const headers = screen.queryAllByText(/Mois|Semaine|Jour/i);
 		expect(headers.length).toBeGreaterThan(0);

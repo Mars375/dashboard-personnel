@@ -11,7 +11,7 @@ import type { PieProps, CellProps } from "recharts";
 const RechartsPieChart = lazy(() =>
 	import("recharts").then((module) => ({
 		default: module.PieChart,
-	})) as Promise<{ default: React.ComponentType<any> }>
+	})) as Promise<{ default: React.ComponentType<React.ComponentProps<typeof module.PieChart>> }>
 );
 
 const RechartsPie = lazy(() =>

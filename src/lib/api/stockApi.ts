@@ -15,6 +15,14 @@ export interface StockQuote {
 	marketCap?: number;
 }
 
+interface YahooFinanceQuote {
+	symbol: string;
+	longname?: string;
+	shortname?: string;
+	exchange?: string;
+	quoteType: string;
+}
+
 const API_KEY = import.meta.env.VITE_ALPHA_VANTAGE_API_KEY || "";
 
 /**
@@ -157,9 +165,9 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
 		const data = JSON.parse(proxyData.contents);
 		
 		if (data.quotes && Array.isArray(data.quotes)) {
-			return data.quotes
-				.filter((quote: any) => quote.quoteType === "EQUITY" || quote.quoteType === "CRYPTOCURRENCY" || quote.quoteType === "ETF")
-				.map((quote: any) => ({
+			return (data.quotes as YahooFinanceQuote[])
+				.filter((quote) => quote.quoteType === "EQUITY" || quote.quoteType === "CRYPTOCURRENCY" || quote.quoteType === "ETF")
+				.map((quote) => ({
 					symbol: quote.symbol,
 					name: quote.longname || quote.shortname || quote.symbol,
 					exchange: quote.exchange,

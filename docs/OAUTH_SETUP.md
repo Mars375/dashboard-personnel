@@ -217,11 +217,84 @@ Les APIs Google/Microsoft supportent CORS. Si vous rencontrez des erreurs :
 - [Google Calendar API](https://developers.google.com/calendar/api/guides/overview)
 - [Outlook Calendar API](https://learn.microsoft.com/en-us/graph/api/resources/calendar)
 
-## 🎯 Prochaines étapes
+## 🚀 Démarrage Rapide
 
-1. ✅ Architecture OAuth centralisée (fait)
-2. ⏳ Implémenter les appels API réels (Google Calendar, Outlook, etc.)
-3. ⏳ Créer un backend proxy pour la production
-4. ⏳ Implémenter le refresh automatique des tokens
-5. ⏳ Ajouter les composants UI pour la configuration OAuth
+### Configuration Google OAuth
+
+1. Allez sur [Google Cloud Console](https://console.cloud.google.com/)
+2. Créez un projet ou sélectionnez un projet existant
+3. Activez **Google Calendar API** et **Google Tasks API**
+4. Allez dans **APIs & Services** > **Credentials**
+5. Cliquez sur **Create Credentials** > **OAuth client ID**
+6. Configurez :
+   - **Application type** : Web application
+   - **Name** : Dashboard Personnel
+   - **Authorized redirect URIs** : 
+     - `http://localhost:5173/oauth/google/callback` (dev)
+     - `https://votre-domaine.com/oauth/google/callback` (prod)
+7. **IMPORTANT** : Passez l'application en mode **"Production"** (pas "Test") pour un accès public
+8. Copiez le **Client ID** et le **Client Secret**
+
+### Configuration locale
+
+Créez un fichier `.env.local` à la racine du projet :
+
+```env
+# Client ID (peut être exposé)
+VITE_GOOGLE_CLIENT_ID=votre_google_client_id_ici
+VITE_GOOGLE_REDIRECT_URI=http://localhost:5173/oauth/google/callback
+
+# Client Secret (DOIT rester secret - pas de préfixe VITE_)
+GOOGLE_CLIENT_SECRET=votre_client_secret_ici
+```
+
+### Lancer l'application
+
+**Option A : Lancer les deux serveurs séparément**
+
+**Terminal 1 - Frontend :**
+```bash
+pnpm dev
+```
+
+**Terminal 2 - Backend proxy OAuth :**
+```bash
+pnpm dev:server
+```
+
+**Option B : Lancer les deux en même temps**
+```bash
+pnpm dev:all
+```
+
+L'application sera accessible sur `http://localhost:5173`  
+Le backend proxy sera sur `http://localhost:3001`
+
+### Tester la connexion
+
+1. Ouvrez le Calendar Widget en mode **Full**
+2. Cliquez sur **"Se connecter à Google Calendar"**
+3. Une popup OAuth devrait s'ouvrir
+4. Connectez-vous et autorisez l'accès
+5. La popup se ferme automatiquement
+6. Le bouton change pour "Déconnecter Google"
+7. Cliquez sur **Synchroniser** pour récupérer les événements
+
+## 🐛 Dépannage
+
+### Erreur "redirect_uri_mismatch"
+- Vérifiez que l'URI dans `.env.local` correspond **exactement** à celle dans Google Cloud Console
+- L'URI doit être identique, y compris le protocole (http/https) et le port
+
+### Erreur "Le backend proxy OAuth n'est pas démarré"
+- Assurez-vous que le backend proxy est lancé : `pnpm dev:server`
+- Vérifiez que le port 3001 n'est pas déjà utilisé
+
+### Erreur "GOOGLE_CLIENT_SECRET manquant"
+- Vérifiez que `GOOGLE_CLIENT_SECRET` est dans `.env.local` (sans préfixe `VITE_`)
+- Redémarrez le serveur backend après ajout
+
+### Application en mode "Test" dans Google Cloud Console
+- Pour un accès public, passez l'application en mode **"Production"** dans OAuth consent screen
+- En mode "Test", seuls les utilisateurs autorisés peuvent se connecter
 

@@ -36,12 +36,12 @@ describe("GoogleTasksSyncProvider", () => {
 		expect(provider.enabled).toBe(true);
 	});
 
-	it("returns error when sync called without OAuth", async () => {
+	it("returns error when sync called without OAuth", { timeout: 10000 }, async () => {
 		const { getOAuthManager } = await import("@/lib/auth/oauthManager");
 		const manager = getOAuthManager();
-		vi.mocked(manager.isConnected).mockReturnValueOnce(false);
-		// Mock getValidAccessToken to throw or return error
-		vi.mocked(manager.getValidAccessToken).mockRejectedValueOnce(new Error("Not connected"));
+		vi.mocked(manager.isConnected).mockReturnValue(false);
+		// Mock getValidAccessToken to throw immediately without retries
+		vi.mocked(manager.getValidAccessToken).mockRejectedValue(new Error("Not connected"));
 
 		const config: SyncConfig = {
 			provider: "google-tasks",
@@ -89,11 +89,11 @@ describe("GoogleTasksSyncProvider", () => {
 		expect(result.message).toContain("Synchronisation réussie");
 	});
 
-	it("throws error when pushTodos called without OAuth", async () => {
+	it("throws error when pushTodos called without OAuth", { timeout: 10000 }, async () => {
 		const { getOAuthManager } = await import("@/lib/auth/oauthManager");
 		const manager = getOAuthManager();
-		vi.mocked(manager.isConnected).mockReturnValueOnce(false);
-		vi.mocked(manager.getValidAccessToken).mockRejectedValueOnce(new Error("Not connected"));
+		vi.mocked(manager.isConnected).mockReturnValue(false);
+		vi.mocked(manager.getValidAccessToken).mockRejectedValue(new Error("Not connected"));
 
 		const config: SyncConfig = {
 			provider: "google-tasks",

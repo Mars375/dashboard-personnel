@@ -26,20 +26,20 @@ describe("HabitsWidget", () => {
 	it("rend le widget sans erreur", () => {
 		render(<HabitsWidget size="medium" />);
 
-		expect(screen.getByText(/Habitudes/i)).toBeInTheDocument();
+		expect(screen.getByText(/Habitudes/i)).toBeTruthy();
 	});
 
 	it("affiche un message quand il n'y a pas d'habitudes", () => {
 		render(<HabitsWidget size="medium" />);
 
-		expect(screen.getByText(/Aucune habitude/i)).toBeInTheDocument();
+		expect(screen.getByText(/Aucune habitude/i)).toBeTruthy();
 	});
 
 	it("affiche le bouton d'ajout", () => {
 		render(<HabitsWidget size="medium" />);
 
 		const addButton = screen.getByRole("button");
-		expect(addButton).toBeInTheDocument();
+		expect(addButton).toBeTruthy();
 	});
 });
 

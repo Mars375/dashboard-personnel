@@ -468,7 +468,8 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 			);
 			return todos;
 		} catch (error) {
-			if (error instanceof Error && error.message.includes("404")) {
+			const syncError = SyncError.fromError(error);
+			if (syncError.code === SyncErrorCode.NOT_FOUND) {
 				// La liste n'existe plus, réinitialiser taskListId
 				this.taskListId = null;
 				localStorage.removeItem(this.STORAGE_KEY);
@@ -583,14 +584,16 @@ export class GoogleTasksSyncProvider implements SyncProvider {
 				delete finalPayload.status;
 			}
 
-			const createdTask = await createTask(
-				taskListId,
-				finalPayload,
-				{
-					accessToken,
-					retryWithBackoff: this.retryWithBackoff.bind(this),
-				}
-			);
+			// Envelopper l'appel à createTask avec retryWithBackoff pour gérer les erreurs réseau
+			const createdTask = await this.retryWithBackoff(async () => {
+				return await createTask(
+					taskListId,
+					finalPayload,
+					{
+						accessToken,
+					}
+				);
+			});
 
 			if (!createdTask || !createdTask.id) {
 				throw new SyncError(

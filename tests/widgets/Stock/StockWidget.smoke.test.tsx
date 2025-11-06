@@ -49,7 +49,7 @@ describe("StockWidget", () => {
 
 		// Chercher le texte "Aucune action" ou "Aucune action dans votre watchlist"
 		const emptyMessage = screen.queryByText(/Aucune action/i);
-		expect(emptyMessage).toBeInTheDocument();
+		expect(emptyMessage).toBeTruthy();
 	});
 
 	it("affiche le bouton d'ajout", () => {
@@ -62,7 +62,7 @@ describe("StockWidget", () => {
 		// Chercher le bouton avec le texte "Ajouter" ou l'icône Plus
 		const addButton = screen.queryByRole("button", { name: /Ajouter/i }) || 
 			screen.queryByRole("button");
-		expect(addButton).toBeInTheDocument();
+		expect(addButton).toBeTruthy();
 	});
 });
 

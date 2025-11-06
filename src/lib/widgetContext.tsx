@@ -9,12 +9,12 @@ import type { ReactNode } from "react";
 export interface WidgetData {
 	widgetId: string;
 	type: string;
-	data: Record<string, any>;
+	data: Record<string, unknown>;
 }
 
 interface WidgetContextValue {
 	// Publier des données depuis un widget
-	publishData: (widgetId: string, type: string, data: Record<string, any>) => void;
+	publishData: (widgetId: string, type: string, data: Record<string, unknown>) => void;
 	// S'abonner aux données d'un type de widget
 	subscribe: (type: string, callback: (data: WidgetData) => void) => () => void;
 	// Obtenir les données actuelles d'un type de widget
@@ -29,7 +29,7 @@ export function WidgetProvider({ children }: { children: ReactNode }) {
 	const [widgetDataMap, setWidgetDataMap] = useState<Map<string, WidgetData>>(new Map());
 	const [subscribers, setSubscribers] = useState<Map<string, Set<(data: WidgetData) => void>>>(new Map());
 
-	const publishData = useCallback((widgetId: string, type: string, data: Record<string, any>) => {
+	const publishData = useCallback((widgetId: string, type: string, data: Record<string, unknown>) => {
 		const widgetData: WidgetData = { widgetId, type, data };
 		setWidgetDataMap((prev) => {
 			const next = new Map(prev);

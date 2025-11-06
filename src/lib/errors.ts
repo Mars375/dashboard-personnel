@@ -65,8 +65,11 @@ export class SyncError extends Error {
 		this.originalError = originalError;
 
 		// Maintenir la stack trace correcte (si disponible, notamment dans Node.js)
-		if (typeof (Error as unknown as { captureStackTrace?: (error: Error, constructor?: Function) => void }).captureStackTrace === "function") {
-			(Error as unknown as { captureStackTrace: (error: Error, constructor?: Function) => void }).captureStackTrace(this, SyncError);
+		type ErrorWithCaptureStackTrace = {
+			captureStackTrace?: (error: Error, constructor?: new () => Error) => void;
+		};
+		if (typeof (Error as unknown as ErrorWithCaptureStackTrace).captureStackTrace === "function") {
+			(Error as unknown as ErrorWithCaptureStackTrace).captureStackTrace?.(this, SyncError);
 		}
 	}
 

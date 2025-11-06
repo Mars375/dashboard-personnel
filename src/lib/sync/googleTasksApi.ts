@@ -3,7 +3,7 @@
  */
 
 import { logger } from "@/lib/logger";
-import { SyncError } from "@/lib/errors";
+import { SyncError, SyncErrorCode } from "@/lib/errors";
 import {
 	validateGoogleTasksResponse,
 	validateGoogleTasksListResponse,
@@ -110,7 +110,11 @@ export async function getTasks(
 			if (!response.ok) {
 				if (response.status === 404) {
 					logger.warn(`⚠️ Liste de tâches ${taskListId} non trouvée (404)`);
-					throw new Error(`Liste non trouvée: ${taskListId}`);
+					throw new SyncError(
+						`Liste non trouvée: ${taskListId}`,
+						SyncErrorCode.NOT_FOUND,
+						false
+					);
 				}
 				const error = await response.json();
 				throw new Error(
@@ -297,6 +301,14 @@ export async function deleteTask(
 
 	if (!response.ok) {
 		const errorData = await response.json().catch(() => ({}));
+		// Convertir en SyncError pour permettre la gestion gracieuse des 404
+		if (response.status === 404) {
+			throw new SyncError(
+				"Tâche non trouvée (404)",
+				SyncErrorCode.NOT_FOUND,
+				false
+			);
+		}
 		throw new Error(
 			`Erreur lors de la suppression de la tâche: ${
 				response.statusText

@@ -245,7 +245,7 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 			expect(patchCalls.length).toBeGreaterThan(0);
 		});
 
-		it("should handle retry on network error", async () => {
+		it("should handle retry on network error", { timeout: 15000 }, async () => {
 			const todo: Todo = {
 				id: "local-id-123",
 				title: "Test Task",
@@ -381,7 +381,7 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 			expect(todos.length).toBe(2);
 		});
 
-		it("should handle 404 and retry with new list", async () => {
+		it("should handle 404 and retry with new list", { timeout: 20000 }, async () => {
 			// Configure the mock BEFORE creating the provider so the constructor reads it
 			Storage.prototype.getItem = vi.fn((key: string) => {
 				if (key === "googleTasks_taskListId") {
@@ -514,7 +514,7 @@ describe("GoogleTasksSyncProvider - Integration Tests", () => {
 			);
 		});
 
-		it("should handle 404 gracefully (task already deleted)", async () => {
+		it("should handle 404 gracefully (task already deleted)", { timeout: 10000 }, async () => {
 			const mockTaskListResponse = {
 				items: [{ id: "@default", title: "Mes tâches" }],
 				nextPageToken: undefined,

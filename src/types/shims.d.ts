@@ -1,17 +1,22 @@
 declare module "framer-motion" {
-	export const motion: any;
+	import type { ComponentType, HTMLAttributes } from "react";
+	export const motion: {
+		[key in keyof JSX.IntrinsicElements]: ComponentType<HTMLAttributes<HTMLElement>>;
+	};
 }
 
 declare module "@/components/ui/popover" {
-	export const Popover: any;
-	export const PopoverTrigger: any;
-	export const PopoverContent: any;
+	import type { ComponentType, ReactNode } from "react";
+	export const Popover: ComponentType<{ children?: ReactNode; [key: string]: unknown }>;
+	export const PopoverTrigger: ComponentType<{ children?: ReactNode; [key: string]: unknown }>;
+	export const PopoverContent: ComponentType<{ children?: ReactNode; [key: string]: unknown }>;
 }
 
 declare module "@/components/ui/command" {
-	export const Command: any;
-	export const CommandList: any;
-	export const CommandItem: any;
-	export const CommandGroup: any;
-	export const CommandEmpty: any;
+	import type { ComponentType, ReactNode } from "react";
+	export const Command: ComponentType<{ children?: ReactNode; [key: string]: unknown }>;
+	export const CommandList: ComponentType<{ children?: ReactNode; [key: string]: unknown }>;
+	export const CommandItem: ComponentType<{ children?: ReactNode; [key: string]: unknown }>;
+	export const CommandGroup: ComponentType<{ children?: ReactNode; [key: string]: unknown }>;
+	export const CommandEmpty: ComponentType<{ children?: ReactNode; [key: string]: unknown }>;
 }

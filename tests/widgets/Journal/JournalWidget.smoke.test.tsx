@@ -32,7 +32,7 @@ describe("JournalWidget", () => {
 	it("affiche un message quand il n'y a pas d'entrées", () => {
 		render(<JournalWidget size="medium" />);
 
-		expect(screen.getByText(/Aucune entrée/i)).toBeInTheDocument();
+		expect(screen.getByText(/Aucune entrée/i)).toBeTruthy();
 	});
 });
 

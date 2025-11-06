@@ -3,9 +3,17 @@ import type { WidgetProps } from "../widgetSize";
 import type { WidgetLoadConfig, WidgetLoadResult } from "./types";
 
 /**
+ * Type pour un module chargé (peut avoir default ou d'autres exports)
+ */
+type LoadedModule = {
+	default?: ComponentType<WidgetProps>;
+	[key: string]: unknown;
+};
+
+/**
  * Cache des modules chargés pour éviter les rechargements
  */
-const moduleCache = new Map<string, Promise<any>>();
+const moduleCache = new Map<string, Promise<LoadedModule>>();
 
 /**
  * Charge un widget externe de manière dynamique
@@ -35,10 +43,10 @@ export async function loadWidget(config: WidgetLoadConfig): Promise<WidgetLoadRe
 		const timeout = config.timeout || 30000; // 30s par défaut
 		const module = await Promise.race([
 			loadPromise,
-			new Promise((_, reject) =>
+			new Promise<never>((_, reject) =>
 				setTimeout(() => reject(new Error(`Timeout: Le chargement du module a pris plus de ${timeout}ms`)), timeout)
 			),
-		]) as any;
+		]);
 
 		// Extraire le composant du module
 		const component = getComponentFromModule(module, config.exportName);
@@ -71,7 +79,7 @@ export async function loadWidget(config: WidgetLoadConfig): Promise<WidgetLoadRe
 /**
  * Charge un module JavaScript dynamiquement
  */
-async function loadModule(url: string, cache?: WidgetLoadConfig["cache"]): Promise<any> {
+async function loadModule(url: string, cache?: WidgetLoadConfig["cache"]): Promise<LoadedModule> {
 	// Vérifier si c'est une URL absolue
 	if (url.startsWith("http://") || url.startsWith("https://")) {
 		// Charger depuis une URL externe
@@ -86,7 +94,7 @@ async function loadModule(url: string, cache?: WidgetLoadConfig["cache"]): Promi
 /**
  * Charge un module depuis une URL externe
  */
-async function loadExternalModule(url: string, cache?: WidgetLoadConfig["cache"]): Promise<any> {
+async function loadExternalModule(url: string, cache?: WidgetLoadConfig["cache"]): Promise<LoadedModule> {
 	// Créer un script tag pour charger le module
 	// Note: Cette approche nécessite que le module soit compatible avec le système de modules du navigateur
 	// ou qu'il soit transpilé pour le navigateur
@@ -106,7 +114,7 @@ async function loadExternalModule(url: string, cache?: WidgetLoadConfig["cache"]
 
 	// Créer un contexte isolé pour le module
 	// ⚠️ Cette approche est basique et doit être améliorée avec un vrai système de sandboxing
-	const moduleExports: any = {};
+	const moduleExports: LoadedModule = {};
 	const module = { exports: moduleExports };
 
 	try {
@@ -132,7 +140,7 @@ async function loadExternalModule(url: string, cache?: WidgetLoadConfig["cache"]
 		try {
 			const dynamicModule = await import(/* @vite-ignore */ url);
 			return dynamicModule.default || dynamicModule;
-		} catch (importError) {
+		} catch {
 			throw new Error(
 				`Impossible de charger le module: ${error instanceof Error ? error.message : "Erreur inconnue"}`
 			);
@@ -143,7 +151,7 @@ async function loadExternalModule(url: string, cache?: WidgetLoadConfig["cache"]
 /**
  * Extrait le composant d'un module
  */
-function getComponentFromModule(module: any, exportName?: string): ComponentType<WidgetProps> {
+function getComponentFromModule(module: LoadedModule, exportName?: string): ComponentType<WidgetProps> {
 	if (!module) {
 		throw new Error("Le module est vide");
 	}
@@ -163,7 +171,7 @@ function getComponentFromModule(module: any, exportName?: string): ComponentType
 
 	// Chercher le premier export qui est une fonction
 	const exports = Object.values(module);
-	const component = exports.find((exp: any) => typeof exp === "function");
+	const component = exports.find((exp): exp is ComponentType<WidgetProps> => typeof exp === "function");
 
 	if (!component) {
 		throw new Error("Aucun composant React valide trouvé dans le module");

@@ -2,24 +2,30 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
-vi.mock("@/components/ui/card", () => ({ Card: ({ children, ...p }: any) => <div {...p}>{children}</div> }), { virtual: true });
-vi.mock("@/components/ui/button", () => ({ Button: ({ children, ...p }: any) => <button {...p}>{children}</button> }), { virtual: true });
-vi.mock("@/components/ui/input", () => ({ Input: (props: any) => <input {...props} /> }), { virtual: true });
-vi.mock("@/components/ui/skeleton", () => ({ Skeleton: (props: any) => <div {...props} /> }), { virtual: true });
+interface MockComponentProps {
+	children?: ReactNode;
+	[key: string]: unknown;
+}
+
+vi.mock("@/components/ui/card", () => ({ Card: ({ children, ...p }: MockComponentProps) => <div {...p}>{children}</div> }), { virtual: true });
+vi.mock("@/components/ui/button", () => ({ Button: ({ children, ...p }: MockComponentProps) => <button {...p}>{children}</button> }), { virtual: true });
+vi.mock("@/components/ui/input", () => ({ Input: (props: Record<string, unknown>) => <input {...props} /> }), { virtual: true });
+vi.mock("@/components/ui/skeleton", () => ({ Skeleton: (props: Record<string, unknown>) => <div {...props} /> }), { virtual: true });
 vi.mock("@/components/ui/popover", () => ({
-  Popover: ({ children }: any) => <div>{children}</div>,
-  PopoverTrigger: ({ children }: any) => <div>{children}</div>,
-  PopoverContent: ({ children }: any) => <div>{children}</div>,
+	Popover: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+	PopoverTrigger: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+	PopoverContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }), { virtual: true });
 vi.mock("@/components/ui/command", () => ({
-  Command: ({ children }: any) => <div>{children}</div>,
-  CommandList: ({ children }: any) => <div>{children}</div>,
-  CommandItem: ({ children, onSelect, ...rest }: any) => (
-    <div data-testid="cmd-item" onClick={onSelect} {...rest}>{children}</div>
-  ),
-  CommandGroup: ({ children }: any) => <div>{children}</div>,
-  CommandEmpty: ({ children }: any) => <div>{children}</div>,
+	Command: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+	CommandList: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+	CommandItem: ({ children, onSelect, ...rest }: { children?: ReactNode; onSelect?: () => void; [key: string]: unknown }) => (
+		<div data-testid="cmd-item" onClick={onSelect} {...rest}>{children}</div>
+	),
+	CommandGroup: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+	CommandEmpty: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }), { virtual: true });
 
 const mockFetchWeather = vi.fn();

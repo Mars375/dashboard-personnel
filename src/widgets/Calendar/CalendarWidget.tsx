@@ -6,9 +6,7 @@ import {
 	CardHeader,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-	Calendar as CalendarFull,
-} from "@/components/ui/calendar-full";
+import { Calendar as CalendarFull } from "@/components/ui/calendar-full";
 import {
 	Dialog,
 	DialogContent,
@@ -63,7 +61,6 @@ import { getOAuthManager } from "@/lib/auth/oauthManager";
 import { logger } from "@/lib/logger";
 import { formatDateLocal } from "@/lib/utils";
 import { EventForm, EventItem } from "./components";
-
 
 function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 	const isCompact = useMemo(() => size === "compact", [size]);
@@ -550,7 +547,7 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 
 	// Utiliser un ref pour éviter les appels multiples simultanés
 	const isSyncingRef = useRef(false);
-	
+
 	const handleSync = useCallback(async () => {
 		if (isSyncingRef.current) {
 			return; // Éviter les appels multiples simultanés
@@ -652,7 +649,7 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 	const providerInitializedRef = useRef(false);
 	const hasSyncedInitiallyRef = useRef(false);
 	const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-	
+
 	useEffect(() => {
 		const oauthManager = getOAuthManager();
 
@@ -672,7 +669,7 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 				calendarSyncManager.updateConfig(config);
 				providerInitializedRef.current = true;
 				logger.debug("✅ Google Calendar provider initialisé");
-				
+
 				// Synchroniser une seule fois après initialisation
 				if (!hasSyncedInitiallyRef.current) {
 					hasSyncedInitiallyRef.current = true;
@@ -682,25 +679,36 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 								logger.debug("🔄 Synchronisation initiale Google Calendar...");
 								await handleSync();
 							} catch (error) {
-								logger.error("Erreur lors de la synchronisation initiale:", error);
+								logger.error(
+									"Erreur lors de la synchronisation initiale:",
+									error
+								);
 							}
 						}
 					}, 2000);
-					
+
 					// Puis synchroniser toutes les 5 minutes
 					if (syncIntervalRef.current) {
 						clearInterval(syncIntervalRef.current);
 					}
-					syncIntervalRef.current = setInterval(async () => {
-						if (oauthManager.isConnected("google") && !isSyncingRef.current) {
-							logger.debug("🔄 Synchronisation automatique Google Calendar...");
-							try {
-								await handleSync();
-							} catch (error) {
-								logger.error("Erreur lors de la synchronisation périodique:", error);
+					syncIntervalRef.current = setInterval(
+						async () => {
+							if (oauthManager.isConnected("google") && !isSyncingRef.current) {
+								logger.debug(
+									"🔄 Synchronisation automatique Google Calendar..."
+								);
+								try {
+									await handleSync();
+								} catch (error) {
+									logger.error(
+										"Erreur lors de la synchronisation périodique:",
+										error
+									);
+								}
 							}
-						}
-					}, 5 * 60 * 1000); // 5 minutes
+						},
+						5 * 60 * 1000
+					); // 5 minutes
 				}
 			} else if (!connected && providerInitializedRef.current) {
 				providerInitializedRef.current = false;
@@ -727,7 +735,6 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []); // Pas de dépendances pour éviter la boucle
-
 
 	// Drag & drop pour CalendarEventItem (liste d'événements)
 	const handleEventDragStart = (eventId: string) => {
@@ -807,31 +814,33 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 		: [];
 
 	const padding = isCompact ? "p-2" : isMedium ? "px-3 pb-3 pt-1" : "p-4";
-	
+
 	// Refs pour virtualisation
 	const todayEventsScrollRef = useRef<HTMLDivElement>(null);
 	const selectedEventsScrollRef = useRef<HTMLDivElement>(null);
-	
+
 	// Événements d'aujourd'hui pour version compacte
 	const today = useMemo(() => {
 		const t = new Date();
 		t.setHours(0, 0, 0, 0);
 		return t;
 	}, []);
-	
+
 	const todayEvents = useMemo(() => {
-		return events.filter((e) => {
-			const eventDate = new Date(e.date);
-			eventDate.setHours(0, 0, 0, 0);
-			return eventDate.getTime() === today.getTime();
-		}).sort((a, b) => {
-			if (!a.time && !b.time) return 0;
-			if (!a.time) return 1;
-			if (!b.time) return -1;
-			return a.time.localeCompare(b.time);
-		});
+		return events
+			.filter((e) => {
+				const eventDate = new Date(e.date);
+				eventDate.setHours(0, 0, 0, 0);
+				return eventDate.getTime() === today.getTime();
+			})
+			.sort((a, b) => {
+				if (!a.time && !b.time) return 0;
+				if (!a.time) return 1;
+				if (!b.time) return -1;
+				return a.time.localeCompare(b.time);
+			});
 	}, [events, today]);
-	
+
 	const sortedSelectedDateEvents = useMemo(() => {
 		return [...selectedDateEvents].sort((a, b) => {
 			if (!a.time && !b.time) return 0;
@@ -874,48 +883,55 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 		>
 			{/* COMPACT VERSION - Aujourd'hui et ses événements uniquement */}
 			{isCompact ? (
-						<div className='flex flex-col h-full justify-center gap-2'>
-							{/* Date d'aujourd'hui */}
-							<div className='text-center'>
-								<div className='text-sm font-bold'>
-									{today.toLocaleDateString("fr-FR", {
-										weekday: "long",
-										day: "numeric",
-										month: "long",
-									})}
-								</div>
-								<div className='text-xs text-muted-foreground mt-0.5'>
-									{today.toLocaleDateString("fr-FR", { year: "numeric" })}
-								</div>
-							</div>
+				<div className='flex flex-col h-full justify-center gap-2'>
+					{/* Date d'aujourd'hui */}
+					<div className='text-center'>
+						<div className='text-sm font-bold'>
+							{today.toLocaleDateString("fr-FR", {
+								weekday: "long",
+								day: "numeric",
+								month: "long",
+							})}
+						</div>
+						<div className='text-xs text-muted-foreground mt-0.5'>
+							{today.toLocaleDateString("fr-FR", { year: "numeric" })}
+						</div>
+					</div>
 
-							{/* Événements d'aujourd'hui */}
-							<div 
-								ref={todayEventsScrollRef}
-								className='flex-1 min-h-0 overflow-y-auto'
+					{/* Événements d'aujourd'hui */}
+					<div
+						ref={todayEventsScrollRef}
+						className='flex-1 min-h-0 overflow-y-auto'
+					>
+						{todayEvents.length === 0 ? (
+							<div className='text-xs text-muted-foreground text-center py-4'>
+								Aucun événement aujourd'hui
+							</div>
+						) : shouldVirtualizeToday && todayEventsScrollRef.current ? (
+							<div
+								style={{
+									height: `${todayVirtualizer.getTotalSize()}px`,
+									width: "100%",
+									position: "relative",
+								}}
 							>
-								{todayEvents.length === 0 ? (
-									<div className='text-xs text-muted-foreground text-center py-4'>
-										Aucun événement aujourd'hui
-									</div>
-								) : shouldVirtualizeToday && todayEventsScrollRef.current ? (
-									<div
-										style={{
-											height: `${todayVirtualizer.getTotalSize()}px`,
-											width: '100%',
-											position: 'relative',
-										}}
-									>
-										{todayVirtualizer.getVirtualItems().map((virtualItem: { index: number; size: number; start: number }) => {
+								{todayVirtualizer
+									.getVirtualItems()
+									.map(
+										(virtualItem: {
+											index: number;
+											size: number;
+											start: number;
+										}) => {
 											const event = todayEvents[virtualItem.index];
 											return (
 												<div
 													key={event.id}
 													style={{
-														position: 'absolute',
+														position: "absolute",
 														top: 0,
 														left: 0,
-														width: '100%',
+														width: "100%",
 														height: `${virtualItem.size}px`,
 														transform: `translateY(${virtualItem.start}px)`,
 													}}
@@ -938,62 +954,59 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 													</div>
 												</div>
 											);
-										})}
-									</div>
-								) : (
-									<div className='flex flex-col gap-1.5'>
-										{todayEvents.map((event) => (
-											<div
-												key={event.id}
-												className='flex items-start gap-2 p-2 border rounded-md hover:bg-accent transition-colors'
-											>
-												{event.time && (
-													<div className='text-xs font-medium text-muted-foreground shrink-0 min-w-[45px]'>
-														{event.time}
-													</div>
-												)}
-												<div className='flex-1 min-w-0'>
-													<div className='text-xs font-medium'>
-														{event.title}
-													</div>
-													{event.description && (
-														<div className='text-[10px] text-muted-foreground mt-0.5 line-clamp-1'>
-															{event.description}
-														</div>
-													)}
-												</div>
-											</div>
-										))}
-									</div>
-								)}
+										}
+									)}
 							</div>
-						</div>
+						) : (
+							<div className='flex flex-col gap-1.5'>
+								{todayEvents.map((event) => (
+									<div
+										key={event.id}
+										className='flex items-start gap-2 p-2 border rounded-md hover:bg-accent transition-colors'
+									>
+										{event.time && (
+											<div className='text-xs font-medium text-muted-foreground shrink-0 min-w-[45px]'>
+												{event.time}
+											</div>
+										)}
+										<div className='flex-1 min-w-0'>
+											<div className='text-xs font-medium'>{event.title}</div>
+											{event.description && (
+												<div className='text-[10px] text-muted-foreground mt-0.5 line-clamp-1'>
+													{event.description}
+												</div>
+											)}
+										</div>
+									</div>
+								))}
+							</div>
+						)}
+					</div>
+				</div>
 			) : null}
 
 			{isMedium && (
 				// MEDIUM VERSION - Vue des 7 prochains jours
-				<div className="flex flex-col h-full gap-2">
+				<div className='flex flex-col h-full gap-2'>
 					{/* Header : Date + Bouton ajouter */}
-					<div className="shrink-0 flex items-center justify-between pb-2 border-b">
-						<div className="text-sm font-semibold">
-							{selectedDate ? (
-								selectedDate.toLocaleDateString("fr-FR", {
-									weekday: "long",
-									day: "numeric",
-									month: "long",
-								})
-							) : (
-								currentDate.toLocaleDateString("fr-FR", {
-									weekday: "long",
-									day: "numeric",
-									month: "long",
-								})
-							)}
+					<div className='shrink-0 flex items-center justify-between pb-2 border-b'>
+						<div className='text-sm font-semibold'>
+							{selectedDate
+								? selectedDate.toLocaleDateString("fr-FR", {
+										weekday: "long",
+										day: "numeric",
+										month: "long",
+								  })
+								: currentDate.toLocaleDateString("fr-FR", {
+										weekday: "long",
+										day: "numeric",
+										month: "long",
+								  })}
 						</div>
 						<Button
-							size="sm"
-							variant="outline"
-							className="h-7 text-xs"
+							size='sm'
+							variant='outline'
+							className='h-7 text-xs'
 							onClick={() => {
 								setNewEventDate(selectedDate || currentDate);
 								setIsDialogOpen(true);
@@ -1006,28 +1019,29 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 								e.stopPropagation();
 							}}
 						>
-							<Plus className="h-3 w-3 mr-1.5" />
+							<Plus className='h-3 w-3 mr-1.5' />
 							Ajouter
 						</Button>
 					</div>
 
 					{/* Grille des 7 prochains jours */}
-					<div className="shrink-0">
-						<div className="grid grid-cols-7 gap-1.5">
+					<div className='shrink-0'>
+						<div className='grid grid-cols-7 gap-1.5'>
 							{Array.from({ length: 7 }).map((_, index) => {
 								const dayDate = new Date(today);
 								dayDate.setDate(dayDate.getDate() + index);
 								const dayEvents = getEventsForDate(dayDate);
 								const dayDateStr = formatDateLocal(dayDate);
-								const isSelected = selectedDate && formatDateLocal(selectedDate) === dayDateStr;
+								const isSelected =
+									selectedDate && formatDateLocal(selectedDate) === dayDateStr;
 								const isToday = dayDate.toDateString() === today.toDateString();
-								
+
 								return (
 									<div
 										key={dayDateStr}
 										className={`flex flex-col border rounded-md p-1.5 cursor-pointer transition-colors ${
-											isSelected 
-												? "bg-primary/10 border-primary" 
+											isSelected
+												? "bg-primary/10 border-primary"
 												: "hover:bg-muted/50"
 										}`}
 										onClick={() => handleSelect(dayDate)}
@@ -1040,23 +1054,29 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 										}}
 									>
 										{/* Jour de la semaine */}
-										<div className={`text-[10px] font-medium text-center mb-0.5 ${
-											isToday ? "text-primary" : "text-muted-foreground"
-										}`}>
-											{dayDate.toLocaleDateString("fr-FR", { weekday: "short" })}
+										<div
+											className={`text-[10px] font-medium text-center mb-0.5 ${
+												isToday ? "text-primary" : "text-muted-foreground"
+											}`}
+										>
+											{dayDate.toLocaleDateString("fr-FR", {
+												weekday: "short",
+											})}
 										</div>
-										
+
 										{/* Numéro du jour */}
-										<div className={`text-xs font-semibold text-center mb-1 ${
-											isToday ? "text-primary" : ""
-										}`}>
+										<div
+											className={`text-xs font-semibold text-center mb-1 ${
+												isToday ? "text-primary" : ""
+											}`}
+										>
 											{dayDate.getDate()}
 										</div>
-										
+
 										{/* Événements */}
-										<div className="space-y-0.5">
+										<div className='space-y-0.5'>
 											{dayEvents.length === 0 ? (
-												<div className="text-[9px] text-muted-foreground text-center py-1">
+												<div className='text-[9px] text-muted-foreground text-center py-1'>
 													—
 												</div>
 											) : (
@@ -1071,14 +1091,14 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 													.map((event) => (
 														<div
 															key={event.id}
-															className="bg-muted rounded text-[9px] px-1 py-0.5 truncate"
+															className='bg-muted rounded text-[9px] px-1 py-0.5 truncate'
 														>
 															{event.title}
 														</div>
 													))
 											)}
 											{dayEvents.length > 2 && (
-												<div className="text-[8px] text-muted-foreground text-center pt-0.5">
+												<div className='text-[8px] text-muted-foreground text-center pt-0.5'>
 													+{dayEvents.length - 2}
 												</div>
 											)}
@@ -1091,21 +1111,22 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 
 					{/* Liste des événements du jour sélectionné */}
 					{selectedDate && (
-						<div className="flex-1 min-h-0 overflow-y-auto border-t pt-2 mt-2">
-							<div className="space-y-2">
+						<div className='flex-1 min-h-0 overflow-y-auto border-t pt-2 mt-2'>
+							<div className='space-y-2'>
 								{sortedSelectedDateEvents.length === 0 ? (
-									<div className="text-center py-6 text-xs text-muted-foreground">
+									<div className='text-center py-6 text-xs text-muted-foreground'>
 										Aucun événement
 									</div>
 								) : (
 									sortedSelectedDateEvents.map((event) => {
 										const eventColor = event.color || "#3b82f6";
-										const hasEndTime = event.endTime && event.endTime !== event.time;
-										
+										const hasEndTime =
+											event.endTime && event.endTime !== event.time;
+
 										return (
 											<div
 												key={event.id}
-												className="flex items-start gap-3 cursor-pointer group hover:bg-muted/50 rounded-md p-2 transition-colors"
+												className='flex items-start gap-3 cursor-pointer group hover:bg-muted/50 rounded-md p-2 transition-colors'
 												onClick={() => handleEditEvent(event)}
 												onMouseDown={(e: React.MouseEvent) => {
 													e.stopPropagation();
@@ -1116,26 +1137,26 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 												}}
 											>
 												{/* Ligne verticale colorée */}
-												<div 
-													className="w-1 rounded-full shrink-0 mt-1"
+												<div
+													className='w-1 rounded-full shrink-0 mt-1'
 													style={{ backgroundColor: eventColor }}
 												/>
-												
+
 												{/* Contenu de l'événement */}
-												<div className="flex-1 min-w-0">
-													<div className="flex items-start justify-between gap-2">
-														<div className="flex-1 min-w-0">
-															<div className="text-sm font-semibold mb-0.5">
+												<div className='flex-1 min-w-0'>
+													<div className='flex items-start justify-between gap-2'>
+														<div className='flex-1 min-w-0'>
+															<div className='text-sm font-semibold mb-0.5'>
 																{event.title}
 															</div>
 															{event.time && (
-																<div className="text-xs text-muted-foreground">
+																<div className='text-xs text-muted-foreground'>
 																	{event.time}
 																	{hasEndTime && ` - ${event.endTime}`}
 																</div>
 															)}
 															{event.description && (
-																<div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+																<div className='text-xs text-muted-foreground mt-1 line-clamp-2'>
 																	{event.description}
 																</div>
 															)}
@@ -1152,7 +1173,7 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 				</div>
 			)}
 
-		{isFull && (
+			{isFull && (
 				<>
 					{/* CardHeader seulement en mode full */}
 					<CardHeader>
@@ -1383,35 +1404,35 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 			{isFull && (
 				<CardContent className='px-4'>
 					<motion.div
-							key={`${view}-${currentDate.getMonth()}-${currentDate.getFullYear()}`}
-							initial={{ opacity: 0, x: -10 }}
-							animate={{ opacity: 1, x: 0 }}
-							transition={{ duration: 0.2 }}
-							className='flex justify-center w-full'
-						>
-							{/* Full : Utilisation du nouveau Calendar complet */}
-							<CalendarFull
-								currentDate={currentDate}
-								onDateChange={setCurrentDate}
-								selectedDate={selectedDate}
-								onSelectDate={handleSelect}
-								view={view}
-								onViewChange={setView}
-								events={events}
-								getEventsForDate={getEventsForDate}
-								onEventClick={(event: CalendarEvent) => handleEditEvent(event)}
-								onEventUpdate={updateEvent}
-								onSync={handleSync}
-								syncLoading={isSyncing}
-								className='w-full'
-								captionLayout='dropdown-buttons'
-								showOutsideDays={true}
-								todosWithDeadlines={todosWithDeadlines.map((todo) => ({
-									id: todo.id,
-									title: todo.title,
-									deadline: todo.deadline!,
-								}))}
-							/>
+						key={`${view}-${currentDate.getMonth()}-${currentDate.getFullYear()}`}
+						initial={{ opacity: 0, x: -10 }}
+						animate={{ opacity: 1, x: 0 }}
+						transition={{ duration: 0.2 }}
+						className='flex justify-center w-full'
+					>
+						{/* Full : Utilisation du nouveau Calendar complet */}
+						<CalendarFull
+							currentDate={currentDate}
+							onDateChange={setCurrentDate}
+							selectedDate={selectedDate}
+							onSelectDate={handleSelect}
+							view={view}
+							onViewChange={setView}
+							events={events}
+							getEventsForDate={getEventsForDate}
+							onEventClick={(event: CalendarEvent) => handleEditEvent(event)}
+							onEventUpdate={updateEvent}
+							onSync={handleSync}
+							syncLoading={isSyncing}
+							className='w-full'
+							captionLayout='dropdown-buttons'
+							showOutsideDays={true}
+							todosWithDeadlines={todosWithDeadlines.map((todo) => ({
+								id: todo.id,
+								title: todo.title,
+								deadline: todo.deadline!,
+							}))}
+						/>
 					</motion.div>
 				</CardContent>
 			)}
@@ -1421,7 +1442,7 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 				<>
 					{/* Si recherche active, afficher tous les résultats */}
 					{searchQuery.trim() ? (
-						<CardFooter className='flex flex-col items-start border-t gap-3 px-4 !pt-4 max-h-96 overflow-y-auto'>
+						<CardFooter className='flex flex-col items-start border-t gap-3 px-4 pt-4 max-h-96 overflow-y-auto'>
 							<div className='flex w-full items-center justify-between px-1'>
 								<div className='text-sm font-medium'>
 									Résultats de recherche ({filteredEvents.length})
@@ -1447,17 +1468,17 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 													})}
 													{event.time && ` - ${event.time}`}
 												</div>
-								<EventItem
-									event={event}
-									onEdit={() => {
-										handleEditEvent(event);
-										setSelectedDate(eventDate);
-									}}
-									onDelete={() => deleteEvent(event.id)}
-									onDragStart={() => handleEventDragStart(event.id)}
-									onDragEnd={handleEventDragEnd}
-									isDragging={draggedEventId === event.id}
-								/>
+												<EventItem
+													event={event}
+													onEdit={() => {
+														handleEditEvent(event);
+														setSelectedDate(eventDate);
+													}}
+													onDelete={() => deleteEvent(event.id)}
+													onDragStart={() => handleEventDragStart(event.id)}
+													onDragEnd={handleEventDragEnd}
+													isDragging={draggedEventId === event.id}
+												/>
 											</div>
 										);
 									})}
@@ -1467,7 +1488,7 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 					) : (
 						/* Sinon, afficher les événements du jour sélectionné */
 						selectedDate && (
-							<CardFooter className='flex flex-col items-start gap-3 border-t px-4 !pt-4'>
+							<CardFooter className='flex flex-col items-start gap-3 border-t px-4 pt-4'>
 								<div className='flex w-full items-center justify-between px-1'>
 									<div className='text-sm font-medium'>
 										{selectedDate.toLocaleDateString("fr-FR", {
@@ -1540,7 +1561,7 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 								</div>
 
 								{/* Événements */}
-								<div 
+								<div
 									ref={selectedEventsScrollRef}
 									className='flex w-full flex-col gap-2'
 								>
@@ -1548,63 +1569,82 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 										<p className='text-sm text-muted-foreground'>
 											Aucun événement
 										</p>
-									) : shouldVirtualizeSelected && selectedEventsScrollRef.current ? (
+									) : shouldVirtualizeSelected &&
+									  selectedEventsScrollRef.current ? (
 										<div
 											style={{
 												height: `${selectedEventsVirtualizer.getTotalSize()}px`,
-												width: '100%',
-												position: 'relative',
+												width: "100%",
+												position: "relative",
 											}}
 										>
-											{selectedEventsVirtualizer.getVirtualItems().map((virtualItem: { index: number; size: number; start: number }) => {
-												const event = sortedSelectedDateEvents[virtualItem.index];
-												return (
-													<div
-														key={event.id}
-														style={{
-															position: 'absolute',
-															top: 0,
-															left: 0,
-															width: '100%',
-															height: `${virtualItem.size}px`,
-															transform: `translateY(${virtualItem.start}px)`,
-														}}
-														className='mb-2'
-													>
-														<EventItem
-															event={event}
-															onEdit={() => handleEditEvent(event)}
-															onDelete={async () => {
-																pushEventToGoogle(event, "delete").catch((err) => {
-																	logger.error("Erreur push Google:", err);
-																});
-																deleteEvent(event.id);
-															}}
-															onDragStart={() => handleEventDragStart(event.id)}
-															onDragEnd={handleEventDragEnd}
-															isDragging={draggedEventId === event.id}
-														/>
-													</div>
-												);
-											})}
+											{selectedEventsVirtualizer
+												.getVirtualItems()
+												.map(
+													(virtualItem: {
+														index: number;
+														size: number;
+														start: number;
+													}) => {
+														const event =
+															sortedSelectedDateEvents[virtualItem.index];
+														return (
+															<div
+																key={event.id}
+																style={{
+																	position: "absolute",
+																	top: 0,
+																	left: 0,
+																	width: "100%",
+																	height: `${virtualItem.size}px`,
+																	transform: `translateY(${virtualItem.start}px)`,
+																}}
+																className='mb-2'
+															>
+																<EventItem
+																	event={event}
+																	onEdit={() => handleEditEvent(event)}
+																	onDelete={async () => {
+																		pushEventToGoogle(event, "delete").catch(
+																			(err) => {
+																				logger.error(
+																					"Erreur push Google:",
+																					err
+																				);
+																			}
+																		);
+																		deleteEvent(event.id);
+																	}}
+																	onDragStart={() =>
+																		handleEventDragStart(event.id)
+																	}
+																	onDragEnd={handleEventDragEnd}
+																	isDragging={draggedEventId === event.id}
+																/>
+															</div>
+														);
+													}
+												)}
 										</div>
 									) : (
-										sortedSelectedDateEvents.map((event: typeof sortedSelectedDateEvents[0]) => (
-											<EventItem
-												key={event.id}
-												event={event}
-												onEdit={() => handleEditEvent(event)}
-												onDelete={async () => {
-													pushEventToGoogle(event, "delete").catch((err) => {
-														logger.error("Erreur push Google:", err);
-													});
-													deleteEvent(event.id);
-												}}
-												onDragStart={() => handleEventDragStart(event.id)}
-												onDragEnd={handleEventDragEnd}
-												isDragging={draggedEventId === event.id}
-											/>
-										))
+										sortedSelectedDateEvents.map(
+											(event: (typeof sortedSelectedDateEvents)[0]) => (
+												<EventItem
+													key={event.id}
+													event={event}
+													onEdit={() => handleEditEvent(event)}
+													onDelete={async () => {
+														pushEventToGoogle(event, "delete").catch((err) => {
+															logger.error("Erreur push Google:", err);
+														});
+														deleteEvent(event.id);
+													}}
+													onDragStart={() => handleEventDragStart(event.id)}
+													onDragEnd={handleEventDragEnd}
+													isDragging={draggedEventId === event.id}
+												/>
+											)
+										)
 									)}
 								</div>
 							</CardFooter>

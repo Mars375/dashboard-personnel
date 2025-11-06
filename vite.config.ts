@@ -15,7 +15,7 @@ export default defineConfig({
 					visualizer({
 						open: true,
 						template: "treemap" as const,
-					}) as any,
+					}) as unknown as ReturnType<typeof visualizer>,
 			  ]
 			: []),
 	],

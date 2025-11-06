@@ -9,6 +9,7 @@ import {
 	loadWidgetLibraries,
 	saveWidgetLibraries,
 	addWidgetLibrary,
+	updateWidgetLibrary,
 	removeWidgetLibrary,
 	getWidgetLibrary,
 } from "@/lib/widgetLibrary/widgetStorage";

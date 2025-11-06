@@ -119,6 +119,7 @@ vi.mock("@/components/ui/dialog", () => ({
 	},
 	DialogHeader: ({ children }: any) => <div>{children}</div>,
 	DialogTitle: ({ children }: any) => <h2>{children}</h2>,
+	DialogDescription: ({ children }: any) => <div>{children}</div>,
 }), { virtual: true });
 
 vi.mock("@/components/ui/popover", () => ({
@@ -198,7 +199,7 @@ describe("CalendarWidget - Events", () => {
 	});
 
 	it("displays events button", () => {
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		// Chercher le bouton avec l'icône Plus ou le texte "Ajouter un événement"
 		const buttons = screen.getAllByTitle(/Ajouter un événement/i);
 		expect(buttons.length).toBeGreaterThan(0);
@@ -206,7 +207,7 @@ describe("CalendarWidget - Events", () => {
 
 	it("opens dialog when clicking event button", async () => {
 		const user = userEvent.setup();
-		render(<CalendarWidget />);
+		render(<CalendarWidget size="full" />);
 		
 		const buttons = screen.getAllByTitle(/Ajouter un événement/i);
 		await user.click(buttons[0]);
