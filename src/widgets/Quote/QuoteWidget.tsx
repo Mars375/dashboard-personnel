@@ -22,6 +22,21 @@ function QuoteWidgetComponent({ size = "medium" }: WidgetProps) {
 		}
 	}, [currentQuote]);
 
+	// Refresh automatique toutes les 4 heures en mode compact
+	useEffect(() => {
+		if (!isCompact) return;
+		
+		const interval = setInterval(() => {
+			const quote = getRandomQuote();
+			setCurrentQuote(quote);
+			if (quote) {
+				setIsFavorite(quote.favorite);
+			}
+		}, 4 * 60 * 60 * 1000); // 4 heures
+
+		return () => clearInterval(interval);
+	}, [isCompact]);
+
 	const handleNewQuote = useCallback(() => {
 		const quote = getRandomQuote();
 		setCurrentQuote(quote);
@@ -92,22 +107,6 @@ function QuoteWidgetComponent({ size = "medium" }: WidgetProps) {
 								<Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
 							</Button>
 						</div>
-					)}
-					{isCompact && (
-						<Button
-							size="sm"
-							variant="ghost"
-							onClick={handleNewQuote}
-							onMouseDown={(e: React.MouseEvent) => {
-								e.stopPropagation();
-							}}
-							onDragStart={(e: React.DragEvent) => {
-								e.preventDefault();
-								e.stopPropagation();
-							}}
-						>
-							<RefreshCw className="h-3 w-3" />
-						</Button>
 					)}
 				</div>
 			) : (

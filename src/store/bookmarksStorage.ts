@@ -98,3 +98,4 @@ export function getFaviconUrl(url: string): string {
 	}
 }
 
+

@@ -14,39 +14,52 @@ interface SizeCalculation {
 }
 
 /**
- * Détermine la taille d'un widget en fonction de ses dimensions
+ * Tailles fixes pour les widgets
+ * Ces tailles sont utilisées pour déterminer quelle variante afficher
+ */
+export const WIDGET_SIZE_THRESHOLDS = {
+	compact: {
+		maxW: 3,
+		maxH: 3,
+		maxArea: 9, // 3x3 = 9 (réduit pour version plus compacte)
+	},
+	medium: {
+		maxW: 5,
+		maxH: 6,
+		maxArea: 30, // 5x6 = 30
+	},
+	full: {
+		minArea: 31, // > 30
+	},
+} as const;
+
+/**
+ * Détermine la taille d'un widget en fonction de ses dimensions fixes
  * @param size Dimensions du widget (w, h)
- * @param widgetType Type de widget (optionnel, pour logique spécifique)
+ * @param _widgetType Type de widget (déprécié, conservé pour compatibilité)
  * @returns Variante de taille : compact, medium, ou full
  */
-export function calculateWidgetSize(size: SizeCalculation, widgetType?: string): WidgetSize {
-	// Logique spécifique pour CalendarWidget : basée sur la hauteur
-	if (widgetType === "calendar") {
-		if (size.h <= 3) {
-			return "compact";
-		} else if (size.h <= 6) {
-			return "medium";
-		} else {
-			return "full";
-		}
-	}
-
-	// Logique par défaut basée sur l'aire (w * h)
+export function calculateWidgetSize(size: SizeCalculation, _widgetType?: string): WidgetSize {
 	const area = size.w * size.h;
 
-	// Seuils basés sur l'aire (w * h)
-	// Compact : très petite taille (ex: 2x3, 3x3, 3x4)
-	// Medium : taille intermédiaire (ex: 4x4, 4x5, 5x4)
-	// Full : grande taille (ex: 6x6, 8x4, etc.)
+	// Tailles fixes définies :
+	// - Compact : w ≤ 3 ET h ≤ 3 ET aire ≤ 9 (ex: 2x3, 3x3)
+	// - Medium : w ≤ 5 ET h ≤ 6 ET aire ≤ 30 (mais pas compact) (ex: 4x4, 4x5, 4x6, 5x5, 5x6)
+	// - Full : tout le reste (w > 5 OU h > 6 OU aire > 30) (ex: 6x6, 8x4, 6x8)
 
-	if (area <= 12) {
-		// Ex: 2x3=6, 3x3=9, 3x4=12 = compact
+	if (
+		size.w <= WIDGET_SIZE_THRESHOLDS.compact.maxW &&
+		size.h <= WIDGET_SIZE_THRESHOLDS.compact.maxH &&
+		area <= WIDGET_SIZE_THRESHOLDS.compact.maxArea
+	) {
 		return "compact";
-	} else if (area <= 30) {
-		// Ex: 4x4=16, 4x6=24, 5x5=25, 5x6=30 = medium
+	} else if (
+		size.w <= WIDGET_SIZE_THRESHOLDS.medium.maxW &&
+		size.h <= WIDGET_SIZE_THRESHOLDS.medium.maxH &&
+		area <= WIDGET_SIZE_THRESHOLDS.medium.maxArea
+	) {
 		return "medium";
 	} else {
-		// Ex: 6x6=36, 8x4=32, etc. = full
 		return "full";
 	}
 }

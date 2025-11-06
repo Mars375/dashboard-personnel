@@ -205,9 +205,9 @@ function WeatherWidgetComponent({ size = "medium" }: WidgetProps) {
 						: "Ajoutez une ville ci-dessus pour voir la météo"}
 				</div>
 			) : isCompact ? (
-				/* Format compact type Android avec navigation */
+				/* Format compact type Android avec navigation - Centré */
 				<div className="flex flex-col h-full">
-					<div className="flex items-center gap-1 flex-1 overflow-hidden">
+					<div className="flex items-center justify-center gap-1 flex-1 overflow-hidden">
 						{/* Bouton navigation gauche */}
 						{compactStartIndex > 0 && (
 							<Button
@@ -232,8 +232,8 @@ function WeatherWidgetComponent({ size = "medium" }: WidgetProps) {
 							</Button>
 						)}
 
-						{/* Liste des villes en format carte */}
-						<div className="flex gap-1.5 flex-1 overflow-hidden">
+						{/* Liste des villes en format carte - Centrée */}
+						<div className="flex gap-1.5 justify-center items-center flex-1 overflow-hidden">
 							{visibleCities.map((savedCity) => (
 									<CityWeatherItem
 										key={`${savedCity.name}-${savedCity.country ?? ""}`}

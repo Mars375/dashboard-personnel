@@ -15,7 +15,7 @@ import { DatePicker } from "@/components/ui/calendar-full";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, memo, useCallback } from "react";
-import { Plus, Calendar, Trash2, Edit2, FileText, Clock } from "lucide-react";
+import { Plus, Calendar, X, Edit2, FileText, Clock } from "lucide-react";
 import type { WidgetProps } from "@/lib/widgetSize";
 import {
 	loadJournalEntries,
@@ -112,6 +112,79 @@ function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
 				isCompact ? "overflow-hidden" : "overflow-auto"
 			)}
 		>
+			{/* COMPACT VERSION - Ultra-compact avec liste des dernières entrées */}
+			{isCompact && (
+				<div className="flex-1 overflow-y-auto min-w-0 flex flex-col">
+					{/* Header minimaliste */}
+					<div className="flex items-center justify-between mb-1.5 shrink-0 pb-1 border-b">
+						<div className="flex items-center gap-1">
+							<FileText className="h-3 w-3 text-muted-foreground" />
+							<span className="text-[10px] font-semibold">{entries.length}</span>
+						</div>
+						<Button
+							size="sm"
+							variant="default"
+							onClick={() => setIsDialogOpen(true)}
+							className="h-6"
+							onMouseDown={(e: React.MouseEvent) => {
+								e.stopPropagation();
+							}}
+							onDragStart={(e: React.DragEvent) => {
+								e.preventDefault();
+								e.stopPropagation();
+							}}
+						>
+							<Plus className="h-3 w-3" />
+						</Button>
+					</div>
+					
+					{/* Liste ultra-compacte des dernières entrées */}
+					{entries.length === 0 ? (
+						<div className="flex flex-col items-center justify-center gap-1 flex-1 text-center py-2">
+							<FileText className="h-4 w-4 text-muted-foreground" />
+							<div className="text-[10px] text-muted-foreground">Aucune entrée</div>
+						</div>
+					) : (
+						<div className="flex flex-col gap-1 flex-1">
+							{recentEntries.slice(0, 8).map((entry) => (
+								<button
+									key={entry.id}
+									className="p-1.5 rounded border bg-card hover:bg-accent transition-colors text-left min-w-0"
+									onClick={() => {
+										setSelectedDate(new Date(entry.date));
+										setIsDialogOpen(true);
+									}}
+									onMouseDown={(e: React.MouseEvent) => {
+										e.stopPropagation();
+									}}
+									onDragStart={(e: React.DragEvent) => {
+										e.preventDefault();
+										e.stopPropagation();
+									}}
+								>
+									<div className="flex items-center gap-1.5 min-w-0">
+										<Clock className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
+										<div className="flex-1 min-w-0">
+											<div className="text-[10px] font-medium truncate leading-tight">{entry.title}</div>
+											<div className="text-[9px] text-muted-foreground mt-0.5">
+												{format(new Date(entry.date), "dd MMM", { locale: fr })}
+											</div>
+										</div>
+									</div>
+								</button>
+							))}
+						</div>
+					)}
+					
+					{/* Indicateur si plus d'entrées */}
+					{entries.length > 8 && (
+						<div className="text-[9px] text-muted-foreground text-center pt-0.5 shrink-0">
+							+{entries.length - 8}
+						</div>
+					)}
+				</div>
+			)}
+
 			{/* Header avec vue récentes */}
 			{isFull && (
 				<div className="space-y-2 shrink-0">
@@ -182,61 +255,61 @@ function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
 			)}
 
 			{/* Entry Content - Vue date ou récentes */}
-			<div className="flex-1 overflow-y-auto">
-				{showRecentEntries && isFull ? (
-					// Vue des dernières entrées
-					<div className="space-y-2">
-						{recentEntries.length === 0 ? (
-							<div className="text-sm text-muted-foreground text-center py-8">
-								Aucune entrée
-							</div>
-						) : (
-							recentEntries.map((entry) => (
-								<motion.div
-									key={entry.id}
-									initial={{ opacity: 0, y: 10 }}
-									animate={{ opacity: 1, y: 0 }}
-									className="p-2 rounded-md border cursor-pointer hover:bg-accent transition-colors"
-									onClick={() => {
-										setSelectedDate(new Date(entry.date));
-										setShowRecentEntries(false);
-									}}
-								>
-									<div className="flex items-start justify-between gap-2">
-										<div className="flex-1 min-w-0">
-											<div className="flex items-center gap-2 mb-1">
-												<Clock className="h-3 w-3 text-muted-foreground shrink-0" />
-												<span className="text-xs text-muted-foreground">
-													{format(new Date(entry.date), "PPP", { locale: fr })}
-												</span>
-											</div>
-											<div className="font-medium truncate">{entry.title}</div>
-											{entry.content && (
-												<div className="text-xs text-muted-foreground line-clamp-2 mt-1">
-													{entry.content}
-												</div>
-											)}
-										</div>
-									</div>
-								</motion.div>
-							))
-						)}
-					</div>
-				) : selectedEntry ? (
-					// Vue entrée sélectionnée
-					<motion.div
-						initial={{ opacity: 0, y: 10 }}
-						animate={{ opacity: 1, y: 0 }}
-						className={cn("space-y-2", isCompact && "text-xs")}
-					>
-						<div className="flex items-start justify-between gap-2">
-							<div className="flex-1">
-								<div className="font-semibold text-lg">{selectedEntry.title}</div>
-								<div className="text-muted-foreground whitespace-pre-wrap mt-2">
-									{selectedEntry.content || "Aucun contenu"}
+			{isFull && (
+				<div className="flex-1 overflow-y-auto">
+					{showRecentEntries ? (
+						// Vue des dernières entrées
+						<div className="space-y-2">
+							{recentEntries.length === 0 ? (
+								<div className="text-sm text-muted-foreground text-center py-8">
+									Aucune entrée
 								</div>
-							</div>
-							{isFull && (
+							) : (
+								recentEntries.map((entry) => (
+									<motion.div
+										key={entry.id}
+										initial={{ opacity: 0, y: 10 }}
+										animate={{ opacity: 1, y: 0 }}
+										className="p-2 rounded-md border cursor-pointer hover:bg-accent transition-colors"
+										onClick={() => {
+											setSelectedDate(new Date(entry.date));
+											setShowRecentEntries(false);
+										}}
+									>
+										<div className="flex items-start justify-between gap-2">
+											<div className="flex-1 min-w-0">
+												<div className="flex items-center gap-2 mb-1">
+													<Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+													<span className="text-xs text-muted-foreground">
+														{format(new Date(entry.date), "PPP", { locale: fr })}
+													</span>
+												</div>
+												<div className="font-medium truncate">{entry.title}</div>
+												{entry.content && (
+													<div className="text-xs text-muted-foreground line-clamp-2 mt-1">
+														{entry.content}
+													</div>
+												)}
+											</div>
+										</div>
+									</motion.div>
+								))
+							)}
+						</div>
+					) : selectedEntry ? (
+						// Vue entrée sélectionnée
+						<motion.div
+							initial={{ opacity: 0, y: 10 }}
+							animate={{ opacity: 1, y: 0 }}
+							className="space-y-2"
+						>
+							<div className="flex items-start justify-between gap-2">
+								<div className="flex-1">
+									<div className="font-semibold text-lg">{selectedEntry.title}</div>
+									<div className="text-muted-foreground whitespace-pre-wrap mt-2">
+										{selectedEntry.content || "Aucun contenu"}
+									</div>
+								</div>
 								<div className="flex items-center gap-1 shrink-0">
 									<Button
 										variant="ghost"
@@ -268,35 +341,17 @@ function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
 										}}
 										aria-label="Supprimer"
 									>
-										<Trash2 className="h-4 w-4" />
+										<X className="h-4 w-4" />
 									</Button>
 								</div>
-							)}
+							</div>
+						</motion.div>
+					) : (
+						<div className="text-sm text-muted-foreground text-center py-8">
+							Aucune entrée pour cette date
 						</div>
-					</motion.div>
-				) : (
-					<div className="text-sm text-muted-foreground text-center py-8">
-						Aucune entrée pour cette date
-					</div>
-				)}
-			</div>
-
-			{/* Compact Add Button */}
-			{isCompact && (
-				<Button
-					size="sm"
-					onClick={() => setIsDialogOpen(true)}
-					className="shrink-0"
-					onMouseDown={(e: React.MouseEvent) => {
-						e.stopPropagation();
-					}}
-					onDragStart={(e: React.DragEvent) => {
-						e.preventDefault();
-						e.stopPropagation();
-					}}
-				>
-					<Plus className="h-4 w-4" />
-				</Button>
+					)}
+				</div>
 			)}
 
 			{/* Edit Dialog */}
@@ -351,7 +406,7 @@ function JournalWidgetComponent({ size = "medium" }: WidgetProps) {
 									e.stopPropagation();
 								}}
 							>
-								<Trash2 className="h-4 w-4 mr-2" />
+								<X className="h-4 w-4 mr-2" />
 								Supprimer
 							</Button>
 						)}

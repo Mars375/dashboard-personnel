@@ -33,7 +33,7 @@ import {
 import { toast } from "sonner";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { motion } from "framer-motion";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { useTodos } from "@/hooks/useTodos";
 import type { TodoFilter } from "@/lib/constants";
 import { saveTodos, type Todo } from "@/store/todoStorage";
@@ -77,7 +77,7 @@ import {
 	TodoStats,
 } from "./components";
 import {
-	Trash2,
+	X,
 	Edit2,
 	Calendar,
 	Download,
@@ -94,7 +94,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import type { WidgetProps } from "@/lib/widgetSize";
 
-export function TodoWidget({ size = "medium" }: WidgetProps) {
+function TodoWidgetComponent({ size = "medium" }: WidgetProps) {
 	const {
 		todos,
 		currentListId,
@@ -1934,7 +1934,7 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 																				e.stopPropagation();
 																			}}
 																		>
-																			<Trash2 className='h-3 w-3' />
+																			<X className='h-3 w-3' />
 																		</Button>
 																	)}
 																</div>
@@ -2252,7 +2252,6 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 										onCancelEdit={cancelEdit}
 										onToggleDeadlinePicker={setDeadlinePickerOpen}
 										onTogglePriority={handleTogglePriority}
-										onCreateEvent={() => {}}
 										isSyncing={syncingTodoIds.has(todo.id)}
 										editInputRef={editInputRef}
 									/>
@@ -2281,7 +2280,6 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 											onCancelEdit={cancelEdit}
 											onToggleDeadlinePicker={setDeadlinePickerOpen}
 											onTogglePriority={handleTogglePriority}
-											onCreateEvent={() => {}}
 											isSyncing={syncingTodoIds.has(todo.id)}
 											editInputRef={editInputRef}
 										/>
@@ -2478,7 +2476,6 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 										onCancelEdit={cancelEdit}
 										onToggleDeadlinePicker={setDeadlinePickerOpen}
 										onTogglePriority={handleTogglePriority}
-										onCreateEvent={() => {}}
 										isSyncing={syncingTodoIds.has(todo.id)}
 										editInputRef={editInputRef}
 									/>
@@ -2506,7 +2503,6 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 										onCancelEdit={cancelEdit}
 										onToggleDeadlinePicker={setDeadlinePickerOpen}
 										onTogglePriority={handleTogglePriority}
-										onCreateEvent={() => {}}
 										isSyncing={syncingTodoIds.has(todo.id)}
 										editInputRef={editInputRef}
 									/>
@@ -2560,3 +2556,5 @@ export function TodoWidget({ size = "medium" }: WidgetProps) {
 		</TooltipProvider>
 	);
 }
+
+export const TodoWidget = memo(TodoWidgetComponent);

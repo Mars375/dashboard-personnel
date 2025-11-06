@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, memo, useCallback } from "react";
-import { Plus, Check, Circle, Flame, Calendar, Edit2, Trash2, TrendingUp } from "lucide-react";
+import { Plus, Check, Circle, Flame, Calendar, Edit2, X, TrendingUp, Target } from "lucide-react";
 import type { WidgetProps } from "@/lib/widgetSize";
 import {
 	loadHabits,
@@ -186,76 +186,165 @@ function HabitsWidgetComponent({ size = "medium" }: WidgetProps) {
 				</div>
 			)}
 
-			{/* Habits List */}
-			<div className="flex-1 overflow-y-auto">
-				{habits.length === 0 ? (
-					<div className="text-sm text-muted-foreground text-center py-8">
-						Aucune habitude
+			{/* COMPACT VERSION - Ultra-compact avec stats minimales */}
+			{isCompact && (
+				<div className="flex-1 overflow-y-auto min-w-0 flex flex-col">
+					{/* Header minimaliste avec stats */}
+					<div className="flex items-center justify-between mb-1.5 shrink-0 pb-1 border-b">
+						<div className="flex items-center gap-1">
+							<Target className="h-3 w-3 text-muted-foreground" />
+							<span className="text-[10px] font-semibold">{habitsStats.totalHabits}</span>
+						</div>
+						{habitsStats.completedToday > 0 && (
+							<div className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
+								<Check className="h-2.5 w-2.5" />
+								<span>{habitsStats.completedToday}/{habitsStats.totalHabits}</span>
+							</div>
+						)}
 					</div>
-				) : (
-					<div className={cn("flex flex-col", isCompact ? "gap-1" : "gap-2")}>
-						{habits.map((habit) => {
-							const isCompleted = habit.completedDates.includes(today);
-							return (
-								<motion.div
-									key={habit.id}
-									initial={{ opacity: 0, y: 10 }}
-									animate={{ opacity: 1, y: 0 }}
-									className={cn(
-										"p-2 rounded-md border cursor-pointer hover:bg-accent transition-colors",
-										isCompleted && "bg-primary/10 border-primary/20",
-										isCompact && "p-1.5 text-xs"
-									)}
-									onClick={() => handleToggleComplete(habit)}
-								>
-									<div className="flex items-center gap-2">
-										<Button
-											variant="ghost"
-											size="icon"
-											className={cn(
-												"h-6 w-6 shrink-0",
-												isCompleted && "bg-primary text-primary-foreground"
-											)}
-											onClick={(e) => {
-												e.stopPropagation();
-												handleToggleComplete(habit);
-											}}
-											onMouseDown={(e: React.MouseEvent) => {
-												e.stopPropagation();
-											}}
-											onDragStart={(e: React.DragEvent) => {
-												e.preventDefault();
-												e.stopPropagation();
-											}}
-										>
-											{isCompleted ? (
-												<Check className="h-4 w-4" />
-											) : (
-												<Circle className="h-4 w-4" />
-											)}
-										</Button>
-										<div className="flex-1 min-w-0">
-											<div className={cn("font-medium", isCompact && "text-xs")}>
-												{habit.name}
+					
+					{/* Liste ultra-compacte des habitudes */}
+					{habits.length === 0 ? (
+						<div className="flex flex-col items-center justify-center gap-1 flex-1 text-center py-2">
+							<Target className="h-4 w-4 text-muted-foreground" />
+							<div className="text-[10px] text-muted-foreground">Aucune habitude</div>
+						</div>
+					) : (
+						<div className="flex flex-col gap-1 flex-1">
+							{habits.slice(0, 8).map((habit) => {
+								const isCompleted = habit.completedDates.includes(today);
+								return (
+									<button
+										key={habit.id}
+										className={cn(
+											"p-1.5 rounded border bg-card hover:bg-accent transition-colors text-left min-w-0",
+											isCompleted && "bg-primary/10 border-primary/20"
+										)}
+										onClick={() => handleToggleComplete(habit)}
+										onMouseDown={(e: React.MouseEvent) => {
+											e.stopPropagation();
+										}}
+										onDragStart={(e: React.DragEvent) => {
+											e.preventDefault();
+											e.stopPropagation();
+										}}
+									>
+										<div className="flex items-center gap-1.5 min-w-0">
+											<div className={cn(
+												"h-3 w-3 rounded-full shrink-0 flex items-center justify-center border",
+												isCompleted ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/30"
+											)}>
+												{isCompleted && <Check className="h-1.5 w-1.5" />}
 											</div>
-											<div className="flex items-center gap-2 mt-1">
+											<div className="flex-1 min-w-0">
+												<div className="text-[10px] font-medium truncate leading-tight">{habit.name}</div>
 												{habit.streak > 0 && (
-													<div className="flex items-center gap-1 text-xs text-muted-foreground">
-														<Flame className="h-3 w-3 text-orange-500" />
-														<span>{habit.streak}</span>
-													</div>
-												)}
-												{habit.lastCompleted && (
-													<div className="flex items-center gap-1 text-xs text-muted-foreground">
-														<Calendar className="h-3 w-3" />
-														<span>
-															{format(new Date(habit.lastCompleted), "PPP", { locale: fr })}
-														</span>
+													<div className="flex items-center gap-0.5 mt-0.5">
+														<Flame className="h-2 w-2 text-orange-500" />
+														<span className="text-[9px] text-muted-foreground">{habit.streak}j</span>
 													</div>
 												)}
 											</div>
 										</div>
-										{isFull && (
+									</button>
+								);
+							})}
+						</div>
+					)}
+					
+					{/* Indicateur si plus d'habitudes */}
+					{habits.length > 8 && (
+						<div className="text-[9px] text-muted-foreground text-center pt-0.5 shrink-0">
+							+{habits.length - 8}
+						</div>
+					)}
+					
+					{/* Bouton Add compact */}
+					<Button
+						size="sm"
+						variant="default"
+						onClick={handleAddHabit}
+						className="shrink-0 h-6 mt-1"
+						onMouseDown={(e: React.MouseEvent) => {
+							e.stopPropagation();
+						}}
+						onDragStart={(e: React.DragEvent) => {
+							e.preventDefault();
+							e.stopPropagation();
+						}}
+					>
+						<Plus className="h-3 w-3" />
+					</Button>
+				</div>
+			)}
+
+			{/* Full Habits List */}
+			{isFull && (
+				<div className="flex-1 overflow-y-auto">
+					{habits.length === 0 ? (
+						<div className="text-sm text-muted-foreground text-center py-8">
+							Aucune habitude
+						</div>
+					) : (
+						<div className="flex flex-col gap-2">
+							{habits.map((habit) => {
+								const isCompleted = habit.completedDates.includes(today);
+								return (
+									<motion.div
+										key={habit.id}
+										initial={{ opacity: 0, y: 10 }}
+										animate={{ opacity: 1, y: 0 }}
+										className={cn(
+											"p-2 rounded-md border cursor-pointer hover:bg-accent transition-colors",
+											isCompleted && "bg-primary/10 border-primary/20"
+										)}
+										onClick={() => handleToggleComplete(habit)}
+									>
+										<div className="flex items-center gap-2">
+											<Button
+												variant="ghost"
+												size="icon"
+												className={cn(
+													"h-6 w-6 shrink-0",
+													isCompleted && "bg-primary text-primary-foreground"
+												)}
+												onClick={(e) => {
+													e.stopPropagation();
+													handleToggleComplete(habit);
+												}}
+												onMouseDown={(e: React.MouseEvent) => {
+													e.stopPropagation();
+												}}
+												onDragStart={(e: React.DragEvent) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+											>
+												{isCompleted ? (
+													<Check className="h-4 w-4" />
+												) : (
+													<Circle className="h-4 w-4" />
+												)}
+											</Button>
+											<div className="flex-1 min-w-0">
+												<div className="font-medium">{habit.name}</div>
+												<div className="flex items-center gap-2 mt-1">
+													{habit.streak > 0 && (
+														<div className="flex items-center gap-1 text-xs text-muted-foreground">
+															<Flame className="h-3 w-3 text-orange-500" />
+															<span>{habit.streak}</span>
+														</div>
+													)}
+													{habit.lastCompleted && (
+														<div className="flex items-center gap-1 text-xs text-muted-foreground">
+															<Calendar className="h-3 w-3" />
+															<span>
+																{format(new Date(habit.lastCompleted), "PPP", { locale: fr })}
+															</span>
+														</div>
+													)}
+												</div>
+											</div>
 											<div className="flex items-center gap-1 shrink-0">
 												<Button
 													variant="ghost"
@@ -293,35 +382,18 @@ function HabitsWidgetComponent({ size = "medium" }: WidgetProps) {
 													}}
 													aria-label="Supprimer"
 												>
-													<Trash2 className="h-4 w-4" />
+													<X className="h-4 w-4" />
 												</Button>
 											</div>
-										)}
-									</div>
-								</motion.div>
-							);
-						})}
-					</div>
-				)}
-			</div>
-
-			{/* Compact Add Button */}
-			{isCompact && (
-				<Button
-					size="sm"
-					onClick={handleAddHabit}
-					className="shrink-0"
-					onMouseDown={(e: React.MouseEvent) => {
-						e.stopPropagation();
-					}}
-					onDragStart={(e: React.DragEvent) => {
-						e.preventDefault();
-						e.stopPropagation();
-					}}
-				>
-					<Plus className="h-4 w-4" />
-				</Button>
+										</div>
+									</motion.div>
+								);
+							})}
+						</div>
+					)}
+				</div>
 			)}
+
 
 			{/* Edit Dialog */}
 			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -360,7 +432,7 @@ function HabitsWidgetComponent({ size = "medium" }: WidgetProps) {
 									e.stopPropagation();
 								}}
 							>
-								<Trash2 className="h-4 w-4 mr-2" />
+								<X className="h-4 w-4 mr-2" />
 								Supprimer
 							</Button>
 						)}

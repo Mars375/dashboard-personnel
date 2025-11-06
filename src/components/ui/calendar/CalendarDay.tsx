@@ -68,7 +68,7 @@ export function CalendarDay({
 			className={cn(
 				"h-9 w-9 p-0 font-normal",
 				isOutsideMonth && "text-muted-foreground opacity-50",
-				isPast && "opacity-30 cursor-not-allowed line-through",
+				isPast && "opacity-60",
 				isDaySelected &&
 					"bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
 				isDayToday &&
@@ -77,19 +77,10 @@ export function CalendarDay({
 				dayClassName
 			)}
 			onClick={() => onClick?.(day)}
-			disabled={isPast}
 			onMouseDown={(e: React.MouseEvent) => {
-				if (isPast) {
-					e.preventDefault();
-					return;
-				}
 				e.stopPropagation();
 			}}
 			onDragStart={(e: React.DragEvent) => {
-				if (isPast) {
-					e.preventDefault();
-					return;
-				}
 				e.preventDefault();
 				e.stopPropagation();
 			}}

@@ -8,6 +8,7 @@ import {
 } from "@/store/calendarStorage";
 import { isDateInRecurrence } from "@/lib/calendarRecurrence";
 import { logger } from "@/lib/logger";
+import { formatDateLocal } from "@/lib/utils";
 
 export function useCalendar() {
 	const [currentDate, setCurrentDate] = useState(new Date());
@@ -110,14 +111,6 @@ export function useCalendar() {
 	const deleteEvent = useCallback((id: string) => {
 		setEvents((prev) => prev.filter((event) => event.id !== id));
 	}, []);
-
-	// Fonction utilitaire pour formater une date en YYYY-MM-DD en local (évite les problèmes de timezone)
-	const formatDateLocal = (date: Date): string => {
-		const year = date.getFullYear();
-		const month = String(date.getMonth() + 1).padStart(2, "0");
-		const day = String(date.getDate()).padStart(2, "0");
-		return `${year}-${month}-${day}`;
-	};
 
 	// Obtenir les événements pour une date spécifique
 	const getEventsForDate = useCallback(

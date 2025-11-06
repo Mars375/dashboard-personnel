@@ -2,6 +2,8 @@
  * Storage pour le widget Finance
  */
 
+import { logger } from "@/lib/logger";
+
 export interface Transaction {
 	id: string;
 	type: "expense" | "income";
@@ -31,7 +33,7 @@ export function loadTransactions(): Transaction[] {
 			return JSON.parse(stored);
 		}
 	} catch (error) {
-		console.error("Erreur lors du chargement des transactions:", error);
+		logger.error("Erreur lors du chargement des transactions:", error);
 	}
 	return [];
 }
@@ -40,7 +42,7 @@ export function saveTransactions(transactions: Transaction[]): void {
 	try {
 		localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
 	} catch (error) {
-		console.error("Erreur lors de la sauvegarde des transactions:", error);
+		logger.error("Erreur lors de la sauvegarde des transactions:", error);
 	}
 }
 
@@ -81,7 +83,7 @@ export function loadBudgets(): Budget[] {
 			return JSON.parse(stored);
 		}
 	} catch (error) {
-		console.error("Erreur lors du chargement des budgets:", error);
+		logger.error("Erreur lors du chargement des budgets:", error);
 	}
 	return [];
 }
@@ -90,7 +92,7 @@ export function saveBudgets(budgets: Budget[]): void {
 	try {
 		localStorage.setItem(STORAGE_KEY_BUDGETS, JSON.stringify(budgets));
 	} catch (error) {
-		console.error("Erreur lors de la sauvegarde des budgets:", error);
+		logger.error("Erreur lors de la sauvegarde des budgets:", error);
 	}
 }
 
@@ -128,7 +130,7 @@ export function loadCategories(): string[] {
 			return JSON.parse(stored);
 		}
 	} catch (error) {
-		console.error("Erreur lors du chargement des catégories:", error);
+		logger.error("Erreur lors du chargement des catégories:", error);
 	}
 	return ["Alimentation", "Transport", "Logement", "Loisirs", "Santé", "Éducation", "Autre"];
 }
@@ -137,7 +139,8 @@ export function saveCategories(categories: string[]): void {
 	try {
 		localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(categories));
 	} catch (error) {
-		console.error("Erreur lors de la sauvegarde des catégories:", error);
+		logger.error("Erreur lors de la sauvegarde des catégories:", error);
 	}
 }
+
 

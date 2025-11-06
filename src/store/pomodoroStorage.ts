@@ -1,4 +1,5 @@
 /**
+import { logger } from "@/lib/logger";
  * Storage pour le widget Pomodoro
  */
 
@@ -19,7 +20,7 @@ export function loadSessions(): PomodoroSession[] {
 			return JSON.parse(stored);
 		}
 	} catch (error) {
-		console.error("Erreur lors du chargement des sessions:", error);
+		logger.error("Erreur lors du chargement des sessions:", error);
 	}
 	return [];
 }
@@ -28,7 +29,7 @@ export function saveSessions(sessions: PomodoroSession[]): void {
 	try {
 		localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
 	} catch (error) {
-		console.error("Erreur lors de la sauvegarde des sessions:", error);
+		logger.error("Erreur lors de la sauvegarde des sessions:", error);
 	}
 }
 
@@ -43,4 +44,5 @@ export function addSession(session: Omit<PomodoroSession, "id" | "createdAt">): 
 	saveSessions(sessions);
 	return newSession;
 }
+
 

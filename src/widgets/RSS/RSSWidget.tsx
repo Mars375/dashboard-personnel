@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, memo, useCallback } from "react";
-import { Plus, Trash2, Edit2, Rss as RSSIcon } from "lucide-react";
+import { Plus, X, Edit2, Rss as RSSIcon } from "lucide-react";
 import type { WidgetProps } from "@/lib/widgetSize";
 import {
 	loadFeeds,
@@ -37,9 +37,10 @@ function RSSWidgetComponent({ size = "medium" }: WidgetProps) {
 	const [editUrl, setEditUrl] = useState("");
 
 	const isCompact = useMemo(() => size === "compact", [size]);
-	const isFull = useMemo(() => size === "full" || size === "medium", [size]);
-	const padding = isCompact ? "p-2" : "p-4";
-	const gap = isCompact ? "gap-1" : "gap-2";
+	const isMedium = useMemo(() => size === "medium", [size]);
+	const isFull = useMemo(() => size === "full", [size]);
+	const padding = isCompact ? "p-2" : isMedium ? "p-3" : "p-4";
+	const gap = isCompact ? "gap-1" : isMedium ? "gap-1.5" : "gap-2";
 
 	useEffect(() => {
 		setFeeds(loadFeeds());
@@ -92,15 +93,15 @@ function RSSWidgetComponent({ size = "medium" }: WidgetProps) {
 	}, []);
 
 	const unreadItems = useMemo(() => {
-		return items.filter((i) => !i.read).slice(0, isFull ? 20 : 5);
-	}, [items, isFull]);
+		return items.filter((i) => !i.read).slice(0, isFull ? 20 : isMedium ? 10 : 5);
+	}, [items, isFull, isMedium]);
 
 	return (
 		<Card className={cn("w-full h-full max-w-none flex flex-col min-h-0", padding, gap)}>
-			{isFull && (
+			{(isFull || isMedium) && (
 				<div className="space-y-2 shrink-0">
 					<div className="flex items-center justify-between">
-						<h3 className="text-sm font-semibold">RSS</h3>
+						<h3 className={cn("font-semibold", isMedium ? "text-xs" : "text-sm")}>RSS</h3>
 						<Button
 							size="sm"
 							onClick={handleAddFeed}
@@ -118,12 +119,12 @@ function RSSWidgetComponent({ size = "medium" }: WidgetProps) {
 					{feeds.length > 0 && (
 						<div className="flex gap-1 flex-wrap">
 							{feeds.map((feed) => (
-								<div
-									key={feed.id}
-									className="flex items-center gap-1 px-2 py-1 rounded-md border bg-card text-xs"
-								>
-									<RSSIcon className="h-3 w-3" />
-									<span className="truncate max-w-[100px]">{feed.name}</span>
+							<div
+								key={feed.id}
+								className={cn("flex items-center gap-1 rounded-md border bg-card", isMedium ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-1 text-xs")}
+							>
+								<RSSIcon className={cn(isMedium ? "h-2.5 w-2.5" : "h-3 w-3")} />
+								<span className={cn("truncate", isMedium ? "max-w-[80px]" : "max-w-[100px]")}>{feed.name}</span>
 									<Button
 										variant="ghost"
 										size="icon"
@@ -158,7 +159,7 @@ function RSSWidgetComponent({ size = "medium" }: WidgetProps) {
 											e.stopPropagation();
 										}}
 									>
-										<Trash2 className="h-3 w-3" />
+										<X className="h-3 w-3" />
 									</Button>
 								</div>
 							))}
@@ -168,14 +169,52 @@ function RSSWidgetComponent({ size = "medium" }: WidgetProps) {
 			)}
 
 			{isCompact && (
-				<div className="flex flex-col items-center justify-center gap-1 flex-1">
-					<RSSIcon className="h-8 w-8 text-muted-foreground" />
-					<div className="text-xs font-bold">{unreadItems.length}</div>
-					<div className="text-[10px] text-muted-foreground">non lus</div>
+				<div className="flex flex-col gap-1.5 flex-1 overflow-y-auto">
+					<div className="flex items-center justify-between shrink-0 pb-1 border-b">
+						<div className="flex items-center gap-1.5">
+							<RSSIcon className="h-4 w-4 text-muted-foreground" />
+							<div className="text-xs font-bold">{unreadItems.length}</div>
+							<div className="text-[10px] text-muted-foreground">non lus</div>
+						</div>
+						{feeds.length > 0 && (
+							<div className="text-[10px] text-muted-foreground">
+								{feeds.length} flux
+							</div>
+						)}
+					</div>
+					{unreadItems.length === 0 ? (
+						<div className="flex flex-col items-center justify-center gap-2 flex-1 text-center">
+							<RSSIcon className="h-6 w-6 text-muted-foreground" />
+							<div className="text-xs text-muted-foreground">Aucun article</div>
+						</div>
+					) : (
+						unreadItems.slice(0, 6).map((item) => (
+							<div
+								key={item.id}
+								className="p-2 rounded border bg-card hover:bg-accent transition-colors cursor-pointer"
+								onClick={() => handleOpenItem(item)}
+							>
+								<div className="text-xs font-medium truncate mb-1">{item.title}</div>
+								{item.description && (
+									<div className="text-[10px] text-muted-foreground line-clamp-2">
+										{item.description}
+									</div>
+								)}
+								<div className="text-[9px] text-muted-foreground mt-1">
+									{format(new Date(item.pubDate), "dd MMM", { locale: fr })}
+								</div>
+							</div>
+						))
+					)}
+					{unreadItems.length > 6 && (
+						<div className="text-[10px] text-muted-foreground text-center pt-1">
+							+{unreadItems.length - 6} autres articles
+						</div>
+					)}
 				</div>
 			)}
 
-			{isFull && (
+			{(isFull || isMedium) && (
 				<div className="flex-1 overflow-y-auto space-y-1">
 					{unreadItems.length === 0 ? (
 						<div className="text-sm text-muted-foreground text-center py-8">
@@ -239,7 +278,7 @@ function RSSWidgetComponent({ size = "medium" }: WidgetProps) {
 									e.stopPropagation();
 								}}
 							>
-								<Trash2 className="h-4 w-4 mr-2" />
+								<X className="h-4 w-4 mr-2" />
 								Supprimer
 							</Button>
 						)}

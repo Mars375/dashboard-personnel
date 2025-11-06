@@ -250,16 +250,21 @@ export class GoogleAuth {
 
 	/**
 	 * Construit l'URL d'authentification OAuth
+	 * En production, ne force pas le prompt "consent" pour une meilleure UX
 	 */
 	private buildAuthUrl(service: OAuthService): string {
 		const scopes = this.getScopesForService(service);
+		const isProduction = import.meta.env.PROD || window.location.hostname !== "localhost";
+		
 		const params = new URLSearchParams({
 			client_id: this.config.clientId,
 			redirect_uri: this.config.redirectUri,
 			response_type: "code",
 			scope: scopes.join(" "),
 			access_type: "offline", // Pour obtenir un refresh token
-			prompt: "consent", // Forcer le consentement pour obtenir un nouveau refresh token
+			// En production, ne pas forcer le consentement (meilleure UX)
+			// En dev, forcer pour obtenir un nouveau refresh token si nécessaire
+			...(isProduction ? {} : { prompt: "consent" }),
 		});
 
 		return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -301,8 +306,11 @@ export class GoogleAuth {
 	 * En production, cette opération doit être faite côté backend pour des raisons de sécurité.
 	 */
 	async exchangeCodeForTokensWithProxy(code: string): Promise<OAuthTokens> {
-		// URL du proxy backend (développement local)
-		const proxyUrl = import.meta.env.VITE_OAUTH_PROXY_URL || "http://localhost:3001";
+		// URL du proxy backend
+		// En production, utilise VITE_OAUTH_PROXY_URL ou déduit depuis l'origine
+		const isProduction = import.meta.env.PROD || window.location.hostname !== "localhost";
+		const proxyUrl = import.meta.env.VITE_OAUTH_PROXY_URL || 
+			(isProduction ? `${window.location.origin}` : "http://localhost:3001");
 		
 		// IMPORTANT: Utiliser le même redirect_uri que celui utilisé dans buildAuthUrl
 		const redirectUri = this.config.redirectUri;
