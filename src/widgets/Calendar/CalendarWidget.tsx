@@ -780,38 +780,43 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 	}, [notificationPermission]);
 
 	// Filtrer les événements par recherche si nécessaire
-	const filteredEvents = searchQuery.trim()
-		? events.filter((event) => {
-				const query = searchQuery.toLowerCase();
-				return (
-					event.title.toLowerCase().includes(query) ||
-					event.description?.toLowerCase().includes(query) ||
-					event.date.includes(query)
-				);
-		  })
-		: events;
+	const filteredEvents = useMemo(() => {
+		if (!searchQuery.trim()) return events;
+		const query = searchQuery.toLowerCase();
+		return events.filter((event) => {
+			return (
+				event.title.toLowerCase().includes(query) ||
+				event.description?.toLowerCase().includes(query) ||
+				event.date.includes(query)
+			);
+		});
+	}, [events, searchQuery]);
 
 	// Fonction pour obtenir les événements d'une date avec recherche et répétition
-	const getFilteredEventsForDate = (date: Date) => {
-		const dateStr = formatDateLocal(date);
-		return filteredEvents.filter((event) => {
-			// Événement direct
-			if (event.date === dateStr) return true;
+	const getFilteredEventsForDate = useCallback(
+		(date: Date) => {
+			const dateStr = formatDateLocal(date);
+			return filteredEvents.filter((event) => {
+				// Événement direct
+				if (event.date === dateStr) return true;
 
-			// Événement récurrent
-			if (event.recurrence && event.recurrence.type !== "none") {
-				return isDateInRecurrence(date, event);
-			}
+				// Événement récurrent
+				if (event.recurrence && event.recurrence.type !== "none") {
+					return isDateInRecurrence(date, event);
+				}
 
-			return false;
-		});
-	};
+				return false;
+			});
+		},
+		[filteredEvents]
+	);
 
-	const selectedDateEvents = selectedDate
-		? searchQuery.trim()
+	const selectedDateEvents = useMemo(() => {
+		if (!selectedDate) return [];
+		return searchQuery.trim()
 			? getFilteredEventsForDate(selectedDate)
-			: getEventsForDate(selectedDate)
-		: [];
+			: getEventsForDate(selectedDate);
+	}, [selectedDate, searchQuery, getFilteredEventsForDate, getEventsForDate]);
 
 	const padding = isCompact ? "p-2" : isMedium ? "px-3 pb-3 pt-1" : "p-4";
 

@@ -1,7 +1,15 @@
 declare module "framer-motion" {
 	import type { ComponentType, HTMLAttributes } from "react";
+	
+	interface MotionProps extends HTMLAttributes<HTMLElement> {
+		initial?: { opacity?: number; x?: number; y?: number; [key: string]: unknown };
+		animate?: { opacity?: number; x?: number; y?: number; [key: string]: unknown };
+		transition?: { duration?: number; [key: string]: unknown };
+		[key: string]: unknown;
+	}
+	
 	export const motion: {
-		[key in keyof JSX.IntrinsicElements]: ComponentType<HTMLAttributes<HTMLElement>>;
+		[key in keyof JSX.IntrinsicElements]: ComponentType<MotionProps>;
 	};
 }
 
