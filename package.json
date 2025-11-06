@@ -11,7 +11,8 @@
 		"build:analyze": "cross-env ANALYZE=true pnpm build",
 		"lint": "eslint .",
 		"preview": "vite preview",
-		"test": "vitest"
+		"test": "vitest",
+		"start:server": "tsx server/start.ts"
 	},
 	"dependencies": {
 		"@radix-ui/react-alert-dialog": "^1.1.15",
