@@ -581,12 +581,10 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 				const googleProvider = calendarSyncManager
 					.getAllProviders()
 					.find((p) => p.name === "Google Calendar");
-				let pulledEventsCount = 0;
 				let newEventsCount = 0;
 
 				if (googleProvider && googleProvider.enabled) {
 					const pulledEvents = await googleProvider.pullEvents();
-					pulledEventsCount = pulledEvents.length;
 
 					// Utiliser les événements actuels directement (pas depuis les dépendances)
 					const currentEvents = events;
