@@ -152,6 +152,19 @@ app.post("/api/oauth/refresh", async (req, res) => {
 	}
 });
 
+// Route racine
+app.get("/", (req, res) => {
+	res.json({ 
+		service: "OAuth Proxy Server",
+		status: "running",
+		endpoints: {
+			health: "/health",
+			exchange: "POST /api/oauth/exchange",
+			refresh: "POST /api/oauth/refresh"
+		}
+	});
+});
+
 // Health check endpoint
 app.get("/health", (req, res) => {
 	res.json({ status: "ok", timestamp: new Date().toISOString() });
