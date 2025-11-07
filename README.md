@@ -1,50 +1,36 @@
 # 📊 Dashboard Personnel
 
-Un dashboard personnel moderne et modulaire construit avec React 19, TypeScript, Vite 7 et Tailwind CSS v4. Ce projet propose des widgets personnalisables pour organiser votre vie quotidienne (météo, tâches, etc.).
+Un dashboard personnel moderne et modulaire construit avec React 19, TypeScript, Vite 7 et Tailwind CSS v4. Organisez votre vie quotidienne avec des widgets personnalisables : météo, tâches, calendrier, finances, habitudes, et bien plus encore.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)
 ![React](https://img.shields.io/badge/React-19.1-blue.svg)
 ![Vite](https://img.shields.io/badge/Vite-7.1-purple.svg)
+![Tests](https://img.shields.io/badge/tests-447%20passing-brightgreen.svg)
 
 ## ✨ Fonctionnalités
 
-### 🌤️ Weather Widget
+### 🎨 Interface personnalisable
 
-- Affichage de la météo en temps réel via OpenWeatherMap API
-- Recherche de ville avec autocomplétion intelligente
-- Prévisions sur 5 jours
-- Mise à jour automatique toutes les 10 minutes
-- Persistance de la dernière ville recherchée
+- **Grille responsive** : Organisez vos widgets avec drag & drop
+- **Tailles adaptatives** : Chaque widget s'adapte automatiquement (compact, medium, full)
+- **Thème sombre/clair** : Basculez selon vos préférences
+- **Widgets externes** : Importez des widgets personnalisés depuis des URLs
 
-### ✅ Todo Widget
+### 📦 Widgets intégrés (12 widgets)
 
-- Gestion complète de tâches (CRUD)
-- Multi-listes (Pro, Perso, Projets, etc.)
-- Priorisation et deadlines
-- Filtres avancés (Toutes, Actives, Terminées, Prioritaires)
-- Recherche instantanée
-- Statistiques visuelles avec graphiques
-- Import/Export JSON (drag & drop)
-- Notifications pour les deadlines
-- Synchronisation API (Notion, Google Tasks)
-- Undo/Redo avec Zustand
-- Animations fluides avec Framer Motion
-- Style épuré avec bordure légère et distinction visuelle pour les prioritaires
-
-### 📅 Calendar Widget
-
-- Affichage mensuel avec calendrier shadcn/ui
-- Vues semaine et jour
-- Création, édition et suppression d'événements
-- Sélection de couleur personnalisée
-- Drag & drop pour déplacer les événements
-- Export/Import JSON et .ics
-- Synchronisation API (Google Calendar, Outlook)
-- Notifications pour les événements à venir
-- Intégration avec les deadlines des tâches
-- Persistance locale (localStorage)
-- Style moderne inspiré de Calendar31
+- **🌤️ Météo** : Conditions en temps réel, prévisions 5 jours, recherche de villes
+- **✅ Tâches** : Multi-listes, priorités, deadlines, synchronisation Google Tasks/Notion
+- **📅 Calendrier** : Vues mois/semaine/jour, événements, synchronisation Google Calendar/Outlook
+- **📈 Bourse** : Suivi de cours en temps réel, watchlist personnalisée
+- **📚 Favoris** : Gestion de bookmarks avec favicons automatiques
+- **📝 Journal** : Journal personnel avec entrées par date
+- **🎯 Habitudes** : Suivi d'habitudes avec streaks et heatmap
+- **💰 Finances** : Revenus/dépenses, budgets, graphiques
+- **🍅 Pomodoro** : Timer de productivité avec statistiques
+- **📰 RSS** : Lecteur de flux RSS personnalisés
+- **💬 Citations** : Citations inspirantes quotidiennes
+- **📊 Statistiques** : Vue d'ensemble de tous vos widgets
 
 ## 🚀 Démarrage rapide
 
@@ -80,117 +66,70 @@ L'application sera accessible sur `http://localhost:5173`
 VITE_OPENWEATHER_API_KEY=votre_cle_api
 ```
 
-## 📁 Structure du projet
+#### OAuth (optionnel)
 
-```
-dashboard-personnel/
-├── src/
-│   ├── components/        # Composants UI réutilisables
-│   │   └── ui/           # Composants shadcn/ui
-│   ├── hooks/            # Hooks personnalisés
-│   │   ├── useWeather.ts
-│   │   ├── useAutocompleteCity.ts
-│   │   ├── useTodos.ts
-│   │   └── useCalendar.ts
-│   ├── lib/              # Utilitaires et logique métier
-│   │   ├── notifications.ts
-│   │   ├── sync/         # Système de synchronisation
-│   │   └── utils.ts
-│   ├── store/            # Gestion d'état et persistance
-│   │   ├── todoStore.ts  # Store Zustand pour todos
-│   │   ├── todoStorage.ts
-│   │   ├── todoLists.ts
-│   │   └── weatherStorage.ts
-│   ├── widgets/          # Widgets du dashboard
-│   │   ├── Weather/
-│   │   ├── Todo/
-│   │   └── Calendar/
-│   └── App.tsx           # Point d'entrée de l'application
-├── tests/                # Tests unitaires et d'intégration
-│   ├── lib/
-│   └── widgets/
-├── docs/                 # Documentation détaillée
-└── README.md
-```
+Pour utiliser la synchronisation avec Google, Microsoft ou Notion, voir [docs/OAUTH_SETUP.md](./docs/OAUTH_SETUP.md).
 
-## 🧪 Tests
+## 🏗️ Stack technique
 
-Le projet utilise **Vitest** et **Testing Library** pour une suite de tests complète.
-
-### Lancer les tests
-
-```bash
-# Tous les tests
-pnpm test
-
-# Tests en mode watch
-pnpm test --watch
-
-# Tests avec couverture
-pnpm test --coverage
-
-# Tests en mode UI
-pnpm test --ui
-```
-
-### Couverture de tests
-
-- **31 fichiers de tests**
-- **93 tests** couvrant :
-  - Hooks personnalisés (useWeather, useAutocompleteCity, useTodos, useCalendar)
-  - Widgets (Weather, Todo, Calendar)
-  - Système de synchronisation (Notion, Google Tasks, Google Calendar, Outlook)
-  - Gestion d'état (Zustand)
-  - Persistance (localStorage)
-
-Voir [docs/TESTS.md](./docs/TESTS.md) pour plus de détails.
-
-## 🏗️ Architecture
-
-### Design Pattern
-
-Le projet suit une architecture modulaire avec séparation des responsabilités :
-
-- **Widgets** : Composants UI autonomes
-- **Hooks** : Logique métier réutilisable
-- **Store** : Gestion d'état global avec Zustand
-- **Lib** : Utilitaires et intégrations externes
-
-### Stack technique
-
-- **Framework** : React 19 avec TypeScript
+- **Framework** : React 19 avec TypeScript 5.9
 - **Build** : Vite 7
 - **Styling** : Tailwind CSS v4
 - **UI Components** : shadcn/ui (Radix UI)
 - **State Management** : Zustand
 - **Animations** : Framer Motion
 - **Charts** : Recharts
-- **Notifications** : Web Notifications API + Sonner
+- **Grid Layout** : react-grid-layout
 - **Testing** : Vitest + Testing Library
+- **Backend OAuth** : Express (Node.js)
 
-## 📚 Documentation détaillée
+## 🧪 Tests
 
-La documentation complète est disponible dans le dossier [`docs/`](./docs/) :
+Le projet inclut **447 tests** couvrant tous les widgets, hooks, et fonctionnalités.
 
-- 📖 [Guide de démarrage](./docs/GETTING_STARTED.md) - Démarrage rapide pour nouveaux utilisateurs
-- 🏗️ [Architecture du projet](./docs/ARCHITECTURE.md) - Structure, patterns et flux de données
-- 🧪 [Documentation des tests](./docs/TESTS.md) - Stratégie de tests et couverture
-- 💻 [Guide de développement](./docs/DEVELOPMENT.md) - Workflow et bonnes pratiques
-- 🔌 [API et intégrations](./docs/API_INTEGRATIONS.md) - OpenWeatherMap, Notion, Google Tasks, OAuth
-- 🚀 [Guide de déploiement](./docs/DEPLOYMENT.md) - Vercel, Netlify, GitHub Pages
-- 🧩 [Documentation des widgets](./docs/WIDGETS.md) - Architecture et création de widgets
-- 📁 [Structure du projet](./docs/PROJECT_STRUCTURE.md) - Organisation détaillée
-- 🔄 [Workflow de développement](./docs/WORKFLOW.md) - Cycle de vie des features
+```bash
+pnpm test              # Tous les tests
+pnpm test --watch      # Mode watch
+pnpm test --coverage   # Avec couverture
+pnpm test --ui         # Interface graphique
+```
+
+## 🚀 Déploiement
+
+Le Dashboard Personnel peut être déployé gratuitement :
+
+- **Frontend** : Vercel (gratuit, illimité)
+- **Backend OAuth** : Railway ou Render (plans gratuits)
+
+Voir [docs/DEPLOYMENT_COMPLETE.md](./docs/DEPLOYMENT_COMPLETE.md) pour le guide complet.
+
+## 📚 Documentation
+
+- 📖 [Documentation complète du projet](./docs/PROJECT.md) - Vue d'ensemble, fonctionnalités, architecture
+- 🚀 [Guide de déploiement](./docs/DEPLOYMENT_COMPLETE.md) - Déployer sur Vercel + Railway/Render
+- 🔐 [Configuration OAuth](./docs/OAUTH_SETUP.md) - Google, Microsoft, Notion
+- 📚 [Bibliothèque de widgets](./docs/WIDGET_LIBRARY.md) - Créer et importer des widgets personnalisés
+- 🏗️ [Architecture technique](./docs/ARCHITECTURE.md) - Détails techniques et patterns
+- ⚡ [Optimisations](./docs/OPTIMIZATION.md) - Performance et bundle size
 
 ## 🛠️ Scripts disponibles
 
 ```bash
-pnpm dev       # Serveur de développement
-pnpm build     # Build de production
-pnpm preview   # Prévisualisation du build
-pnpm test      # Lancer les tests
-pnpm lint      # Vérifier le code avec ESLint
+pnpm dev              # Serveur de développement
+pnpm dev:server        # Serveur OAuth proxy (dev)
+pnpm dev:all          # Frontend + Backend (dev)
+pnpm build            # Build de production
+pnpm preview           # Prévisualisation du build
+pnpm test             # Lancer les tests
+pnpm lint             # Vérifier le code avec ESLint
 ```
+
+## 🔒 Confidentialité
+
+- **Données locales** : Toutes les données sont stockées dans votre navigateur (localStorage)
+- **OAuth sécurisé** : Les tokens sont stockés localement et ne sont jamais exposés
+- **Pas de tracking** : Aucun analytics ou tracking tiers
+- **Open Source** : Code source entièrement visible et auditable
 
 ## 🤝 Contribution
 
