@@ -232,8 +232,33 @@ Les APIs Google/Microsoft supportent CORS. Si vous rencontrez des erreurs :
    - **Authorized redirect URIs** : 
      - `http://localhost:5173/oauth/google/callback` (dev)
      - `https://votre-domaine.com/oauth/google/callback` (prod)
-7. **IMPORTANT** : Passez l'application en mode **"Production"** (pas "Test") pour un accès public
-8. Copiez le **Client ID** et le **Client Secret**
+7. Copiez le **Client ID** et le **Client Secret**
+
+#### Passer l'application en mode Production
+
+**⚠️ IMPORTANT** : Pour que n'importe qui puisse se connecter (pas seulement les test users), vous devez passer l'application en mode **"Production"**.
+
+1. Allez dans **APIs & Services** → **OAuth consent screen**
+2. Vérifiez que les informations sont complètes :
+   - **App name** : Dashboard Personnel
+   - **User support email** : Votre email
+   - **Developer contact information** : Votre email
+   - **Scopes** : Les scopes nécessaires (Calendar, Tasks, etc.)
+3. En bas de la page, cliquez sur **"PUBLISH APP"** ou **"SAVE AND CONTINUE"** jusqu'à voir le bouton **"BACK TO DASHBOARD"**
+4. Si vous voyez un avertissement de vérification, vous avez deux options :
+
+   **Option A : Mode Production sans vérification (pour usage personnel)**
+   - Si vous utilisez uniquement des scopes non sensibles (Calendar, Tasks)
+   - Google peut vous permettre de publier sans vérification
+   - Cliquez sur **"PUBLISH APP"** et confirmez
+   - L'application sera accessible publiquement
+
+   **Option B : Demander la vérification (pour usage public)**
+   - Si Google demande une vérification, suivez le processus
+   - Cela peut prendre quelques jours
+   - En attendant, vous pouvez ajouter des "Test users" dans **OAuth consent screen** → **Test users**
+
+**Note** : En mode "Test", seuls les utilisateurs ajoutés comme "Test users" peuvent se connecter. En mode "Production", n'importe qui peut se connecter.
 
 ### Configuration locale
 
@@ -295,6 +320,21 @@ Le backend proxy sera sur `http://localhost:3001`
 - Redémarrez le serveur backend après ajout
 
 ### Application en mode "Test" dans Google Cloud Console
-- Pour un accès public, passez l'application en mode **"Production"** dans OAuth consent screen
-- En mode "Test", seuls les utilisateurs autorisés peuvent se connecter
+
+Si vous obtenez une erreur lors de la connexion Google, vérifiez le mode de l'application :
+
+1. Allez dans **APIs & Services** → **OAuth consent screen**
+2. Vérifiez le statut en haut de la page :
+   - **"Testing"** : Seuls les test users peuvent se connecter
+   - **"In production"** : N'importe qui peut se connecter
+
+**Pour passer en Production :**
+- Cliquez sur **"PUBLISH APP"** en bas de la page
+- Confirmez la publication
+- Si Google demande une vérification, suivez le processus ou ajoutez des test users en attendant
+
+**Pour ajouter des test users (mode Testing) :**
+- Dans **OAuth consent screen** → **Test users**
+- Cliquez sur **"+ ADD USERS"**
+- Ajoutez les emails des utilisateurs autorisés
 
