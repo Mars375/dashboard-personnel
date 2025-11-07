@@ -9,6 +9,7 @@ import { getWidgetDefinition } from "@/lib/widgetRegistry";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { calculateWidgetSize } from "@/lib/widgetSize";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -31,6 +32,7 @@ function WidgetGridComponent({ searchQuery = "" }: WidgetGridProps) {
 	const widgets = useDashboardStore((state) => state.widgets);
 	const updateLayout = useDashboardStore((state) => state.updateLayout);
 	const removeWidget = useDashboardStore((state) => state.removeWidget);
+	const isMobile = useIsMobile();
 
 	// Filtrer les widgets selon la recherche
 	const filteredWidgets = useMemo(() => {
@@ -48,24 +50,42 @@ function WidgetGridComponent({ searchQuery = "" }: WidgetGridProps) {
 	}, [widgets, searchQuery]);
 
 	// Convertir widgets en layout pour react-grid-layout
+	// Sur mobile, forcer tous les widgets en compact (2x3 ou minSize)
 	const layouts = useMemo(() => {
 		return filteredWidgets.map((widget) => {
 			const widgetDef = getWidgetDefinition(widget.type);
-			// PRIORITÉ : Toujours utiliser widgetDef.minSize (source de vérité)
-			// widget.minW/minH peut être obsolète si le widget a été créé avant une mise à jour
+			const minW = widgetDef?.minSize.w ?? widget.minW ?? 2;
+			const minH = widgetDef?.minSize.h ?? widget.minH ?? 2;
+			
+			// Sur mobile, forcer compact (utiliser minSize)
+			if (isMobile) {
+				return {
+					i: widget.id,
+					x: widget.x,
+					y: widget.y,
+					w: minW,
+					h: minH,
+					minW,
+					minH,
+					maxW: minW, // Empêcher le redimensionnement sur mobile
+					maxH: minH,
+				};
+			}
+			
+			// Desktop : comportement normal
 			return {
 				i: widget.id,
 				x: widget.x,
 				y: widget.y,
 				w: widget.w,
 				h: widget.h,
-				minW: widgetDef?.minSize.w ?? widget.minW ?? 2,
-				minH: widgetDef?.minSize.h ?? widget.minH ?? 2,
+				minW,
+				minH,
 				maxW: widgetDef?.maxSize?.w ?? widget.maxW,
 				maxH: widgetDef?.maxSize?.h ?? widget.maxH,
 			};
 		});
-	}, [filteredWidgets]);
+	}, [filteredWidgets, isMobile]);
 
 	const handleLayoutChange = (
 		_layout: Layout[],
@@ -337,8 +357,8 @@ function WidgetGridComponent({ searchQuery = "" }: WidgetGridProps) {
 				onLayoutChange={handleLayoutChange}
 				margin={[16, 16]}
 				containerPadding={[16, 16]}
-				isDraggable={true}
-				isResizable={true}
+				isDraggable={!isMobile}
+				isResizable={!isMobile}
 				draggableHandle='.widget-drag-handle'
 				compactType='vertical'
 				preventCollision={false}
@@ -352,16 +372,19 @@ function WidgetGridComponent({ searchQuery = "" }: WidgetGridProps) {
 					return (
 						<div key={widget.id} className='widget-drag-handle relative group flex flex-col h-full'>
 							{/* Barre d'outils discrète en haut - zone réservée permanente */}
+							{/* Sur mobile, masquer l'indicateur de drag */}
 							<div className='absolute top-0 left-0 right-0 h-8 z-10 flex items-center justify-between px-2 pointer-events-none'>
-								{/* Indicateur de drag */}
-								<div className='opacity-0 group-hover:opacity-100 transition-opacity'>
-									<div className='flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 backdrop-blur-sm'>
-										<GripVertical className='h-3 w-3 text-primary/70' />
-										<span className='text-[10px] font-medium text-primary/70'>
-											Déplacer
-										</span>
+								{/* Indicateur de drag - masqué sur mobile */}
+								{!isMobile && (
+									<div className='opacity-0 group-hover:opacity-100 transition-opacity'>
+										<div className='flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 backdrop-blur-sm'>
+											<GripVertical className='h-3 w-3 text-primary/70' />
+											<span className='text-[10px] font-medium text-primary/70'>
+												Déplacer
+											</span>
+										</div>
 									</div>
-								</div>
+								)}
 
 								{/* Bouton supprimer */}
 								<div className='opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto'>

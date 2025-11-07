@@ -4,6 +4,7 @@ import { getWidgetDefinition } from "@/lib/widgetRegistry";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { calculateWidgetSize } from "@/lib/widgetSize";
 import { WidgetSkeleton } from "@/components/ui/widget-skeleton";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface WidgetItemProps {
 	layout: Layout;
@@ -11,6 +12,7 @@ interface WidgetItemProps {
 
 function WidgetItemComponent({ layout }: WidgetItemProps) {
 	const widgets = useDashboardStore((state) => state.widgets);
+	const isMobile = useIsMobile();
 
 	// Trouver le widget correspondant
 	const widgetData = useMemo(() => {
@@ -26,9 +28,13 @@ function WidgetItemComponent({ layout }: WidgetItemProps) {
 	const WidgetComponent = widgetDef.component;
 
 	// Calculer la taille du widget pour déterminer la variante
+	// Sur mobile, forcer compact
 	const widgetSize = useMemo(() => {
+		if (isMobile) {
+			return "compact";
+		}
 		return calculateWidgetSize({ w: layout.w, h: layout.h }, widgetData.type);
-	}, [layout.w, layout.h, widgetData.type]);
+	}, [layout.w, layout.h, widgetData.type, isMobile]);
 
 	return (
 		<div className='h-full w-full'>

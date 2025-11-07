@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { getWidgetDefinition } from "@/lib/widgetRegistry";
 import { useTheme } from "@/hooks/useTheme";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { GoogleOAuthButton } from "@/components/ui/google-oauth-button";
 import {
 	Tooltip,
@@ -34,6 +35,7 @@ function DashboardComponent() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const { theme, toggleTheme } = useTheme();
 	const [isLibraryManagerOpen, setIsLibraryManagerOpen] = useState(false);
+	const isMobile = useIsMobile();
 
 	// Raccourcis clavier
 	useEffect(() => {
@@ -92,47 +94,169 @@ function DashboardComponent() {
 				transition={{ duration: 0.3 }}
 				className='sticky top-0 z-10 w-full border-b bg-background/80 backdrop-blur-md supports-backdrop-filter:bg-background/60 mb-4'
 			>
-				<div className='container mx-auto px-4 sm:px-6 lg:px-8 py-4'>
-					<div className='flex items-center justify-between'>
-						{/* Logo et titre */}
-						<motion.div
-							initial={{ opacity: 0, x: -20 }}
-							animate={{ opacity: 1, x: 0 }}
-							transition={{ duration: 0.3, delay: 0.1 }}
-							className='flex items-center gap-3'
-						>
-							<motion.div
-								whileHover={{ scale: 1.1, rotate: 5 }}
-								transition={{ type: "spring", stiffness: 400, damping: 17 }}
-								className='flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10'
-							>
-								<LayoutDashboard className='h-5 w-5 text-primary' />
-							</motion.div>
-							<div>
-								<h1
-									className='text-2xl font-bold tracking-tight'
-									id='dashboard-title'
+				<div className='container mx-auto px-3 sm:px-4 lg:px-8 py-3 sm:py-4'>
+					{/* Header mobile : layout vertical */}
+					{isMobile ? (
+						<div className='flex flex-col gap-3'>
+							{/* Ligne 1 : Logo et titre */}
+							<div className='flex items-center justify-between'>
+								<motion.div
+									initial={{ opacity: 0, x: -20 }}
+									animate={{ opacity: 1, x: 0 }}
+									transition={{ duration: 0.3, delay: 0.1 }}
+									className='flex items-center gap-2'
 								>
-									Mon Dashboard
-								</h1>
-								<div className='flex items-center gap-1 flex-wrap mt-1'>
-									<TooltipProvider>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<p
-													className='text-[10px] sm:text-xs text-muted-foreground cursor-help'
-													aria-live='polite'
-												>
-													{totalWidgets} widget{totalWidgets > 1 ? "s" : ""} •{" "}
-													{widgetTypesCount} type{widgetTypesCount > 1 ? "s" : ""}
-												</p>
-											</TooltipTrigger>
-											<TooltipContent 
-												side="bottom" 
-												className="max-w-xs bg-popover border border-border text-popover-foreground [&>svg]:bg-popover [&>svg]:fill-popover"
+									<motion.div
+										whileHover={{ scale: 1.1, rotate: 5 }}
+										transition={{ type: "spring", stiffness: 400, damping: 17 }}
+										className='flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10'
+									>
+										<LayoutDashboard className='h-4 w-4 text-primary' />
+									</motion.div>
+									<div>
+										<h1 className='text-lg font-bold tracking-tight'>Mon Dashboard</h1>
+										<p className='text-[10px] text-muted-foreground'>
+											{totalWidgets} widget{totalWidgets > 1 ? "s" : ""}
+										</p>
+									</div>
+								</motion.div>
+								{/* Bouton ajouter mobile */}
+								<Button
+									onClick={openPicker}
+									size='sm'
+									className='gap-1.5'
+									aria-label='Ajouter un widget'
+								>
+									<Plus className='h-4 w-4' />
+									<span>Ajouter</span>
+								</Button>
+							</div>
+							{/* Ligne 2 : Actions secondaires */}
+							<div className='flex items-center justify-between gap-2'>
+								{/* Barre de recherche mobile */}
+								<div className='relative flex-1'>
+									<div className='relative flex items-center bg-background border border-border rounded-md h-9 px-2 gap-2'>
+										<Search className='h-4 w-4 text-muted-foreground shrink-0' />
+										<Input
+											placeholder='Rechercher...'
+											value={searchQuery}
+											onChange={(e) => setSearchQuery(e.target.value)}
+											className='border-0 p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-sm'
+										/>
+										{searchQuery && (
+											<Button
+												variant='ghost'
+												size='icon'
+												className='h-5 w-5 shrink-0'
+												onClick={() => setSearchQuery("")}
 											>
-												<div className="flex flex-wrap gap-1">
-													{Object.entries(widgetStats).map(([type, count]) => {
+												×
+											</Button>
+										)}
+									</div>
+								</div>
+								{/* Boutons compacts */}
+								<Button
+									variant='outline'
+									size='icon'
+									onClick={() => setIsLibraryManagerOpen(true)}
+									title="Bibliothèque"
+								>
+									<Sparkles className='h-4 w-4' />
+								</Button>
+								<GoogleOAuthButton
+									variant='outline'
+									size='icon'
+									onCalendarConnect={async () => {
+										const { calendarSyncManager } = await import("@/lib/sync/calendarSyncManager");
+										calendarSyncManager.updateConfig({
+											providers: { googleCalendar: { enabled: true, calendarId: "primary" } },
+										});
+									}}
+									onTasksConnect={async () => {}}
+									onCalendarDisconnect={async () => {
+										const { calendarSyncManager } = await import("@/lib/sync/calendarSyncManager");
+										calendarSyncManager.updateConfig({
+											providers: { googleCalendar: { enabled: false } },
+										});
+									}}
+									onTasksDisconnect={() => {}}
+								/>
+								<button
+									onClick={toggleTheme}
+									className='relative flex items-center justify-center h-9 w-9 rounded-full bg-muted/40 hover:bg-muted/60 transition-colors border border-border/50'
+									aria-label='Basculer le thème'
+								>
+									{theme === "light" ? (
+										<Sun className='h-4 w-4 text-foreground' />
+									) : (
+										<Moon className='h-4 w-4 text-foreground' />
+									)}
+								</button>
+							</div>
+						</div>
+					) : (
+						<div className='flex items-center justify-between'>
+							{/* Logo et titre */}
+							<motion.div
+								initial={{ opacity: 0, x: -20 }}
+								animate={{ opacity: 1, x: 0 }}
+								transition={{ duration: 0.3, delay: 0.1 }}
+								className='flex items-center gap-3'
+							>
+								<motion.div
+									whileHover={{ scale: 1.1, rotate: 5 }}
+									transition={{ type: "spring", stiffness: 400, damping: 17 }}
+									className='flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10'
+								>
+									<LayoutDashboard className='h-5 w-5 text-primary' />
+								</motion.div>
+								<div>
+									<h1
+										className='text-2xl font-bold tracking-tight'
+										id='dashboard-title'
+									>
+										Mon Dashboard
+									</h1>
+									<div className='flex items-center gap-1 flex-wrap mt-1'>
+										<TooltipProvider>
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<p
+														className='text-[10px] sm:text-xs text-muted-foreground cursor-help'
+														aria-live='polite'
+													>
+														{totalWidgets} widget{totalWidgets > 1 ? "s" : ""} •{" "}
+														{widgetTypesCount} type{widgetTypesCount > 1 ? "s" : ""}
+													</p>
+												</TooltipTrigger>
+												<TooltipContent 
+													side="bottom" 
+													className="max-w-xs bg-popover border border-border text-popover-foreground [&>svg]:bg-popover [&>svg]:fill-popover"
+												>
+													<div className="flex flex-wrap gap-1">
+														{Object.entries(widgetStats).map(([type, count]) => {
+															const def = getWidgetDefinition(type);
+															if (!def) return null;
+															return (
+																<Badge key={type} variant='secondary' className='text-[10px] px-1.5 py-0.5 h-5 leading-tight'>
+																	{count}x {def.name}
+																</Badge>
+															);
+														})}
+													</div>
+												</TooltipContent>
+											</Tooltip>
+										</TooltipProvider>
+										{(() => {
+											const entries = Object.entries(widgetStats);
+											const maxVisible = 5;
+											const visible = entries.slice(0, maxVisible);
+											const remaining = entries.length - maxVisible;
+											
+											return (
+												<>
+													{visible.map(([type, count]) => {
 														const def = getWidgetDefinition(type);
 														if (!def) return null;
 														return (
@@ -141,68 +265,47 @@ function DashboardComponent() {
 															</Badge>
 														);
 													})}
-												</div>
-											</TooltipContent>
-										</Tooltip>
-									</TooltipProvider>
-									{(() => {
-										const entries = Object.entries(widgetStats);
-										const maxVisible = 5; // Afficher maximum 5 tags
-										const visible = entries.slice(0, maxVisible);
-										const remaining = entries.length - maxVisible;
-										
-										return (
-											<>
-												{visible.map(([type, count]) => {
-													const def = getWidgetDefinition(type);
-													if (!def) return null;
-													return (
-														<Badge key={type} variant='secondary' className='text-[10px] px-1.5 py-0.5 h-5 leading-tight'>
-															{count}x {def.name}
-														</Badge>
-													);
-												})}
-												{remaining > 0 && (
-													<TooltipProvider>
-														<Tooltip>
-															<TooltipTrigger asChild>
-																<Badge variant='secondary' className='text-[10px] px-1.5 py-0.5 h-5 leading-tight cursor-help'>
-																	+{remaining}
-																</Badge>
-															</TooltipTrigger>
-															<TooltipContent 
-																side="bottom" 
-																className="max-w-xs bg-popover border border-border text-popover-foreground [&>svg]:bg-popover [&>svg]:fill-popover"
-															>
-																<div className="flex flex-wrap gap-1">
-																	{entries.slice(maxVisible).map(([type, count]) => {
-																		const def = getWidgetDefinition(type);
-																		if (!def) return null;
-																		return (
-																			<Badge key={type} variant='secondary' className='text-[10px] px-1.5 py-0.5 h-5 leading-tight'>
-																				{count}x {def.name}
-																			</Badge>
-																		);
-																	})}
-																</div>
-															</TooltipContent>
-														</Tooltip>
-													</TooltipProvider>
-												)}
-											</>
-										);
-									})()}
+													{remaining > 0 && (
+														<TooltipProvider>
+															<Tooltip>
+																<TooltipTrigger asChild>
+																	<Badge variant='secondary' className='text-[10px] px-1.5 py-0.5 h-5 leading-tight cursor-help'>
+																		+{remaining}
+																	</Badge>
+																</TooltipTrigger>
+																<TooltipContent 
+																	side="bottom" 
+																	className="max-w-xs bg-popover border border-border text-popover-foreground [&>svg]:bg-popover [&>svg]:fill-popover"
+																>
+																	<div className="flex flex-wrap gap-1">
+																		{entries.slice(maxVisible).map(([type, count]) => {
+																			const def = getWidgetDefinition(type);
+																			if (!def) return null;
+																			return (
+																				<Badge key={type} variant='secondary' className='text-[10px] px-1.5 py-0.5 h-5 leading-tight'>
+																					{count}x {def.name}
+																				</Badge>
+																			);
+																		})}
+																	</div>
+																</TooltipContent>
+															</Tooltip>
+														</TooltipProvider>
+													)}
+												</>
+											);
+										})()}
+									</div>
 								</div>
-							</div>
-						</motion.div>
+							</motion.div>
 
-						{/* Actions rapides */}
-						<motion.div
-							initial={{ opacity: 0, x: 20 }}
-							animate={{ opacity: 1, x: 0 }}
-							transition={{ duration: 0.3, delay: 0.1 }}
-							className='flex items-center gap-2'
-						>
+							{/* Actions rapides */}
+							<motion.div
+								initial={{ opacity: 0, x: 20 }}
+								animate={{ opacity: 1, x: 0 }}
+								transition={{ duration: 0.3, delay: 0.1 }}
+								className='flex items-center gap-2'
+							>
 							{/* Barre de recherche */}
 							<div className='relative hidden sm:flex'>
 								<div className='relative flex items-center bg-background border border-border rounded-md h-10 px-3 gap-2 min-w-[200px]'>
