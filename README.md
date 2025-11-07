@@ -151,6 +151,17 @@ MIT License - voir [LICENSE](./LICENSE) pour plus de détails.
 
 - GitHub: [@Mars375](https://github.com/Mars375)
 
+## 🗺️ Roadmap / To Do
+
+### Automatisation & IA (Coming Soon)
+
+- **Automatisation via n8n** : Intégration de workflows automatisés pour connecter les widgets entre eux
+- **IA intégrée** : Suggestions intelligentes, résumé automatique des tâches, prédictions de calendrier
+- **Webhooks** : Support des webhooks pour déclencher des actions automatiques
+- **Intégrations avancées** : Connexion avec plus de services (Slack, Discord, Telegram, etc.)
+
+Voir [docs/AUTOMATION_IA.md](./docs/AUTOMATION_IA.md) pour plus de détails sur l'architecture prévue.
+
 ---
 
 ⭐ Si ce projet vous a aidé, pensez à mettre une étoile !
