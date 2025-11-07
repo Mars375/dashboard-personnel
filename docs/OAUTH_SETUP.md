@@ -5,6 +5,7 @@ Ce guide explique comment configurer l'authentification OAuth pour les différen
 ## 📋 Vue d'ensemble
 
 L'architecture OAuth est centralisée dans `src/lib/auth/` et gère :
+
 - **Google** : Calendar et Tasks
 - **Microsoft** : Outlook Calendar
 - **Notion** : API
@@ -44,7 +45,7 @@ VITE_NOTION_REDIRECT_URI=http://localhost:5173/oauth/notion/callback
 6. Configurez l'application :
    - **Application type** : Web application
    - **Name** : Dashboard Personnel
-   - **Authorized redirect URIs** : 
+   - **Authorized redirect URIs** :
      - `http://localhost:5173/oauth/google/callback` (dev)
      - `https://votre-domaine.com/oauth/google/callback` (prod)
 7. Copiez le **Client ID** dans `.env.local`
@@ -107,10 +108,10 @@ const manager = getOAuthManager();
 
 // Connecter à Google Calendar
 try {
-  const connection = await manager.connect("google", "google-calendar");
-  console.log("Connecté !", connection.user);
+	const connection = await manager.connect("google", "google-calendar");
+	console.log("Connecté !", connection.user);
 } catch (error) {
-  console.error("Erreur:", error);
+	console.error("Erreur:", error);
 }
 
 // Vérifier si connecté
@@ -146,6 +147,7 @@ await manager.connect("google", "google-calendar");
 ```
 
 Le flux :
+
 1. Ouvre une popup OAuth
 2. Utilisateur s'authentifie
 3. Redirection vers `/oauth/google/callback`
@@ -156,11 +158,13 @@ Le flux :
 ### 2. Backend proxy (recommandé pour production)
 
 Pour la production, il est recommandé d'implémenter un backend proxy qui :
+
 - Gère l'échange `code` → `tokens` (nécessite `client_secret`)
 - Stocke les tokens de manière sécurisée
 - Rafraîchit les tokens automatiquement
 
 **Architecture recommandée** :
+
 - Frontend : OAuth popup → Redirection → Envoie `code` au backend
 - Backend : Reçoit `code` → Échange contre `tokens` → Stocke dans DB → Retourne `access_token`
 - Frontend : Utilise `access_token` pour les appels API
@@ -187,6 +191,7 @@ Pour la production, il est recommandé d'implémenter un backend proxy qui :
 ### Popup bloquée
 
 Si la popup est bloquée, vérifiez :
+
 - Les paramètres du navigateur (autorisation des popups)
 - Les bloqueurs de publicité
 - Les extensions de navigateur
@@ -194,6 +199,7 @@ Si la popup est bloquée, vérifiez :
 ### Erreur "redirect_uri_mismatch"
 
 Vérifiez que l'URI de redirection dans `.env.local` correspond exactement à celle configurée dans :
+
 - Google Cloud Console
 - Azure AD
 - Notion
@@ -205,6 +211,7 @@ Les tokens sont automatiquement rafraîchis si un `refresh_token` est disponible
 ### CORS errors
 
 Les APIs Google/Microsoft supportent CORS. Si vous rencontrez des erreurs :
+
 - Vérifiez que vous utilisez les bonnes URLs d'API
 - Vérifiez les headers `Authorization`
 - Vérifiez que le token est valide
@@ -229,7 +236,7 @@ Les APIs Google/Microsoft supportent CORS. Si vous rencontrez des erreurs :
 6. Configurez :
    - **Application type** : Web application
    - **Name** : Dashboard Personnel
-   - **Authorized redirect URIs** : 
+   - **Authorized redirect URIs** :
      - `http://localhost:5173/oauth/google/callback` (dev)
      - `https://votre-domaine.com/oauth/google/callback` (prod)
 7. Copiez le **Client ID** et le **Client Secret**
@@ -248,12 +255,14 @@ Les APIs Google/Microsoft supportent CORS. Si vous rencontrez des erreurs :
 4. Si vous voyez un avertissement de vérification, vous avez deux options :
 
    **Option A : Mode Production sans vérification (pour usage personnel)**
+
    - Si vous utilisez uniquement des scopes non sensibles (Calendar, Tasks)
    - Google peut vous permettre de publier sans vérification
    - Cliquez sur **"PUBLISH APP"** et confirmez
    - L'application sera accessible publiquement
 
    **Option B : Demander la vérification (pour usage public)**
+
    - Si Google demande une vérification, suivez le processus
    - Cela peut prendre quelques jours
    - En attendant, vous pouvez ajouter des "Test users" dans **OAuth consent screen** → **Test users**
@@ -278,16 +287,19 @@ GOOGLE_CLIENT_SECRET=votre_client_secret_ici
 **Option A : Lancer les deux serveurs séparément**
 
 **Terminal 1 - Frontend :**
+
 ```bash
 pnpm dev
 ```
 
 **Terminal 2 - Backend proxy OAuth :**
+
 ```bash
 pnpm dev:server
 ```
 
 **Option B : Lancer les deux en même temps**
+
 ```bash
 pnpm dev:all
 ```
@@ -308,14 +320,17 @@ Le backend proxy sera sur `http://localhost:3001`
 ## 🐛 Dépannage
 
 ### Erreur "redirect_uri_mismatch"
+
 - Vérifiez que l'URI dans `.env.local` correspond **exactement** à celle dans Google Cloud Console
 - L'URI doit être identique, y compris le protocole (http/https) et le port
 
 ### Erreur "Le backend proxy OAuth n'est pas démarré"
+
 - Assurez-vous que le backend proxy est lancé : `pnpm dev:server`
 - Vérifiez que le port 3001 n'est pas déjà utilisé
 
 ### Erreur "GOOGLE_CLIENT_SECRET manquant"
+
 - Vérifiez que `GOOGLE_CLIENT_SECRET` est dans `.env.local` (sans préfixe `VITE_`)
 - Redémarrez le serveur backend après ajout
 
@@ -329,12 +344,13 @@ Si vous obtenez une erreur lors de la connexion Google, vérifiez le mode de l'a
    - **"In production"** : N'importe qui peut se connecter
 
 **Pour passer en Production :**
+
 - Cliquez sur **"PUBLISH APP"** en bas de la page
 - Confirmez la publication
 - Si Google demande une vérification, suivez le processus ou ajoutez des test users en attendant
 
 **Pour ajouter des test users (mode Testing) :**
+
 - Dans **OAuth consent screen** → **Test users**
 - Cliquez sur **"+ ADD USERS"**
 - Ajoutez les emails des utilisateurs autorisés
-

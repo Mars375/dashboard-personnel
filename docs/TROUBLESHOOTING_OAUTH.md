@@ -9,6 +9,7 @@ Si vous obtenez une erreur `ERR_CONNECTION_REFUSED` ou `Ce site est inaccessible
 Si après avoir choisi un compte Google, vous obtenez l'erreur `localhost n'autorise pas la connexion`, c'est que le `redirect_uri` pointe vers `localhost` au lieu de l'URL Vercel.
 
 **Solution :**
+
 1. Dans **Vercel Dashboard → Settings → Environment Variables**, supprimez `VITE_GOOGLE_REDIRECT_URI` si elle pointe vers localhost
 2. Le code utilisera automatiquement l'URL Vercel (`window.location.origin`)
 3. Vérifiez que l'URL dans Google Console correspond exactement : `https://votre-app.vercel.app/oauth/google/callback`
@@ -21,6 +22,7 @@ Si après avoir choisi un compte Google, vous obtenez l'erreur `localhost n'auto
 Le backend OAuth proxy **doit être déployé séparément** sur Railway ou Render. Vercel ne peut pas exécuter le serveur Express.
 
 **Vérifiez :**
+
 - ✅ Le backend est déployé sur Railway ou Render
 - ✅ Le backend est accessible (testez l'URL dans votre navigateur)
 - ✅ Le backend répond sur `/health` ou `/api/oauth/exchange`
@@ -34,6 +36,7 @@ VITE_OAUTH_PROXY_URL=https://votre-backend.railway.app
 ```
 
 **⚠️ IMPORTANT :**
+
 - L'URL doit être **complète** avec `https://`
 - Pas de slash final (`/`)
 - L'URL doit pointer vers votre backend Railway/Render, **PAS** vers Vercel
@@ -59,6 +62,7 @@ Dans [Google Cloud Console](https://console.cloud.google.com) :
    - `http://localhost:5173/oauth/google/callback` (pour le dev local)
 
 **⚠️ L'URL doit correspondre EXACTEMENT**, y compris :
+
 - Le protocole (`https://`)
 - Le domaine complet
 - Le chemin (`/oauth/google/callback`)
@@ -76,18 +80,21 @@ Après avoir modifié les variables d'environnement :
 ### Tester le backend
 
 Ouvrez dans votre navigateur :
+
 ```
 https://votre-backend.railway.app/health
 ```
 
 Vous devriez voir :
+
 ```json
-{"status":"ok","timestamp":"..."}
+{ "status": "ok", "timestamp": "..." }
 ```
 
 ### Tester l'endpoint OAuth
 
 Essayez de faire une requête POST (avec un outil comme Postman ou curl) :
+
 ```bash
 curl -X POST https://votre-backend.railway.app/api/oauth/exchange \
   -H "Content-Type: application/json" \
@@ -108,6 +115,7 @@ Vous devriez obtenir une erreur 400 (normal, car le code est invalide), mais **P
 **Cause** : Le backend n'est pas accessible ou l'URL est incorrecte.
 
 **Solution** :
+
 1. Vérifiez que le backend est déployé et accessible
 2. Vérifiez que `VITE_OAUTH_PROXY_URL` est correctement configurée dans Vercel
 3. Vérifiez que l'URL n'a pas de slash final
@@ -117,6 +125,7 @@ Vous devriez obtenir une erreur 400 (normal, car le code est invalide), mais **P
 **Cause** : L'URL de redirection dans Google Console ne correspond pas à celle utilisée.
 
 **Solution** :
+
 1. Vérifiez que l'URL dans Google Console est exactement : `https://votre-app.vercel.app/oauth/google/callback`
 2. Vérifiez qu'il n'y a pas de slash final
 3. Redéployez l'application Vercel après modification
@@ -126,6 +135,7 @@ Vous devriez obtenir une erreur 400 (normal, car le code est invalide), mais **P
 **Cause** : Le backend n'autorise pas les requêtes depuis le frontend Vercel.
 
 **Solution** :
+
 1. Vérifiez que `ALLOWED_ORIGINS` dans le backend contient : `https://votre-app.vercel.app`
 2. Redéployez le backend après modification
 
@@ -134,6 +144,7 @@ Vous devriez obtenir une erreur 400 (normal, car le code est invalide), mais **P
 **Cause** : Le secret n'est pas configuré dans le backend.
 
 **Solution** :
+
 1. Vérifiez que `GOOGLE_CLIENT_SECRET` est dans les variables d'environnement du backend (Railway/Render)
 2. **PAS** dans Vercel (c'est normal, il doit rester dans le backend uniquement)
 
@@ -159,4 +170,3 @@ Si le problème persiste :
 2. Testez le backend directement avec curl/Postman
 3. Vérifiez la console du navigateur (F12) pour les erreurs JavaScript
 4. Consultez [DEPLOYMENT_COMPLETE.md](./DEPLOYMENT_COMPLETE.md) pour le guide complet de déploiement
-

@@ -612,20 +612,18 @@ function CalendarWidgetComponent({ size = "medium" }: WidgetProps) {
 					}
 				}
 
-				// Une seule notification combinée
+				// Une seule notification combinée - seulement si des changements ont été effectués
 				if (newEventsCount > 0) {
 					toast.success(
 						`Synchronisation réussie: ${newEventsCount} nouvel(le)(s) événement(s) ajouté(s) depuis Google Calendar`
 					);
-				} else if (pulledEventsCount > 0) {
-					toast.success(
-						`Synchronisation réussie: ${pulledEventsCount} événement(s) récupéré(s) (déjà présents)`
-					);
-				} else {
+				} else if (totalSynced > 0) {
+					// Afficher seulement si des événements ont été synchronisés (push)
 					toast.success(
 						`Synchronisation réussie: ${totalSynced} événement(s) synchronisé(s)`
 					);
 				}
+				// Si aucun nouveau événement et aucun événement synchronisé, ne pas afficher de toast
 			} else {
 				if (!isGoogleConnected) {
 					toast.info("Connectez-vous à Google Calendar pour synchroniser");

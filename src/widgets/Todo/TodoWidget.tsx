@@ -850,7 +850,7 @@ function TodoWidgetComponent({ size = "medium" }: WidgetProps) {
 				logger.debug(`✅ Aucune tâche locale à synchroniser`);
 			}
 
-			// Message de succès avec détails
+			// Message de succès avec détails - seulement si des changements ont été effectués
 			if (addedCount > 0 || updatedCount > 0) {
 				const details: string[] = [];
 				if (addedCount > 0) {
@@ -866,12 +866,8 @@ function TodoWidgetComponent({ size = "medium" }: WidgetProps) {
 							? `${successMsg.description} : ${details.join(", ")}`
 							: successMsg.description,
 				});
-			} else {
-				const successMsg = syncMessages.syncCompleted();
-				toast.success(successMsg.title, {
-					description: successMsg.description,
-				});
 			}
+			// Si aucun changement (ajout ou mise à jour), ne pas afficher de toast
 		} catch (error) {
 			logger.error("Erreur lors de la synchronisation:", error);
 			const errorInfo = getSyncError(error);
