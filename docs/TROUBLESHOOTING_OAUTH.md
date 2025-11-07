@@ -1,8 +1,18 @@
-# 🔧 Dépannage OAuth - Erreur de connexion en production
+# 🔧 Dépannage OAuth - Erreurs courantes
 
-## ❌ Problème : ERR_CONNECTION_REFUSED sur Vercel
+## ❌ Problème 1 : ERR_CONNECTION_REFUSED sur Vercel
 
 Si vous obtenez une erreur `ERR_CONNECTION_REFUSED` ou `Ce site est inaccessible` lors de la connexion Google sur votre application déployée sur Vercel, c'est que le **backend OAuth proxy n'est pas configuré ou accessible**.
+
+## ❌ Problème 2 : "localhost n'autorise pas la connexion"
+
+Si après avoir choisi un compte Google, vous obtenez l'erreur `localhost n'autorise pas la connexion`, c'est que le `redirect_uri` pointe vers `localhost` au lieu de l'URL Vercel.
+
+**Solution :**
+1. Dans **Vercel Dashboard → Settings → Environment Variables**, supprimez `VITE_GOOGLE_REDIRECT_URI` si elle pointe vers localhost
+2. Le code utilisera automatiquement l'URL Vercel (`window.location.origin`)
+3. Vérifiez que l'URL dans Google Console correspond exactement : `https://votre-app.vercel.app/oauth/google/callback`
+4. Redéployez Vercel
 
 ## ✅ Solution : Vérifier la configuration
 
