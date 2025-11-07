@@ -22,6 +22,7 @@ Au lieu d'avoir plusieurs applications séparées, le Dashboard Personnel regrou
 ### 📦 Widgets intégrés
 
 #### 🌤️ **Weather Widget** - Météo
+
 - Conditions météo en temps réel
 - Prévisions sur 5 jours
 - Recherche de villes avec autocomplétion
@@ -29,6 +30,7 @@ Au lieu d'avoir plusieurs applications séparées, le Dashboard Personnel regrou
 - Support de plusieurs villes
 
 #### ✅ **Todo Widget** - Tâches
+
 - Gestion complète de tâches (CRUD)
 - Multi-listes (Pro, Perso, Projets, etc.)
 - Priorités et deadlines
@@ -41,6 +43,7 @@ Au lieu d'avoir plusieurs applications séparées, le Dashboard Personnel regrou
 - Undo/Redo avec historique
 
 #### 📅 **Calendar Widget** - Calendrier
+
 - Affichage mensuel, hebdomadaire et journalier
 - Création, édition et suppression d'événements
 - Sélection de couleur personnalisée
@@ -52,6 +55,7 @@ Au lieu d'avoir plusieurs applications séparées, le Dashboard Personnel regrou
 - Récurrence d'événements
 
 #### 📈 **Stock Widget** - Bourse
+
 - Suivi de cours boursiers en temps réel
 - Watchlist personnalisée
 - Variations et pourcentages
@@ -59,6 +63,7 @@ Au lieu d'avoir plusieurs applications séparées, le Dashboard Personnel regrou
 - Mise à jour automatique toutes les 5 minutes
 
 #### 📚 **Bookmarks Widget** - Favoris
+
 - Gestion de liens favoris avec URL
 - Favicons automatiques
 - Recherche par titre, URL, description ou tags
@@ -66,12 +71,14 @@ Au lieu d'avoir plusieurs applications séparées, le Dashboard Personnel regrou
 - Ouverture dans nouvel onglet
 
 #### 📝 **Journal Widget** - Journal personnel
+
 - Entrées par date
 - Vue des dernières entrées
 - Édition et suppression
 - Recherche par date
 
 #### 🎯 **Habits Widget** - Habitudes
+
 - Suivi de vos habitudes quotidiennes
 - Système de streaks
 - Heatmap des 7 derniers jours
@@ -79,6 +86,7 @@ Au lieu d'avoir plusieurs applications séparées, le Dashboard Personnel regrou
 - Renouvellement quotidien automatique
 
 #### 💰 **Finance Widget** - Finances
+
 - Suivi des revenus et dépenses
 - Budgets par catégorie
 - Graphiques de répartition (camembert)
@@ -86,24 +94,28 @@ Au lieu d'avoir plusieurs applications séparées, le Dashboard Personnel regrou
 - Historique complet
 
 #### 🍅 **Pomodoro Widget** - Productivité
+
 - Timer Pomodoro (25 min)
 - Sessions de travail
 - Statistiques de sessions
 - Historique des sessions
 
 #### 📰 **RSS Widget** - Actualités
+
 - Lecteur de flux RSS
 - Ajout de flux personnalisés
 - Marquer comme lu/non lu
 - Vue des derniers articles
 
 #### 💬 **Quote Widget** - Citations
+
 - Citations inspirantes quotidiennes
 - Système de favoris
 - Refresh automatique (mode compact)
 - Citations par défaut incluses
 
 #### 📊 **Stats Widget** - Statistiques
+
 - Vue d'ensemble de tous vos widgets
 - Statistiques agrégées
 - Graphiques de synthèse
@@ -117,13 +129,16 @@ Au lieu d'avoir plusieurs applications séparées, le Dashboard Personnel regrou
 Le Dashboard Personnel se connecte à plusieurs services pour synchroniser vos données :
 
 #### Google
+
 - **Google Calendar** : Synchronisation bidirectionnelle des événements
 - **Google Tasks** : Synchronisation des tâches avec vos listes Google
 
 #### Microsoft
+
 - **Outlook Calendar** : Synchronisation des événements Outlook
 
 #### Notion
+
 - **Notion API** : Synchronisation des tâches avec vos bases de données Notion
 
 ### Configuration OAuth
@@ -280,4 +295,3 @@ MIT License - Voir [LICENSE](../LICENSE) pour plus de détails.
 ---
 
 **Fait avec ❤️ par [Mars375](https://github.com/Mars375)**
-

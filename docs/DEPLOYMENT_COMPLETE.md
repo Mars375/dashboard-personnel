@@ -161,6 +161,12 @@ VITE_GOOGLE_CLIENT_ID=votre-client-id
 VITE_OAUTH_PROXY_URL=https://votre-backend.railway.app
 ```
 
+**⚠️ IMPORTANT** : 
+- `VITE_OAUTH_PROXY_URL` doit pointer vers votre backend Railway/Render
+- L'URL doit être complète avec `https://` et **sans slash final**
+- Exemple : `https://dashboard-oauth-proxy.up.railway.app` (✅)
+- Exemple incorrect : `https://dashboard-oauth-proxy.up.railway.app/` (❌)
+
 #### API Météo
 
 ```
