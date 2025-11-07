@@ -133,7 +133,12 @@ async function loadExternalModule(url: string, cache?: WidgetLoadConfig["cache"]
 			throw new Error("require() n'est pas supporté dans les modules externes");
 		}, "", "");
 
-		return module.exports.default || module.exports;
+		const result = module.exports.default || module.exports;
+		// S'assurer que le résultat est un LoadedModule
+		if (typeof result === "function") {
+			return { default: result as ComponentType<WidgetProps> } as LoadedModule;
+		}
+		return result as LoadedModule;
 	} catch (error) {
 		// Si l'approche ci-dessus échoue, essayer avec import() dynamique
 		// (nécessite que le serveur serve le module avec les bons headers CORS)
@@ -161,12 +166,20 @@ function getComponentFromModule(module: LoadedModule, exportName?: string): Comp
 		if (!module[exportName]) {
 			throw new Error(`L'export '${exportName}' n'existe pas dans le module`);
 		}
-		return module[exportName];
+		const exportValue = module[exportName];
+		if (typeof exportValue === "function") {
+			return exportValue as ComponentType<WidgetProps>;
+		}
+		throw new Error(`L'export '${exportName}' n'est pas un composant React`);
 	}
 
 	// Sinon, chercher default ou le premier export
 	if (module.default) {
-		return module.default;
+		const defaultExport = module.default;
+		if (typeof defaultExport === "function") {
+			return defaultExport as ComponentType<WidgetProps>;
+		}
+		throw new Error("L'export default n'est pas un composant React");
 	}
 
 	// Chercher le premier export qui est une fonction

@@ -5,6 +5,7 @@ Ce guide vous explique comment déployer le Dashboard Personnel sur Vercel (fron
 ## 📋 Vue d'ensemble
 
 Le projet nécessite deux déploiements :
+
 1. **Frontend** : Application React sur Vercel (gratuit)
 2. **Backend** : Serveur Express OAuth proxy sur Railway/Render (gratuit)
 
@@ -47,24 +48,26 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // CORS configuré pour accepter toutes les origines en production
-app.use(cors({ 
-  origin: process.env.ALLOWED_ORIGINS?.split(",") || "*",
-  credentials: true 
-}));
+app.use(
+	cors({
+		origin: process.env.ALLOWED_ORIGINS?.split(",") || "*",
+		credentials: true,
+	})
+);
 app.use(express.json());
 
 // Endpoint pour échanger le code OAuth Google contre des tokens
 app.post("/api/oauth/exchange", async (req, res) => {
-  // ... (copier le code de oauth-proxy.ts)
+	// ... (copier le code de oauth-proxy.ts)
 });
 
 // Endpoint pour rafraîchir les tokens
 app.post("/api/oauth/refresh", async (req, res) => {
-  // ... (copier le code de oauth-proxy.ts)
+	// ... (copier le code de oauth-proxy.ts)
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 OAuth Proxy Server running on port ${PORT}`);
+	console.log(`🚀 OAuth Proxy Server running on port ${PORT}`);
 });
 ```
 
@@ -72,15 +75,16 @@ app.listen(PORT, () => {
 
 ```json
 {
-  "scripts": {
-    "start:server": "tsx server/start.ts"
-  }
+	"scripts": {
+		"start:server": "tsx server/start.ts"
+	}
 }
 ```
 
 #### 6. Variables d'environnement Railway
 
 Dans Railway, ajoutez ces variables :
+
 - `VITE_GOOGLE_CLIENT_ID` : Votre ID client Google
 - `GOOGLE_CLIENT_SECRET` : Votre secret client Google
 - `PORT` : `3001` (ou laisser Railway gérer)
@@ -151,22 +155,26 @@ Le projet est déjà configuré avec `vercel.json`. Vérifiez que le fichier exi
 Dans les settings du projet Vercel, ajoutez :
 
 #### OAuth Google
+
 ```
 VITE_GOOGLE_CLIENT_ID=votre-client-id
 VITE_OAUTH_PROXY_URL=https://votre-backend.railway.app
 ```
 
 #### API Météo
+
 ```
 VITE_OPENWEATHER_API_KEY=votre-cle-api
 ```
 
 #### API Bourse (optionnel)
+
 ```
 VITE_ALPHA_VANTAGE_API_KEY=votre-cle-api
 ```
 
 #### Autres (optionnel)
+
 ```
 VITE_NOTION_API_KEY=votre-cle-api
 VITE_NOTION_DATABASE_ID=votre-database-id
@@ -253,4 +261,3 @@ Redéployez le backend si nécessaire.
 ## 🎉 Félicitations !
 
 Votre Dashboard Personnel est maintenant déployé et accessible publiquement ! 🚀
-

@@ -10,12 +10,13 @@ export default defineConfig({
 		react(),
 		tailwindcss(),
 		// Bundle visualizer (seulement en mode build)
+		// @ts-expect-error - visualizer returns a Promise but works correctly at runtime
 		...(process.env.ANALYZE === "true"
 			? [
 					visualizer({
 						open: true,
 						template: "treemap" as const,
-					}) as unknown as ReturnType<typeof visualizer>,
+					}),
 			  ]
 			: []),
 	],

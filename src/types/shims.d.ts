@@ -2,9 +2,10 @@ declare module "framer-motion" {
 	import type { ComponentType, HTMLAttributes } from "react";
 	
 	interface MotionProps extends HTMLAttributes<HTMLElement> {
-		initial?: { opacity?: number; x?: number; y?: number; [key: string]: unknown };
-		animate?: { opacity?: number; x?: number; y?: number; [key: string]: unknown };
-		transition?: { duration?: number; [key: string]: unknown };
+		initial?: false | { opacity?: number; x?: number; y?: number; scale?: number | number[]; [key: string]: unknown };
+		animate?: { opacity?: number | number[]; x?: number; y?: number; scale?: number | number[]; background?: string; rotate?: number | number[]; [key: string]: unknown };
+		transition?: { duration?: number; type?: string; stiffness?: number; damping?: number; repeat?: number | typeof Infinity; ease?: string | number[]; delay?: number; [key: string]: unknown };
+		exit?: { opacity?: number; [key: string]: unknown };
 		[key: string]: unknown;
 	}
 	

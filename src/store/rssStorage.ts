@@ -1,7 +1,7 @@
 /**
-import { logger } from "@/lib/logger";
  * Storage pour le widget RSS
  */
+import { logger } from "@/lib/logger";
 
 export interface RSSFeed {
 	id: string;

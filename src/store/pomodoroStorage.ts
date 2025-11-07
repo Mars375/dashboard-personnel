@@ -1,7 +1,7 @@
 /**
-import { logger } from "@/lib/logger";
  * Storage pour le widget Pomodoro
  */
+import { logger } from "@/lib/logger";
 
 export interface PomodoroSession {
 	id: string;

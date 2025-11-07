@@ -1,7 +1,7 @@
 /**
-import { logger } from "@/lib/logger";
  * Storage pour le widget Quote
  */
+import { logger } from "@/lib/logger";
 
 export interface Quote {
 	id: string;

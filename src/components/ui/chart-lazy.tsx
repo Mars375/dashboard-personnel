@@ -9,9 +9,9 @@ import type { PieProps, CellProps } from "recharts";
 
 // Lazy loading des composants Recharts
 const RechartsPieChart = lazy(() =>
-	import("recharts").then((module) => ({
-		default: module.PieChart,
-	})) as Promise<{ default: React.ComponentType<React.ComponentProps<typeof module.PieChart>> }>
+	import("recharts").then((rechartsModule) => ({
+		default: rechartsModule.PieChart,
+	})) as Promise<{ default: React.ComponentType<React.ComponentProps<typeof import("recharts").PieChart>> }>
 );
 
 const RechartsPie = lazy(() =>
@@ -27,8 +27,11 @@ const RechartsCell = lazy(() =>
 );
 
 // Types pour les props
-interface LazyPieChartProps extends React.ComponentProps<typeof RechartsPieChart> {
+interface LazyPieChartProps {
 	children?: React.ReactNode;
+	width?: number;
+	height?: number;
+	[key: string]: unknown;
 }
 
 interface LazyPieProps extends PieProps {
