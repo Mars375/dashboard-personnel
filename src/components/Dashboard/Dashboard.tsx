@@ -497,6 +497,7 @@ function DashboardComponent() {
 							</Button>
 						</motion.div>
 					</div>
+					)}
 				</div>
 			</motion.header>
 
