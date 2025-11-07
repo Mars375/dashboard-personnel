@@ -208,8 +208,13 @@ export class OAuthManager {
 
 		// Google
 		const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-		const googleRedirectUri =
-			import.meta.env.VITE_GOOGLE_REDIRECT_URI || `${window.location.origin}/oauth/google/callback`;
+		// En production, utiliser window.location.origin pour avoir automatiquement l'URL Vercel
+		// En dev, utiliser la variable d'environnement ou localhost
+		const isProduction = import.meta.env.PROD || window.location.hostname !== "localhost";
+		const googleRedirectUri = import.meta.env.VITE_GOOGLE_REDIRECT_URI || 
+			(isProduction 
+				? `${window.location.origin}/oauth/google/callback`
+				: `http://localhost:5173/oauth/google/callback`);
 
 		if (googleClientId) {
 			config.google = {
