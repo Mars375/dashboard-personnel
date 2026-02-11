@@ -5,6 +5,8 @@ import express from "express";
 import cors from "cors";
 import * as dotenv from "dotenv";
 import path from "path";
+import { cspMiddleware } from "./middleware/csp";
+import cspRoutes from "./routes/csp";
 
 // Charger les variables d'environnement
 const envPath = path.resolve(process.cwd(), ".env.local");
@@ -12,6 +14,9 @@ dotenv.config({ path: envPath });
 
 const app = express();
 const PORT = 3001; // Port différent du frontend Vite (5173)
+
+// Appliquer le middleware CSP AVANT les routes
+app.use(cspMiddleware);
 
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
@@ -249,6 +254,9 @@ app.post("/api/oauth/migrate", async (req, res) => {
 		});
 	}
 });
+
+// Enregistrer les routes de rapport CSP
+app.use('/api', cspRoutes);
 
 app.listen(PORT, () => {
 	console.log(`🚀 OAuth Proxy démarré sur http://localhost:${PORT}`);
