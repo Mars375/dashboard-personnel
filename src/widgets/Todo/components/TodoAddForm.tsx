@@ -4,6 +4,8 @@
  */
 
 import { memo, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/calendar-full";
@@ -11,6 +13,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { todoSchema, type TodoFormData } from "@/lib/validations/todo";
+import { toast } from "sonner";
 
 interface TodoAddFormProps {
 	onSubmit: (title: string, deadline?: string) => void;
@@ -27,6 +31,16 @@ function TodoAddFormComponent({
 
 	const isCompact = size === "compact";
 	const isMedium = size === "medium";
+
+	// Configuration de validation React Hook Form avec Zod
+	const {
+		register,
+		handleSubmit: onFormSubmit,
+		formState: { errors },
+	} = useForm<TodoFormData>({
+		resolver: zodResolver(todoSchema),
+		mode: "onSubmit", // Validation progressive : on submit d'abord, puis onChange
+	});
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -71,13 +85,20 @@ function TodoAddFormComponent({
 		return (
 			<form onSubmit={handleSubmit} className="flex flex-col gap-1.5">
 				<div className="flex gap-1.5">
-					<Input
-						ref={inputRef}
-						placeholder="Ajouter une tâche..."
-						className="flex-1 h-9 text-sm"
-						aria-label="Nouvelle tâche"
-					/>
-					<Button type="submit" size="sm" className="h-9">
+				<Input
+					ref={inputRef}
+					placeholder="Ajouter une tâche..."
+					className="flex-1 h-9 text-sm"
+					aria-label="Nouvelle tâche"
+					aria-invalid={!!errors.title}
+					aria-describedby={errors.title ? "title-error" : undefined}
+				/>
+				{errors.title && (
+					<span id="title-error" className="text-sm text-red-600">
+						{errors.title.message}
+					</span>
+				)}
+					<Button type="submit" disabled={!!errors.title} size="sm" className="h-9">
 						Ajouter
 					</Button>
 				</div>
