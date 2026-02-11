@@ -51,6 +51,12 @@ export const useTodoStore = create<TodoStore>((set, get) => {
 	const listsData = loadTodoLists();
 	const todos = loadTodos(listsData.currentListId);
 
+	// Expose store for debugging in development only
+	if (import.meta.env.DEV) {
+		(window as any).__ZUSTAND_STORES__ = (window as any).__ZUSTAND_STORES__ || {};
+		(window as any).__ZUSTAND_STORES__.todos = useTodoStore;
+	}
+
 	return {
 		...createHistoryState(todos),
 		currentListId: listsData.currentListId,

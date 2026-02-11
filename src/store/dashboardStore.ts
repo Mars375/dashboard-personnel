@@ -39,9 +39,16 @@ const defaultLayout: WidgetLayout[] = [
 
 export const useDashboardStore = create<DashboardState>()(
 	persist(
-		(set) => ({
-			widgets: defaultLayout,
-			isPickerOpen: false,
+		(set) => {
+			// Expose store for debugging in development only
+			if (import.meta.env.DEV) {
+				(window as any).__ZUSTAND_STORES__ = (window as any).__ZUSTAND_STORES__ || {};
+				(window as any).__ZUSTAND_STORES__.dashboard = useDashboardStore;
+			}
+
+			return {
+				widgets: defaultLayout,
+				isPickerOpen: false,
 
 				addWidget: (type, position) => {
 					set((state) => {
@@ -152,7 +159,8 @@ export const useDashboardStore = create<DashboardState>()(
 
 			openPicker: () => set({ isPickerOpen: true }),
 			closePicker: () => set({ isPickerOpen: false }),
-		}),
+			};
+		},
 		{
 			name: "dashboard-layout",
 			onRehydrateStorage: () => (state) => {
