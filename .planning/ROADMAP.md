@@ -28,6 +28,12 @@
 4. Content Security Policy en place
 5. Validation formulaires avec Zod activée
 
+**Plans:**
+- [ ] 01-01-PLAN.md — Exposer les stores Zustand pour le débogage (QOL-01)
+- [ ] 01-02-PLAN.md — Sécuriser les tokens OAuth avec HttpOnly cookies (SEC-01, SEC-03)
+- [ ] 01-03-PLAN.md — Implémenter Content Security Policy (SEC-02)
+- [ ] 01-04-PLAN.md — Valider les formulaires avec Zod (QOL-02)
+
 ---
 
 ## Phase 2: Refactor Widget Todo
