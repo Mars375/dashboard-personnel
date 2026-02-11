@@ -75,9 +75,30 @@ Améliorations différées.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| QOL-01 | Phase 1 | Pending |
+| QOL-02 | Phase 1 | Pending |
+| QOL-03 | Phase 1 | Pending |
 | SEC-01 | Phase 1 | Pending |
 | SEC-02 | Phase 1 | Pending |
 | SEC-03 | Phase 1 | Pending |
+| PERF-01 | Phase 2 | Pending |
+| PERF-02 | Phase 3 | Pending |
+| PERF-03 | Phase 3 | Pending |
+| PERF-04 | Phase 2 | Pending |
+| PERF-05 | Phase 3 | Pending |
+| ARCH-01 | Phase 4 | Pending |
+| ARCH-02 | Phase 6 | Pending |
+| ARCH-03 | Phase 6 | Pending |
+| ARCH-04 | Phase 3 | Pending |
+| TEST-01 | Phase 5 | Pending |
+| TEST-02 | Phase 7 | Pending |
+| TEST-03 | Phase 1 | Pending |
+| SYNC-01 | Phase 7 | Pending |
+| SYNC-02 | Phase 3 | Pending |
+| UX-01 | Phase 8 | Pending |
+| UX-02 | Phase 2 | Pending |
+| UX-03 | Phase 2 | Pending |
+| UX-04 | Phase 2 | Pending |
 | PERF-01 | Phase 2 | Pending |
 | PERF-02 | Phase 2 | Pending |
 | PERF-03 | Phase 3 | Pending |
