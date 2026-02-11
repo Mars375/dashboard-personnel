@@ -103,14 +103,24 @@ app.post("/api/oauth/exchange", async (req, res) => {
 
 		const data = await response.json();
 
-		// Retourner les tokens au format attendu
-		res.json({
+		// Stocker les tokens dans un cookie HttpOnly au lieu de les retourner
+		const tokens = {
 			access_token: data.access_token,
 			refresh_token: data.refresh_token,
 			expires_in: data.expires_in,
 			token_type: data.token_type || "Bearer",
 			scope: data.scope,
+		};
+
+		res.cookie('auth_tokens', JSON.stringify(tokens), {
+			httpOnly: true, // Inaccessible à JavaScript (XSS protection)
+			secure: process.env.NODE_ENV === 'production', // HTTPS only en prod
+			sameSite: 'strict', // Protection CSRF
+			maxAge: 7 * 24 * 60 * 60 * 1000, // 7 jours
+			path: '/',
 		});
+
+		res.json({ success: true, provider: 'google' });
 	} catch (error) {
 		console.error("Erreur serveur:", error);
 		res.status(500).json({ 
@@ -200,6 +210,40 @@ app.post("/api/oauth/refresh", async (req, res) => {
 		});
 	} catch (error) {
 		console.error("Erreur serveur:", error);
+		res.status(500).json({ 
+			error: error instanceof Error ? error.message : "Erreur serveur inconnue" 
+		});
+	}
+});
+
+// Endpoint pour migrer les tokens existants depuis localStorage vers cookies HttpOnly
+app.post("/api/oauth/migrate", async (req, res) => {
+	try {
+		const { provider, tokens } = req.body;
+
+		if (!provider || !tokens) {
+			return res.status(400).json({ error: "Provider ou tokens manquants" });
+		}
+
+		// Stocker les tokens migrés dans un cookie HttpOnly
+		res.cookie('auth_tokens', JSON.stringify({
+			access_token: tokens.access_token,
+			refresh_token: tokens.refresh_token,
+			expires_in: tokens.expires_in,
+			token_type: tokens.token_type || "Bearer",
+			scope: tokens.scope,
+			provider
+		}), {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === 'production',
+			sameSite: 'strict',
+			maxAge: 7 * 24 * 60 * 60 * 1000,
+			path: '/',
+		});
+
+		res.json({ success: true, message: "Tokens migrated successfully" });
+	} catch (error) {
+		console.error("Erreur lors de la migration:", error);
 		res.status(500).json({ 
 			error: error instanceof Error ? error.message : "Erreur serveur inconnue" 
 		});
