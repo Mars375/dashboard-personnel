@@ -1,232 +1,117 @@
-# Roadmap - Dashboard Personnel Améliorations
+# Dashboard Personnel Améliorations
 
-**Created:** 2026-02-11
-**Phases:** 8
-**Requirements:** 23 v1 requirements mapped
+## Project Reference
 
----
+See: `.planning/PROJECT.md` (updated 2026-02-11)
 
-## Phase 1: Quick Wins & Sécurité Critique
+**Core value:** Un dashboard personnel performant, sécurisé et maintenable
 
-**Goal:** Livrer des améliorations rapides et résoudre la vulnérabilité XSS la plus critique
-
-### Requirements Map
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| QOL-01 | 1 | Pending |
-| QOL-02 | 1 | Pending |
-| QOL-03 | 1 | Pending |
-| SEC-01 | 1 | Pending |
-| SEC-02 | 1 | Pending |
-| SEC-03 | 1 | Pending |
-
-**Success Criteria:**
-1. Debug panel fonctionnel en mode développement (`window.__ZUSTAND_STORES__`)
-2. Tokens OAuth stockés en HttpOnly cookies via proxy existant
-3. Tokens invalides nettoyés du localStorage
-4. Content Security Policy en place
-5. Validation formulaires avec Zod activée
-
-**Plans:**
-- [ ] 01-01-PLAN.md — Exposer les stores Zustand pour le débogage (QOL-01)
-- [ ] 01-02-PLAN.md — Sécuriser les tokens OAuth avec HttpOnly cookies (SEC-01, SEC-03)
-- [ ] 01-03-PLAN.md — Implémenter Content Security Policy (SEC-02)
-- [ ] 01-04-PLAN.md — Valider les formulaires avec Zod (QOL-02)
+**Current focus:** Phase 2 - Refactor TodoWidget
 
 ---
 
-## Phase 2: Refactor Widget Todo
+## Phase Progress
 
-**Goal:** Découper TodoWidget (2556 lignes) en composants maintenables
+| # | Name | Status | Progress |
+|---|-------|--------|----------|
+| 1 | Quick Wins & Sécurité | ✅ Complete | 5/5 complete (100%) |
+| 2 | Refactor TodoWidget | 📋 Context Ready | 0/1 complete (0%) |
+| 3 | Optimisation Bundle | Pending | 0/3 complete (0%) |
+| 4 | Error Boundary | Pending | 0/1 complete (0%) |
+| 5 | Tests E2E | Pending | 0/2 complete (0%) |
+| 6 | State Management | Pending | 0/4 complete (0%) |
+| 7 | Tests & Intégration | Pending | 0/2 complete (0%) |
+| 8 | UX & Offline | Pending | 0/4 complete (0%) |
 
-### Requirements Map
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| PERF-01 | 2 | Pending |
-
-**Success Criteria:**
-1. `src/widgets/Todo/TodoWidget.tsx` réduit à ~300 lignes (orchestration)
-2. `src/widgets/Todo/components/` créé avec:
-   - `TodoList.tsx` (~300 lignes)
-   - `TodoItem.tsx` (~200 lignes)
-   - `TodoFilters.tsx` (~100 lignes)
-   - `TodoStats.tsx` (~150 lignes)
-   - `TodoAddForm.tsx` (~150 lignes)
-3. Props typage améliorée (interface claire)
-4. TodoWidget ne re-render pas inutilement
+**Overall: 5/23 complete (22%)
 
 ---
 
-## Phase 3: Optimisation Bundle & Performance
+## Phase Details
 
-**Goal:** Analyser et optimiser le bundle, améliorer performance globale
+### Phase 1: Quick Wins & Sécurité ✅
 
-### Requirements Map
+**Goal:** Quick security wins and developer experience improvements
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| PERF-03 | 3 | Pending |
-| PERF-04 | 3 | Pending |
-| PERF-05 | 3 | Pending |
+**Plans:** 5 plans completed
 
-**Success Criteria:**
-1. `pnpm build:analyze` exécuté et analysé
-2. framer-motion remplacé par CSS natives (si possible) ou réduit
-3. recharts lazy-loadé déjà en place (chart-lazy.tsx)
-4. Seuil de virtualization baisser à 50-75 items (constants.ts)
-5. Tree-shaking activé pour shadcn/ui
+- [x] 01-01-PLAN.md — Expose Zustand stores for debugging
+- [x] 01-02-PLAN.md — Migrate OAuth tokens to HttpOnly cookies
+- [x] 01-03-PLAN.md — Implement Content Security Policy (partial)
+- [x] 01-04-PLAN.md — Add Zod validation to forms
+- [x] 01-05-PLAN.md — Test Error Boundary with crash scenarios
 
----
+**Status:** Complete (with minor CSP technical debt)
 
-## Phase 4: Error Boundary Global
-
-**Goal:** Empêcher le crash complet de l'application si un widget foire
-
-### Requirements Map
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| ARCH-01 | 4 | Pending |
-
-**Success Criteria:**
-1. `src/components/ErrorBoundary.tsx` créé avec componentDidCatch
-2. App.ts wrappé dans ErrorBoundary
-3. Fallback UI composé pour erreurs React
-4. Logger enregistre les erreurs
-5. Crash widget isole n'affecte pas les autres widgets
+**Summary:** Security significantly improved (HttpOnly cookies, CSP), developer experience enhanced (debug panel, form validation)
 
 ---
 
-## Phase 5: Tests E2E
+### Phase 2: Refactor TodoWidget 📋
 
-**Goal:** Valider les flows critiques utilisateurs avec Playwright
+**Goal:** Refactor TodoWidget (2556 lines) into maintainable components
 
-### Requirements Map
+**Context:** Captured ✅
+**Plans:** 0 planned
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| TEST-01 | 5 | Pending |
+Decisions made:
+- Feature-based decomposition (SyncControls, ListManager, ImportExport, etc.)
+- Custom hooks for business logic (useSync, useLists, useNotifications)
+- Structured file organization (hooks/, components/, utils/)
+- Preserve all functionality, improve testability
 
-**Success Criteria:**
-1. Playwright installé (`@playwright/test` package)
-2. Tests OAuth flow créés (`tests/e2e/` directory)
-3. Tests drag-drop widgets créés
-4. Tests sync bidirectionnelle créés
-5. `pnpm test --e2e` passe avec les nouveaux tests
+**Planned work:**
+- Extract 5 feature components (SyncControls, ListManager, ImportExport, NotificationSettings, UndoRedoControls)
+- Extract 4 custom hooks (useSync, useLists, useNotifications, useImportExport)
+- Create utils/ for pure functions
+- Maintain TodoWidget as orchestrator
 
----
-
-## Phase 6: State Management Normalisé
-
-**Goal:** Améliorer la gestion d'état pour cross-widgets et simplifier la maintenance
-
-### Requirements Map
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| ARCH-02 | 6 | Pending |
-| ARCH-03 | 6 | Pending |
-| ARCH-04 | 6 | Pending |
-
-**Success Criteria:**
-1. Repository pattern implémenté (`src/lib/storage/`)
-2. appStore unifié avec slices (todos, calendar, etc.)
-3. Relations cross-widgets définies (ex: todo ↔ event)
-4. localStorage direct remplacé par repository calls
-5. DevTools configuré pour appStore
+**Status:** Context ready, awaiting planning
 
 ---
 
-## Phase 7: Tests & Intégration OAuth
+### Phase 3: Optimisation Bundle
 
-**Goal:** Couvrir OAuth manquant et compléter sync Outlook
+**Goal:** Reduce bundle size and optimize performance
 
-### Requirements Map
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| TEST-02 | 7 | Pending |
-| SYNC-01 | 7 | Pending |
-
-**Success Criteria:**
-1. `src/lib/auth/oauthManager.ts` couvert par tests
-2. Token refresh testé (expired session, race conditions)
-3. Multiple providers testés simultanément
-4. Outlook sync implémenté (`outlookSync.ts` sans TODOs)
-5. `pnpm test` passe avec nouvelle couverture
+**Plans:** 0 planned
 
 ---
 
-## Phase 8: UX & Offline Support
+### Phase 4: Error Boundary
 
-**Goal:** Améliorer l'expérience utilisateur et supporter l'utilisation hors ligne
+**Goal:** Add global Error Boundary
 
-### Requirements Map
-
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| UX-01 | 8 | Pending |
-| UX-02 | 8 | Pending |
-| UX-03 | 8 | Pending |
-| UX-04 | 8 | Pending |
-
-**Success Criteria:**
-1. Service Worker implémenté (`public/sw.js`)
-2. Manifest PWA (`public/manifest.json`)
-3. Export/Import fonctionnel (`src/lib/exportImport.ts`)
-4. Toasts regroupés pour éviter spam
-5. Loading states globaux (Suspense + skeletons)
+**Plans:** 0 planned
 
 ---
 
-## Phase Statistics
+### Phase 5: Tests E2E
 
-**Total Phases:** 8
-**Total Requirements:** 23 v1 requirements
-**Coverage:** 100% (all requirements mapped to phases)
+**Goal:** Add Playwright E2E tests
 
-### Breakdown by Category
-
-| Category | Requirements | Phases |
-|----------|------------|---------|
-| Sécurité | 3 | 1 |
-| Performance | 5 | 1, 2, 3 |
-| Architecture | 4 | 4, 6 |
-| Tests | 2 | 5, 7 |
-| Sync | 2 | 7 |
-| UX/DX | 4 | 8 |
-| Quality | 3 | 1 |
-
-### Estimated Timeline
-
-| Phase | Duration | Complexity |
-|-------|----------|------------|
-| 1 (Quick Wins) | 1-2 weeks |
-| 2 (Refactor) | 1-2 weeks |
-| 3 (Performance) | 2-3 weeks |
-| 4 (Error Boundary) | 1 week |
-| 5 (E2E Tests) | 1-2 weeks |
-| 6 (State) | 2-3 weeks |
-| 7 (Tests OAuth) | 2-3 weeks |
-| 8 (UX/PWA) | 3-4 weeks |
-
-**Total Estimated:** 15-24 weeks
+**Plans:** 0 planned
 
 ---
 
-**Next:** Phase 1: Quick Wins & Sécurité
+### Phase 6: State Management
 
-**Focus prioritaire:**
-1. Sécurité critique (tokens HttpOnly)
-2. Quick wins (debug panel, toasts, performance monitor)
+**Goal:** Implement Repository pattern and normalize state
 
-**Quick Impact:**
-- Sécurité XSS bloquée immédiatement
-- DX améliorée pour développement futur
-
-**Commencer par:** `/gsd-discuss-phase 1`
+**Plans:** 0 planned
 
 ---
-*Last updated: 2026-02-11*
+
+### Phase 7: Tests & Intégration
+
+**Goal:** Complete OAuth tests and Outlook sync
+
+**Plans:** 0 planned
+
+---
+
+### Phase 8: UX & Offline
+
+**Goal:** PWA features and offline support
+
+**Plans:** 0 planned
