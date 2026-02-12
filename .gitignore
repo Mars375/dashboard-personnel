@@ -37,3 +37,4 @@ coverage
 # docs/screenshots/*.png
 # docs/screenshots/*.jpg
 # docs/screenshots/*.webp
+.planning/
